@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import login from "./components/login.vue";
-defineProps({
-    loginRequired: {
-        default: false,
-        type: Boolean
-    }
-})
+</script>
 
+<script lang="ts">
+var loginRequired = true;
 
 </script>
 
@@ -15,10 +12,10 @@ defineProps({
   <header>
     <img alt="Squad Whitelister Logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
   </header>
-  
-  <main>
-    <login v-if="loginRequired"/>
 
+  <main>
+    <login :rendered="loginRequired"/>
+    <button @click="loginRequired = !loginRequired">Toggle</button>
   </main>
 </template>
 
@@ -31,7 +28,7 @@ header {
   z-index: 10000;
 }
 
-main{
+main {
   display: flex;
   align-items: center;
   justify-content: center;
