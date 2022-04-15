@@ -1,0 +1,494 @@
+const versionN = "1.0";
+
+const fs = require("fs");
+const StreamZip = require('node-stream-zip');
+const https = require('https');
+const express = require('express');
+const app = express();
+const path = require('path')
+const mongo = require('mongodb');
+const MongoClient = mongo.MongoClient;
+const ObjectID = mongo.ObjectID;
+const crypto = require("crypto");
+const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
+const nocache = require('nocache');
+const log4js = require('log4js');
+const axios = require('axios');
+
+const enableServer = true;
+var errorCount = 0;
+
+let tmpData = new Date();
+const logFile = path.join(__dirname, 'logs', (tmpData.toISOString().replace(/T/g, "_").replace(/(:|-|\.|Z)/g, "")) + ".log");
+if (!fs.existsSync('logs')) fs.mkdirSync('logs');
+if (!fs.existsSync(logFile)) fs.writeFileSync(logFile, "");
+
+
+log4js.configure({
+    appenders: { App: { type: "file", filename: logFile } },
+    categories: { default: { appenders: ["App"], level: "all" } }
+});
+const logger = log4js.getLogger("App");
+extendLogging()
+console.log("Log-file:", logFile);
+
+var server;
+
+start();
+
+function start() {
+    if (!initConfigFile()) {
+        const config = JSON.parse(fs.readFileSync("conf.json", "utf-8").toString());
+        console.log(config);
+
+        checkUpdates(config.other.automatic_updates, () => {
+            if (enableServer) {
+                const privKPath = 'certificates/privatekey.pem';
+                const certPath = 'certificates/certificate.pem';
+                if (fs.existsSync(privKPath) && fs.existsSync(certPath)) {
+                    const httpsOptions = {
+                        key: fs.readFileSync(privKPath),
+                        cert: fs.readFileSync(certPath)
+                    }
+                    server = https.createServer(httpsOptions, app);
+                    server.listen(config.http_server.https_port);
+                    //wss = new WebSocket.Server({ server });
+                    console.log("\HTTPS server listening at https://%s:%s", config.http_server.bind_ip, config.http_server.https_port)
+                } else {
+                    server = app.listen(config.http_server.port, config.http_server.bind_ip, function () {
+                        var host = server.address().address
+                        var port = server.address().port
+
+                        console.log("\HTTP server listening at http://%s:%s", host, port)
+                    })
+                }
+            }
+        });
+
+
+        app.use(nocache());
+        app.set('etag', false)
+        app.use("/", bodyParser.json());
+        app.use("/", bodyParser.urlencoded({ extended: true }));
+        app.use(cookieParser());
+        app.use(forceHTTPS);
+        app.use('*', getSession);
+
+        app.use('/', express.static(__dirname + '/dist'));
+
+        app.get('/api/getAppPersonalization', function (req, res, next) {
+            res.send(config.app_personalization);
+        })
+        app.get("/api/getMenuUrls", (req, res, next) => {
+            let retUrls = [
+                {
+                    name: "Dashboard",
+                    url: "/",
+                    order: 0,
+                    type: "redirect"
+                }
+            ];
+            if (req.userSession) {
+                retUrls = retUrls.concat([
+                    {
+                        name: "Logout",
+                        url: "/api/logout",
+                        order: 10,
+                        type: "request"
+                    }
+                ])
+            } else {
+                retUrls = retUrls.concat([
+                    {
+                        name: "Login",
+                        url: "/api/login",
+                        order: 9,
+                        type: "request"
+                    }
+                ])
+            }
+            if (isAdmin(req)) {
+                retUrls = retUrls.concat([
+                    {
+                        name: "Publishment",
+                        url: "/publishment",
+                        order: 1,
+                        type: "redirect"
+                    },
+                    {
+                        name: "Update (Cur: V" + versionN + ")",
+                        url: "/api/admin/checkInstallUpdate",
+                        order: 50,
+                        type: "request"
+                    }
+                ])
+            }
+            res.send(retUrls);
+        })
+        app.get("/api/getContextMenu", (req, res, next) => {
+            let ret = [
+                {
+                    name: "",
+                    action: "",
+                    url: "",
+                    method: "",
+                    order: 0
+                }
+            ];
+            if (isAdmin(req)) {
+                ret = ret.concat([
+                ])
+            }
+            res.send(ret);
+        })
+
+        app.use('*', requireLogin);
+
+        app.use('/api/logout', (req, res, next) => {
+            res.clearCookie("stok")
+            res.clearCookie("uid")
+            mongoConn((dbo) => {
+                dbo.collection("sessions").remove({ token: req.userSession.token }, (err, dbRes) => {
+                    if (err) serverError(err);
+                    else {
+                        res.send("logout_ok");
+                    }
+                })
+            });
+        })
+
+        app.use('/admin*', authorizeAdmin)
+
+        app.use('/admin', function (req, res, next) {
+            express.static('admin')(req, res, next);
+        });
+        app.use('/api/admin*', authorizeAdmin)
+
+        app.get("/api/admin", (req, res, next) => {
+            res.send({ status: "Ok" });
+        })
+        app.get("/api/admin/getConfig", (req, res, next) => {
+            res.send(config);
+        })
+        app.get("/api/admin/checkInstallUpdate", (req, res, next) => {
+            res.send({ status: "Ok" });
+            checkUpdates(true);
+        })
+        app.get("/api/admin/restartApplication", (req, res, next) => {
+            res.send({ status: "Ok" });
+            restartProcess(req.query.delay ? req.query.delay : 0, 0);
+        })
+
+        app.get('/api/getVersion', (req, res, next) => {
+            res.send(versionN);
+        })
+
+        app.use((req, res, next) => {
+            res.redirect("/");
+        });
+
+        function mongoConn(connCallback) {
+            let url = "mongodb://" + config.database.mongo.host + ":" + config.database.mongo.port;
+            let dbName = config.database.mongo.database;
+            let client = MongoClient.connect(url, function (err, db) {
+                if (err) serverError(err);
+                var dbo = db.db(dbName);
+                connCallback(dbo);
+            });
+        }
+        function getSession(req, res, callback = null) {
+            const parm = req.cookies;
+            if (parm.stok != null && parm.stok != "") {
+                mongoConn((dbo) => {
+                    dbo.collection("sessions").findOne({ token: parm.stok }, (err, dbRes) => {
+                        if (err) res.sendStatus(500);
+                        else if (dbRes != null) {
+                            req.userSession = dbRes
+                            if (callback)
+                                callback();
+                        } else {
+                            if (callback)
+                                callback();
+                        }
+                    })
+                })
+            } else {
+                callback();
+            }
+        }
+        function requireLogin(req, res, callback = null) {
+            const parm = Object.keys(req.query).length > 0 ? req.query : req.body;
+            //const path = getReqPath(req);
+            //console.log("path", path);
+            /*switch (path) {
+                case "/api/getAppPersonalization/":
+                    callback();
+                    break;
+
+                default:
+                    break;
+                }*/
+            console.log("\nREQ: " + path + "\nSESSION: ", req.userSession, "\nPARM: ", parm);
+            if (!req.userSession) res.redirect(301, "/login");
+            else callback();//authorizeDCSUsers(req, res, callback)
+        }
+        function getReqPath(req, callback) {
+            const fullPath = req.originalUrl.replace(/\?.*$/, '')
+            let basePaths = [
+                "/api/getAllMissions/m/"
+            ];
+            for (let val of basePaths) {
+                if (fullPath.startsWith(val)) return val
+            }
+
+            if (fullPath.endsWith("/")) return fullPath.substring(0, fullPath.length - 1)
+            else return fullPath
+        }
+        function authorizeAdmin(req, res, next) {
+            if (isAdmin(req))
+                next();
+            else res.redirect("/");
+        }
+        function forceHTTPS(req, res, next) {
+            if (config.other.force_https) {
+                if (req.headers['x-forwarded-proto'] !== 'https')
+                    return res.redirect('https://' + req.headers.host + req.url);
+                else
+                    return next();
+            } else
+                return next();
+        }
+
+        function checkUpdates(downloadInstallUpdate = false, callback = null) {
+            let releasesUrl = "https://api.github.com/repos/fantinodavide/Squad_Whitelister/releases";
+            let curDate = new Date();
+            console.log("Current version: ", versionN, "\n > Checking for updates", curDate.toLocaleString());
+            axios
+                .get(releasesUrl)
+                .then(res => {
+                    const gitResData = res.data[0];
+                    /*mongoConn((dbo) => {
+                        dbo.collection("releases").findOne(res.data[0], (err, dbRes) => {
+                            if (!dbRes) {
+                            }
+                        })
+                    })*/
+                    const checkV = gitResData.tag_name.toUpperCase().replace("V", "").split(".");
+                    const versionSplit = versionN.toString().split(".");
+                    if (parseInt(versionSplit[0]) < parseInt(checkV[0]) || parseInt(versionSplit[1]) < parseInt(checkV[1])) {
+                        console.log("Update found: " + gitResData.tag_name, gitResData.name);
+                        //if (updateFoundCallback) updateFoundCallback();
+                        if (downloadInstallUpdate) downloadLatestUpdate(gitResData);
+                    } else {
+                        console.log(" > No updates found. Proceding startup");
+                        if (callback) callback();
+                    }
+                })
+                .catch(err => {
+                    console.error(" > Couldn't check for updates. Proceding startup");
+                    if (callback) callback();
+                })
+        }
+
+        function downloadLatestUpdate(gitResData) {
+            console.log("Downloading update: " + gitResData.tag_name, gitResData.name);
+            const url = gitResData.zipball_url;
+            const dwnDir = path.resolve(__dirname, 'tmp_update');//, 'gitupd.zip')
+            const dwnFullPath = path.resolve(dwnDir, 'gitupd.zip')
+
+            if (!fs.existsSync(dwnDir)) fs.mkdirSync(dwnDir);
+
+            const writer = fs.createWriteStream(dwnFullPath)
+            axios({
+                method: "get",
+                url: url,
+                responseType: "stream"
+            }).then((response) => {
+                response.data.pipe(writer);
+            });
+
+            writer.on('finish', (res) => {
+                server.close();
+                installLatestUpdate(dwnDir, dwnFullPath, gitResData);
+            })
+            writer.on('error', (err) => {
+                console.error(err);
+            })
+        }
+
+        function installLatestUpdate(dwnDir, dwnFullPath, gitResData) {
+            const zip = new StreamZip({
+                file: dwnFullPath,
+                storeEntries: true
+            });
+            zip.on('ready', () => {
+                const gitZipDir = Object.values(zip.entries())[0].name;
+                console.log(gitZipDir);
+                zip.extract(gitZipDir, __dirname, (err, res) => {
+                    console.log(" > Extracted", res, "files");
+                    if (fs.rmSync(dwnDir, { recursive: true })) console.log(`${dwnDir} folder deleted`);
+                    //log(" > Deleting temporary folder");
+                    console.log(" > Restart in 5 seconds");
+                    restartProcess();
+                    /*const destinationPath = path.resolve(__dirname, "test");
+                    const currentPath = path.resolve(dwnDir, gitZipDir);
+
+                    fs.rename(currentPath, destinationPath, function (err) {
+                        if (err) {
+                            throw err
+                        } else {
+                            log("Successfully moved the file!");
+                        }
+                    });*/
+                    zip.close();
+                });
+            });
+        }
+
+        function isAdmin(req) {
+            return (req.userSession && ((config.forum.admin_ranks && config.forum.admin_ranks.includes(req.userSession.rank_title)) || req.userSession.username == "JetDave"));
+        }
+
+        function isDCSUser(req) {
+            return isAdmin(req) || (req.userSession && (config.forum.authorized_groups.includes(req.userSession.group_name)))
+        }
+    } else {
+    }
+}
+
+function restartProcess(delay = 5000, code = 0) {
+    process.on("exit", function () {
+        console.log("Process terminated");
+        require("child_process").spawn(process.argv.shift(), process.argv, {
+            cwd: process.cwd(),
+            detached: true,
+            stdio: "inherit"
+        });
+    });
+    setTimeout(() => {
+        process.exit(code);
+    }, delay)
+}
+
+function getDateFromEpoch(ep) {
+    let d = new Date(0);
+    d.setUTCSeconds(ep);
+    return d;
+}
+
+function serverError(err) {
+    res.sendStatus(500);
+    console.error(err);
+}
+
+function toUpperFirstChar(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
+function initConfigFile() {
+    let emptyConfFile = {
+        http_server: {
+            bind_ip: "0.0.0.0",
+            port: 80,
+            https_port: 443
+        },
+        database: {
+            mongo: {
+                host: "127.0.0.1",
+                port: 27017,
+                database: "Squad_Whitelister"
+            }
+        },
+        app_personalization: {
+            name: "Squad Whitelister",
+            favicon: "",
+            accentc_color: "#f60",
+        },
+        other: {
+            force_https: false,
+            automatic_updates: true,
+            update_check_interval_seconds: 3600
+        }
+    }
+
+    if (!fs.existsSync("conf.json")) {
+        console.log("Configuration file created, set your parameters and run again \"node start\".\nTerminating execution...");
+        fs.writeFileSync("conf.json", JSON.stringify(emptyConfFile, null, "\t"));
+        process.exit(1)
+        return true;
+    } else {
+        const config = JSON.parse(fs.readFileSync("conf.json", "utf-8").toString());
+        var config2 = { ...config }
+        updateConfig(config2, emptyConfFile);
+        fs.writeFileSync("conf.json", JSON.stringify(config2, null, "\t"));
+    }
+    return false;
+
+}
+function updateConfig(config, emptyConfFile) {
+    for (let k in emptyConfFile) {
+        const objType = Object.prototype.toString.call(emptyConfFile[k]);
+        const parentObjType = Object.prototype.toString.call(emptyConfFile);
+        if (config[k] == undefined || (config[k] && (parentObjType == "[object Array]" && !config[k].includes(emptyConfFile[k])))) {
+            switch (objType) {
+                case "[object Object]":
+                    config[k] = {}
+                    break;
+                case "[object Array]":
+                    config[k] = []
+                    break;
+
+                default:
+                    //console.log("CONFIG:", config, "\nKEY:", k, "\nCONFIG_K:", config[k], "\nEMPTY_CONFIG_K:", emptyConfFile[k], "\nPARENT_TYPE:",parentObjType,"\n");
+                    if (parentObjType == "[object Array]") config.push(emptyConfFile[k])
+                    else config[k] = emptyConfFile[k]
+                    break;
+            }
+        }
+        if (typeof (emptyConfFile[k]) === "object") {
+            updateConfig(config[k], emptyConfFile[k])
+        }
+    }
+}
+process.on('uncaughtException', function (err) {
+    console.error("Uncaught Exception", err.message, err.stack)
+    if (++errorCount >= 5) {
+        console.error("Too many errors occurred during the current run. Terminating execution...");
+        restartProcess(0, 0);
+    }
+})
+function randomString(size = 64) {
+    return crypto
+        .randomBytes(size)
+        .toString('base64')
+        .slice(0, size)
+}
+function extendLogging() {
+    const consoleLogBackup = console.log;
+    const consoleErrorBackup = console.error;
+    console.log = (...params) => {
+        consoleLogBackup(...params);
+        logger.trace(...params)
+    }
+    console.error = (...params) => {
+        consoleErrorBackup(...params);
+        logger.error(...params)
+    }
+}
+function length(obj) {
+    return Object.keys(obj).length;
+}
+function parseValue(str) {
+    if (str === 'true') return true;
+    else if (str === 'false') return false;
+    else return str
+}
+
+function wssBroadcast(data, ws = null) {
+    console.log("WS Broadcast", data);
+    wss.clients.forEach(function each(client) {
+        if ((client !== ws) && client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(data));
+        }
+    });
+}

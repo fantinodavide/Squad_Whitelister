@@ -27,18 +27,16 @@ export default {
         }
     }
 }
-
-var rendered = false;
 </script>
 
 <template>
-    <div v-if="rendered">
+    <div>
         <blackoutBackground></blackoutBackground>
         <div class="popupContainer">
             <h1>{{ title }}</h1>
             <slot />
             <div class="btnContainer">
-                <button id="btnCancel" v-if="!hideCancel" @click="$emit('closePopup')">{{ cancelText }}</button>
+                <button id="btnCancel" v-if="!hideCancel" @click="$emit('cancelBtnClick')">{{ cancelText }}</button>
                 <button id="btnConfirm" v-if="!hideConfirm">{{ confirmText }}</button>
             </div>
         </div>
@@ -50,9 +48,10 @@ var rendered = false;
     display: flex;
     flex-direction: row;
 }
+
 .popupContainer {
-    position: fixed;
-    top: 150px;
+    position: relative;
+    //top: 150px;
     display: flex;
     flex-direction: column;
     align-items: center;

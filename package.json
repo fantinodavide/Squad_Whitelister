@@ -5,9 +5,23 @@
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview --port 5050",
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit",
+    "app": "vue-tsc --noEmit && vite build && node server",
+    "release": "npm run build && powershell Compress-Archive dist release.zip -Force && powershell Compress-Archive server.js release.zip -Update && powershell Compress-Archive package-lock.json release.zip -Update"
   },
   "dependencies": {
+    "axios": "^0.26.1",
+    "body-parser": "^1.20.0",
+    "cookie-parser": "^1.4.6",
+    "crypto": "^1.0.1",
+    "express": "^4.17.3",
+    "fs": "^0.0.1-security",
+    "https": "^1.0.0",
+    "log4js": "^6.4.4",
+    "mongodb": "^4.5.0",
+    "nocache": "^3.0.3",
+    "node-stream-zip": "^1.15.0",
+    "path": "^0.12.7",
     "vue": "^3.2.31"
   },
   "devDependencies": {

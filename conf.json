@@ -1,0 +1,24 @@
+{
+	"http_server": {
+		"bind_ip": "0.0.0.0",
+		"port": 80,
+		"https_port": 443
+	},
+	"database": {
+		"mongo": {
+			"host": "127.0.0.1",
+			"port": 27017,
+			"database": "DCS_MissionBooking"
+		}
+	},
+	"app_personalization": {
+		"name": "Squad Whitelister",
+		"favicon": "",
+		"accentc_color": "#f60"
+	},
+	"other": {
+		"force_https": false,
+		"automatic_updates": true,
+		"update_check_interval_seconds": 3600
+	}
+}

@@ -4,14 +4,16 @@ import popup from "./popup.vue";
 
 <script lang="ts">
 export default {
-  props: {
+  methods: {
+    cancelClick: function (dt:any) {
+      console.log("tomare",dt);
+    }
   }
 }
-var rendered = false;
 </script>
 
 <template>
-  <popup :rendered="rendered" title="Login" confirm-text="Login">
+  <popup title="Login" confirm-text="Login" @cancelBtnClick="$emit('cancelBtnClick',$event)" :hide-cancel="true">
     <input type="email" placeholder="Email" />
     <input type="password" placeholder="Password" />
   </popup>

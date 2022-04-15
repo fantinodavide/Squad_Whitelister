@@ -1,10 +1,18 @@
 <script setup lang="ts">
 import login from "./components/login.vue";
+
 </script>
 
 <script lang="ts">
-var loginRequired = true;
-
+export default {
+  data() {
+    return {
+      loginRequired: true
+    }
+  },
+  methods: {
+  }
+}
 </script>
 
 <template>
@@ -14,7 +22,7 @@ var loginRequired = true;
   </header>
 
   <main>
-    <login :rendered="loginRequired"/>
+    <login v-if="loginRequired" @cancelBtnClick="loginRequired = false" />
     <button @click="loginRequired = !loginRequired">Toggle</button>
   </main>
 </template>
