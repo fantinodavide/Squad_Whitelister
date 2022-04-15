@@ -58,6 +58,6 @@ export default {
     background: #222;
     width: fit-content;
     padding: 20px 30px;
-    border-radius: 10px;
+    border-radius: 10px; 
 }
 </style>
