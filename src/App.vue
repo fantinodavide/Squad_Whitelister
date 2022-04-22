@@ -7,16 +7,21 @@ import login from "./components/login.vue";
 export default {
   data() {
     return {
-      loginRequired: true
+      loginRequired: true,
+      app_title: "Squad Whitelister"
     }
   },
   methods: {
+    getAppPersonalization: async ()=>{
+      const pers = await fetch("/api/");
+      console.log(pers);
+    }
   }
 }
 </script>
 
 <template>
-  <title>Squad Whitelister</title>
+  <title>{{app_title}}</title>
   <header>
     <img alt="Squad Whitelister Logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
   </header>
