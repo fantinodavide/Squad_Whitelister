@@ -8,14 +8,22 @@ export default {
   data() {
     return {
       loginRequired: true,
-      app_title: "Squad Whitelister"
+      app_title: "Squad Whitelister",
+      accent_color: "#ffc40b"
     }
   },
   methods: {
-    getAppPersonalization: async ()=>{
-      const pers = await fetch("/api/");
-      console.log(pers);
+    getAppPersonalization: function(){
+      fetch("/api/getAppPersonalization").then(res=>res.json()).then(dt=>{
+        console.log(dt);
+        this.app_title = dt.name;
+        this.accent_color = dt.accent_color;
+
+      });
     }
+  },
+  created(){
+    this.getAppPersonalization();
   }
 }
 </script>
@@ -34,6 +42,10 @@ export default {
 
 <style>
 @import "./assets/base.css";
+
+#app *{
+  --accent-color: v-bind(accent_color);
+}
 
 header {
   height: 100px;

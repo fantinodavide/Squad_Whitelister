@@ -12,9 +12,9 @@
 		}
 	},
 	"app_personalization": {
-		"name": "Squad Whitelister",
+		"name": "Squad Whitelister Jet",
 		"favicon": "",
-		"accentc_color": "#f60"
+		"accent_color": "#ffc40b"
 	},
 	"other": {
 		"force_https": false,

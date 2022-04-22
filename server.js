@@ -410,7 +410,7 @@ function initConfigFile() {
         app_personalization: {
             name: "Squad Whitelister",
             favicon: "",
-            accentc_color: "#f60",
+            accent_color: "#ffc40b",
         },
         other: {
             force_https: false,
@@ -456,8 +456,13 @@ function isDbPopulated(callback) {
                         console.error(err);
                         process.exit(1);
                     } else if (callback) {
-                        consoleLogBackup("\n\n\n\n########## ADMIN CREDENTIALS ##########\n    Username: admin\n    Password: ", adminPwd, "\n!!! Save your credentials, you will NOT see them again !!!\n\n\n\n")
-                        callback();
+                        const startdelay = 5;
+                        consoleLogBackup("\n\n\n\n########## ADMIN CREDENTIALS ##########\n##  Username: admin                  ##\n##  Password: " + adminPwd + "           ##\n#######################################\n\n!!! Save your credentials, you will NOT see them again !!!\n\nServer will be started in", startdelay, "s")
+
+                        setTimeout(() => {
+                            consoleLogBackup("\n\n\n\n");
+                            callback();
+                        }, startdelay * 1000);
                     }
                 })
             }
