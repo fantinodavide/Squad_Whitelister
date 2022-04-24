@@ -7,13 +7,16 @@ export default {
   methods: {
     cancelClick: function (dt:any) {
       console.log("tomare",dt);
+    },
+    loginBtnClick: function(dt:any){
+
     }
   }
 }
 </script>
 
 <template>
-  <popup title="Login" confirm-text="Login" @cancelBtnClick="$emit('cancelBtnClick',$event)" :hide-cancel="true">
+  <popup title="Login" confirm-text="Login" @cancelBtnClick="$emit('cancelBtnClick',$event)" @loginBtnClick="loginBtnClick($event)" :hide-cancel="true">
     <input type="email" placeholder="Email" />
     <input type="password" placeholder="Password" />
   </popup>

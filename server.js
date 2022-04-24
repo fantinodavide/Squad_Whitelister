@@ -152,6 +152,49 @@ function main() {
         res.send(ret);
     })
 
+    app.post('/api/login', (req, res, next) => {
+        const parm = req.body;
+
+        mongoConn((dbo) => {
+            let cryptPwd = crypto.createHash('sha512').update(parm.password).digest('hex');
+            dbo.collection("users").findOne({ username: parm.username, password: cryptPwd }, (err, usrRes) => {
+                if (err) res.sendStatus(500);
+                else if (dbRes == null) res.sendStatus(401);
+                else {
+                    const sessDurationMS = config.other.session_duration_hours * 60 * 60 * 1000;
+
+                    let userDt = usrRes;
+                    userDt.login_date = new Date();
+                    userDt.session_expiration = new Date(Date.now() + sessDurationMS);
+                    delete userDt.user_password;
+
+                    let error;
+                    do {
+                        error = false;
+                        userDt.token = randomString(128);
+                        mongoConn((dbo) => {
+                            dbo.collection("sessions").findOne({ token: userDt.token }, (err, dbRes) => {
+                                if (err) res.sendStatus(500);
+                                else if (dbRes == null) {
+                                    dbo.collection("sessions").insertOne(userDt, (err, dbRes) => {
+                                        if (err) res.sendStatus(500);
+                                        else {
+                                            res.cookie("stok", userDt.token, { expires: userDt.session_expiration })
+                                            res.cookie("uid", userDt.user_id, { expires: userDt.session_expiration })
+                                            res.send({ status: "login_ok", userDt: userDt });
+                                        }
+                                    })
+                                } else {
+                                    error = true;
+                                }
+                            })
+                        })
+                    } while (error);
+                }
+            })
+        })
+    })
+
     app.use('*', requireLogin);
 
     app.use('/api/logout', (req, res, next) => {
@@ -415,7 +458,8 @@ function initConfigFile() {
         other: {
             force_https: false,
             automatic_updates: true,
-            update_check_interval_seconds: 3600
+            update_check_interval_seconds: 3600,
+            session_duration_hours: 168
         }
     }
 
