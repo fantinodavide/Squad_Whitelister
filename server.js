@@ -82,9 +82,14 @@ function main() {
     app.use("/", bodyParser.urlencoded({ extended: true }));
     app.use(cookieParser());
     app.use(forceHTTPS);
-    app.use('*', getSession);
+    app.use('/', getSession);
+    app.use('/', logRequests);
 
     app.use('/', express.static(__dirname + '/dist'));
+
+    app.use('favicon*', (req,res,next)=>{
+        req.redirect(config.app_personalization.logo_url);
+    })
 
     app.get('/api/getAppPersonalization', function (req, res, next) {
         res.send(config.app_personalization);
@@ -152,21 +157,30 @@ function main() {
         res.send(ret);
     })
 
+    app.get('/api/checkSession', (req, res, next) => {
+        if (req.userSession) res.send({ status: "session_valid" })
+        else res.send({ status: "login_required" }).status(401);
+    })
+
     app.post('/api/login', (req, res, next) => {
         const parm = req.body;
 
         mongoConn((dbo) => {
             let cryptPwd = crypto.createHash('sha512').update(parm.password).digest('hex');
             dbo.collection("users").findOne({ username: parm.username, password: cryptPwd }, (err, usrRes) => {
-                if (err) res.sendStatus(500);
-                else if (dbRes == null) res.sendStatus(401);
+                if (err) {
+                    res.sendStatus(500);
+                    console.error(err)
+                }
+                else if (usrRes == null) res.sendStatus(401);
                 else {
                     const sessDurationMS = config.other.session_duration_hours * 60 * 60 * 1000;
 
                     let userDt = usrRes;
                     userDt.login_date = new Date();
                     userDt.session_expiration = new Date(Date.now() + sessDurationMS);
-                    delete userDt.user_password;
+                    delete userDt.password;
+                    delete userDt._id;
 
                     let error;
                     do {
@@ -174,10 +188,16 @@ function main() {
                         userDt.token = randomString(128);
                         mongoConn((dbo) => {
                             dbo.collection("sessions").findOne({ token: userDt.token }, (err, dbRes) => {
-                                if (err) res.sendStatus(500);
+                                if (err) {
+                                    res.sendStatus(500);
+                                    console.error(err)
+                                }
                                 else if (dbRes == null) {
                                     dbo.collection("sessions").insertOne(userDt, (err, dbRes) => {
-                                        if (err) res.sendStatus(500);
+                                        if (err) {
+                                            res.sendStatus(500);
+                                            console.error(err)
+                                        }
                                         else {
                                             res.cookie("stok", userDt.token, { expires: userDt.session_expiration })
                                             res.cookie("uid", userDt.user_id, { expires: userDt.session_expiration })
@@ -195,16 +215,16 @@ function main() {
         })
     })
 
-    app.use('*', requireLogin);
+    app.use('/', requireLogin);
 
     app.use('/api/logout', (req, res, next) => {
         res.clearCookie("stok")
         res.clearCookie("uid")
         mongoConn((dbo) => {
-            dbo.collection("sessions").remove({ token: req.userSession.token }, (err, dbRes) => {
+            dbo.collection("sessions").deleteOne({ token: req.userSession.token }, (err, dbRes) => {
                 if (err) serverError(err);
                 else {
-                    res.send("logout_ok");
+                    res.send({status: "logout_ok"});
                 }
             })
         });
@@ -246,8 +266,9 @@ function main() {
             mongoConn((dbo) => {
                 dbo.collection("sessions").findOne({ token: parm.stok }, (err, dbRes) => {
                     if (err) res.sendStatus(500);
-                    else if (dbRes != null) {
+                    else if (dbRes != null && dbRes.session_expiration > new Date()) {
                         req.userSession = dbRes
+                        delete req.userSession._id;
                         if (callback)
                             callback();
                     } else {
@@ -262,7 +283,7 @@ function main() {
     }
     function requireLogin(req, res, callback = null) {
         const parm = Object.keys(req.query).length > 0 ? req.query : req.body;
-        //const path = getReqPath(req);
+        const reqPath = getReqPath(req);
         //console.log("path", path);
         /*switch (path) {
             case "/api/getAppPersonalization/":
@@ -272,14 +293,19 @@ function main() {
             default:
                 break;
             }*/
-        console.log("\nREQ: " + path + "\nSESSION: ", req.userSession, "\nPARM: ", parm);
-        if (!req.userSession) res.redirect(301, "/login");
+        //if (!req.userSession) res.redirect(301, "/api/login");
+        if (!req.userSession) res.send({ status: "login_required" }).status(401);
         else callback();//authorizeDCSUsers(req, res, callback)
+    }
+    function logRequests(req, res, next) {
+        const parm = Object.keys(req.query).length > 0 ? req.query : req.body;
+        const reqPath = getReqPath(req);
+        console.log("\nREQ: " + reqPath + "\nSESSION: ", req.userSession, "\nPARM: ", parm);
+        next();
     }
     function getReqPath(req, callback) {
         const fullPath = req.originalUrl.replace(/\?.*$/, '')
         let basePaths = [
-            "/api/getAllMissions/m/"
         ];
         for (let val of basePaths) {
             if (fullPath.startsWith(val)) return val
@@ -454,6 +480,7 @@ function initConfigFile() {
             name: "Squad Whitelister",
             favicon: "",
             accent_color: "#ffc40b",
+            logo_url: "https://joinsquad.com/wp-content/themes/squad/img/logo.png"
         },
         other: {
             force_https: false,
