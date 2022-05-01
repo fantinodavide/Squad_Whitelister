@@ -2,6 +2,7 @@
 import login from "./components/login.vue";
 import tabBrowser from "./components/tabBrowser.vue";
 import tabBrowserBtn from "./components/tabBrowserButton.vue";
+import tab from "./components/tab.vue";
 import $ from 'jquery'
 
 </script>
@@ -15,7 +16,8 @@ export default {
 			accent_color: "#ffc40b",
 			currentTab: "Home",
 			logo_url: "./assets/logo.svg",
-			tabs: ["Home","Clans","Users"]
+			tabs: [],
+			tabBtns: []
 		}
 	},
 	methods: {
@@ -30,6 +32,13 @@ export default {
 			fetch("/api/checkSession").then(res => res.json()).then(dt => {
 				this.setLoginRequired(dt.status == "login_required")
 
+			});
+		},
+		getTabs: function () {
+			fetch("/api/getTabs").then(res => res.json()).then(dt => {
+				console.log(dt);
+				this.tabs = dt.tabs;
+				this.tabs.forEach(e => this.tabBtns.push(e['name']));
 			});
 		},
 		logout: function () {
@@ -48,6 +57,7 @@ export default {
 	created() {
 		this.checkSession();
 		this.getAppPersonalization();
+		this.getTabs();
 	}
 }
 </script>
@@ -56,19 +66,23 @@ export default {
 	<title>{{ currentTab }} | {{ app_title }}</title>
 	<header>
 		<img alt="Squad Whitelister Logo" class="logo" :src="logo_url" />
-		<h1>{{ currentTab }} | {{ app_title }}</h1>
+		<h1>{{ app_title }}</h1>
 		<div id="hdBtnContainer">
 			<button v-if="!loginRequired" @click="logout">Logout</button>
 		</div>
 
-		<tabBrowser>
-			<tabBrowserBtn v-for="t in tabs" @updateTab="setCurrentTab" :title="t" />
+		<tabBrowser :visible="!loginRequired">
+			<tabBrowserBtn v-for="t in tabBtns" @updateTab="setCurrentTab" :title="t" :currentTab="currentTab"/>
 		</tabBrowser>
 	</header>
 
 	<main>
 		<login v-if="loginRequired" @cancelBtnClick="loginRequired = false" @login_done="loginRequired = false" />
-		<button @click="setLoginRequired(!loginRequired)">Toggle</button>
+
+		<!--<button @click="setLoginRequired(!loginRequired)">Toggle</button>-->
+		<tab v-if="currentTab=='Home'" :currentTab="currentTab">
+
+		</tab>
 	</main>
 </template>
 
@@ -85,7 +99,12 @@ main {
 	justify-content: center;
 	flex-direction: column;
 	align-items: center;
-	margin-top: 20px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+	flex-grow: 1;
 }
 
 header .logo {
@@ -97,5 +116,10 @@ header .logo {
 	flex-grow: 100;
 	justify-content: end;
 	align-items: center;
+}
+.popupsArea{
+	align-self: center;
+	display: flex;
+	flex-direction: column;
 }
 </style>

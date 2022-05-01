@@ -115,3 +115,8 @@ header {
 	flex-wrap: wrap;
 	padding-bottom: 0px;
 }
+#app{
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+}

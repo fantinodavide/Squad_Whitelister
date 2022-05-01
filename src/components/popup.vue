@@ -25,7 +25,11 @@ export default {
         cancelText: {
             default: "Cancel",
             type: String
-        }
+        },
+        noBlackBg: {
+            default: false,
+            type: Boolean
+        },
     },
     methods: {
         checkInputs(evt: any) {
@@ -63,8 +67,8 @@ export default {
 </script>
 
 <template>
-    <div>
-        <blackoutBackground></blackoutBackground>
+    <div >
+        <blackoutBackground v-if="!noBlackBg"></blackoutBackground>
         <div class="popupContainer" @keyup.enter="checkInputs">
             <h1>{{ title }}</h1>
             <slot />
@@ -92,5 +96,6 @@ export default {
     width: fit-content;
     padding: 20px 30px;
     border-radius: 10px;
+    margin-bottom: 10px;
 }
 </style>

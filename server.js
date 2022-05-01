@@ -94,51 +94,36 @@ function main() {
     app.get('/api/getAppPersonalization', function (req, res, next) {
         res.send(config.app_personalization);
     })
-    app.get("/api/getMenuUrls", (req, res, next) => {
-        let retUrls = [
+    app.get("/api/getTabs", (req, res, next) => {
+        const allTabs = [
             {
-                name: "Dashboard",
-                url: "/",
+                name: "Home",
                 order: 0,
-                type: "redirect"
-            }
+                type: "tab",
+                max_access_level: 100
+            },
+            {
+                name: "Clans",
+                order: 5,
+                type: "tab",
+                max_access_level: 5
+            },
+            {
+                name: "Users",
+                order: 0,
+                type: "tab",
+                max_access_level: 5
+            },
         ];
-        if (req.userSession) {
-            retUrls = retUrls.concat([
-                {
-                    name: "Logout",
-                    url: "/api/logout",
-                    order: 10,
-                    type: "request"
+        let retTabs = [];
+        if(req.userSession){
+            for(let t of allTabs){
+                if(req.userSession.access_level <= t.max_access_level){
+                    retTabs.push(t)
                 }
-            ])
-        } else {
-            retUrls = retUrls.concat([
-                {
-                    name: "Login",
-                    url: "/api/login",
-                    order: 9,
-                    type: "request"
-                }
-            ])
+            }
         }
-        if (isAdmin(req)) {
-            retUrls = retUrls.concat([
-                {
-                    name: "Publishment",
-                    url: "/publishment",
-                    order: 1,
-                    type: "redirect"
-                },
-                {
-                    name: "Update (Cur: V" + versionN + ")",
-                    url: "/api/admin/checkInstallUpdate",
-                    order: 50,
-                    type: "request"
-                }
-            ])
-        }
-        res.send(retUrls);
+        res.send({tabs: retTabs});
     })
     app.get("/api/getContextMenu", (req, res, next) => {
         let ret = [
