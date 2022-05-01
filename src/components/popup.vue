@@ -68,7 +68,6 @@ export default {
 
 <template>
     <div >
-        <blackoutBackground v-if="!noBlackBg"></blackoutBackground>
         <div class="popupContainer" @keyup.enter="checkInputs">
             <h1>{{ title }}</h1>
             <slot />

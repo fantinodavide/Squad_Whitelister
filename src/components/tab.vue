@@ -6,13 +6,17 @@ export default {
 	props: {
 		visible: {
 			type: Boolean
+		},
+		horizontal: {
+			type: Boolean,
+			default: false
 		}
 	}
 }
 </script>
 
 <template>
-	<div class="tab">
+	<div class="tab" :class="{horizontal: horizontal}">
 		<slot />
 	</div>
 </template>
@@ -22,5 +26,11 @@ export default {
 		border-radius: 20px;
 		background: #fff1;
 		flex-grow: 1;
+		padding: 10px;
+		display: flex;
+		flex-direction: column;
+	}
+	.tab.horizontal{
+		flex-direction: row;
 	}
 </style>

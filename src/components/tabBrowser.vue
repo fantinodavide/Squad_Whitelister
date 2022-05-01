@@ -26,7 +26,7 @@ export default {
 	flex-wrap: nowrap;
 	overflow-x: auto;
 	height: 0px;
-	transition: all 150ms ease-in-out 300ms;
+	/* transition: all 150ms ease-in-out 300ms; */
 }
 
 #tabBrowser .centerer {

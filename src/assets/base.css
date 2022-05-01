@@ -93,9 +93,9 @@ button {
 	cursor: pointer;
 }
 
-input {
+input, select {
 	background: #333;
-	border-radius: 300px;
+	border-radius: 15px;
 	margin: 5px;
 	border: none;
 	padding: 5px;
@@ -103,6 +103,7 @@ input {
 	color: #fff;
 	padding: 5px 10px;
 	transition: all 100ms ease-in-out;
+    width: 100%;
 }
 
 header {

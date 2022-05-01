@@ -109,8 +109,14 @@ function main() {
                 max_access_level: 5
             },
             {
+                name: "Groups",
+                order: 10,
+                type: "tab",
+                max_access_level: 5
+            },
+            {
                 name: "Users",
-                order: 0,
+                order: 15,
                 type: "tab",
                 max_access_level: 5
             },

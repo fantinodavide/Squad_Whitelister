@@ -3,6 +3,9 @@ import login from "./components/login.vue";
 import tabBrowser from "./components/tabBrowser.vue";
 import tabBrowserBtn from "./components/tabBrowserButton.vue";
 import tab from "./components/tab.vue";
+import AddNewClan from './components/addNewClan.vue'
+import blackoutBackground from "./components/blackoutBackground.vue";
+import AddNewGameGroup from "./components/addNewGameGroup.vue";
 import $ from 'jquery'
 
 </script>
@@ -17,7 +20,11 @@ export default {
 			currentTab: "Home",
 			logo_url: "./assets/logo.svg",
 			tabs: [],
-			tabBtns: []
+			tabBtns: [],
+			popups: {
+				addingNewClan: false,
+				addingNewGameGroup: false,
+			}
 		}
 	},
 	methods: {
@@ -72,15 +79,26 @@ export default {
 		</div>
 
 		<tabBrowser :visible="!loginRequired">
-			<tabBrowserBtn v-for="t in tabBtns" @updateTab="setCurrentTab" :title="t" :currentTab="currentTab"/>
+			<tabBrowserBtn v-for="t in tabBtns" @updateTab="setCurrentTab" :title="t" :currentTab="currentTab" />
+
 		</tabBrowser>
 	</header>
 
 	<main>
-		<login v-if="loginRequired" @cancelBtnClick="loginRequired = false" @login_done="loginRequired = false" />
+		<blackoutBackground v-if="loginRequired || popups.addingNewClan || popups.addingNewGameGroup">
+			<login v-if="loginRequired" @cancelBtnClick="loginRequired = false" @login_done="loginRequired = false" />
+			<AddNewClan v-if="popups.addingNewClan" @cancelBtnClick="popups.addingNewClan = false" />
+			<AddNewGameGroup v-if="popups.addingNewGameGroup" @cancelBtnClick="popups.addingNewGameGroup = false" />
+		</blackoutBackground>
 
 		<!--<button @click="setLoginRequired(!loginRequired)">Toggle</button>-->
-		<tab v-if="currentTab=='Home'" :currentTab="currentTab">
+		<tab v-if="currentTab == 'Home'" :currentTab="currentTab">
+		</tab>
+		<tab v-else-if="currentTab == 'Clans'" :currentTab="currentTab" :horizontal="true">
+			<button class="addNewClan" @click="popups.addingNewClan = true"></button>
+		</tab>
+		<tab v-else-if="currentTab == 'Groups'" :currentTab="currentTab">
+			<button class="addNewGameGroup" @click="popups.addingNewGameGroup = true"></button>
 
 		</tab>
 	</main>
@@ -99,11 +117,11 @@ main {
 	justify-content: center;
 	flex-direction: column;
 	align-items: center;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: flex-start;
+	padding: 20px;
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	justify-content: flex-start;
 	flex-grow: 1;
 }
 
@@ -117,9 +135,72 @@ header .logo {
 	justify-content: end;
 	align-items: center;
 }
-.popupsArea{
+
+.popupsArea {
 	align-self: center;
 	display: flex;
 	flex-direction: column;
+}
+
+.addNewClan {
+	width: 250px;
+	height: 250px;
+	border: 5px solid #fff2;
+	border-radius: 15px;
+	margin: 10px;
+	background: #0000;
+}
+
+.addNewClan::after,
+.addNewClan::before {
+	content: "";
+	position: absolute;
+	height: 75px;
+	width: 5px;
+	border-radius: 1px;
+	background: #444;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%) rotate(90deg);
+}
+
+.addNewClan::before {
+	transform: translate(-50%, -50%) rotate(0deg);
+}
+
+.popupContainer {
+	position: fixed;
+	top: 0;
+	left: 0;
+	display: flex;
+	width: 100%;
+	height: 100%;
+	justify-content: center;
+	align-items: baseline;
+	padding-top: 100px;
+}
+
+.addNewGameGroup {
+	/* width: ; */
+	height: 65px;
+	border: 5px solid #fff2;
+	border-radius: 15px;
+	margin: 10px;
+	background: #0000;
+}
+.addNewGameGroup::after,
+.addNewGameGroup::before {
+	content: "";
+	position: absolute;
+	height: 35px;
+	width: 5px;
+	border-radius: 1px;
+	background: #444;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%) rotate(90deg);
+}
+.addNewGameGroup::before {
+	transform: translate(-50%, -50%) rotate(0deg);
 }
 </style>
