@@ -24,7 +24,9 @@ export default {
 			popups: {
 				addingNewClan: false,
 				addingNewGameGroup: false,
-			}
+				creatingNewRole: false,
+			},
+			clans: [] as Array<any>
 		}
 	},
 	methods: {
@@ -59,12 +61,23 @@ export default {
 		},
 		setCurrentTab: function (ct: string) {
 			this.currentTab = ct;
+		},
+		appendNewClan: function (dt: any) {
+			this.clans.push(...dt)
+			this.clans.sort((a, b) => (a.full_name - b.full_name));
+		},
+		getClans: function () {
+			fetch("/api/clans/getAllClans").then(res => res.json()).then(dt => {
+				console.log("All clans",dt)
+				this.clans = dt;
+			});
 		}
 	},
 	created() {
 		this.checkSession();
 		this.getAppPersonalization();
 		this.getTabs();
+		this.getClans();
 	}
 }
 </script>
@@ -87,7 +100,7 @@ export default {
 	<main>
 		<blackoutBackground v-if="loginRequired || popups.addingNewClan || popups.addingNewGameGroup">
 			<login v-if="loginRequired" @cancelBtnClick="loginRequired = false" @login_done="loginRequired = false" />
-			<AddNewClan v-if="popups.addingNewClan" @cancelBtnClick="popups.addingNewClan = false" />
+			<AddNewClan v-if="popups.addingNewClan" @cancelBtnClick="popups.addingNewClan = false" @new_clan="" />
 			<AddNewGameGroup v-if="popups.addingNewGameGroup" @cancelBtnClick="popups.addingNewGameGroup = false" />
 		</blackoutBackground>
 
@@ -96,9 +109,14 @@ export default {
 		</tab>
 		<tab v-else-if="currentTab == 'Clans'" :currentTab="currentTab" :horizontal="true">
 			<button class="addNewClan" @click="popups.addingNewClan = true"></button>
+			<div v-for="c in clans" class="clan"></div>
 		</tab>
 		<tab v-else-if="currentTab == 'Groups'" :currentTab="currentTab">
 			<button class="addNewGameGroup" @click="popups.addingNewGameGroup = true"></button>
+
+		</tab>
+		<tab v-else-if="currentTab == 'Roles'" :currentTab="currentTab">
+			<button class="createRole" @click="popups.creatingNewRole = true"></button>
 
 		</tab>
 	</main>
@@ -188,6 +206,7 @@ header .logo {
 	margin: 10px;
 	background: #0000;
 }
+
 .addNewGameGroup::after,
 .addNewGameGroup::before {
 	content: "";
@@ -200,6 +219,7 @@ header .logo {
 	left: 50%;
 	transform: translate(-50%, -50%) rotate(90deg);
 }
+
 .addNewGameGroup::before {
 	transform: translate(-50%, -50%) rotate(0deg);
 }

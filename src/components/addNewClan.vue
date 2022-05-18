@@ -9,13 +9,14 @@ export default {
 	methods: {
 		confirmBtnClick(dt: any) {
 			$.ajax({
-				url: "/api/",
+				url: "/api/clans/newClan",
 				type: "post",
 				data: dt,
 				dataType: "json",
 				success: (dt) => {
 					console.log(dt);
-					this.$emit("")
+					this.$emit("cancelBtnClick")
+					this.$emit("new_clan",dt)
 				},
 				error: (err) => {
 					console.error(err);
@@ -33,8 +34,8 @@ export default {
 <template>
 	<popup ref="popupLogin" title="New Clan" @cancelBtnClick="$emit('cancelBtnClick', $event)"
 		@confirmBtnClick="confirmBtnClick">
-		<input name="clan_full_name" type="text" placeholder="Full Clan Name" />
-		<input name="clan_tag" type="text" placeholder="Clan Tag" />
+		<input name="full_name" type="text" placeholder="Full Clan Name" />
+		<input name="tag" type="text" placeholder="Clan Tag" />
 	</popup>
 </template>
 

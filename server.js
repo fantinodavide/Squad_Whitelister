@@ -87,7 +87,7 @@ function main() {
 
     app.use('/', express.static(__dirname + '/dist'));
 
-    app.use('favicon*', (req,res,next)=>{
+    app.use('favicon*', (req, res, next) => {
         req.redirect(config.app_personalization.logo_url);
     })
 
@@ -120,16 +120,22 @@ function main() {
                 type: "tab",
                 max_access_level: 5
             },
+            {
+                name: "Roles",
+                order: 20,
+                type: "tab",
+                max_access_level: 5
+            },
         ];
         let retTabs = [];
-        if(req.userSession){
-            for(let t of allTabs){
-                if(req.userSession.access_level <= t.max_access_level){
+        if (req.userSession) {
+            for (let t of allTabs) {
+                if (req.userSession.access_level <= t.max_access_level) {
                     retTabs.push(t)
                 }
             }
         }
-        res.send({tabs: retTabs});
+        res.send({ tabs: retTabs });
     })
     app.get("/api/getContextMenu", (req, res, next) => {
         let ret = [
@@ -215,10 +221,64 @@ function main() {
             dbo.collection("sessions").deleteOne({ token: req.userSession.token }, (err, dbRes) => {
                 if (err) serverError(err);
                 else {
-                    res.send({status: "logout_ok"});
+                    res.send({ status: "logout_ok" });
                 }
             })
         });
+    })
+
+    app.use('/api/clans*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next() })
+    app.get('/api/clans/getAllClans', (req, res, next) => {
+        mongoConn((dbo) => {
+            dbo.collection("clans").find().toArray((err, dbRes) => {
+                res.send(dbRes);
+            })
+        })
+    })
+    app.post('/api/clans/newClan', (req, res, next) => {
+        const parm = req.body;
+        let error;
+        do {
+            let clanCode = randomString(8);
+            error = false;
+            mongoConn((dbo) => {
+                let reg = new RegExp(parm.full_name, "i");
+                dbo.collection("clans").findOne({ full_name: { $regex: reg } }, (err, dbRes) => {
+                    const clanDbIns = { ...parm, clan_code: clanCode };
+
+                    if (err) {
+                        res.sendStatus(500);
+                        console.error(err)
+                    }
+                    else if (dbRes == null) {
+                        dbo.collection("clans").findOne({ clan_code: clanCode }, (err, dbRes) => {
+                            if (err) {
+                                res.sendStatus(500);
+                                console.error(err)
+                            }
+                            else if (dbRes == null) {
+                                dbo.collection("clans").insertOne(clanDbIns, (err, dbRes) => {
+                                    if (err) {
+                                        res.sendStatus(500);
+                                        console.error(err)
+                                    }
+                                    else {
+                                        res.send({ status: "clan_created", clan_data: clanDbIns });
+                                        console.log("New clan created:", clanDbIns)
+                                    }
+                                })
+                            } else {
+                                error = true;
+                            }
+                        })
+                    }
+                    else {
+                        res.send({ status: "clan_already_registered" }).status(409)
+                        console.log("Trying to register an already registered clan:", clanDbIns)
+                    }
+                })
+            })
+        } while (error);
     })
 
     app.use('/admin*', authorizeAdmin)
@@ -280,7 +340,7 @@ function main() {
             case "/api/getAppPersonalization/":
                 callback();
                 break;
-
+     
             default:
                 break;
             }*/
@@ -393,7 +453,7 @@ function main() {
                 restartProcess();
                 /*const destinationPath = path.resolve(__dirname, "test");
                 const currentPath = path.resolve(dwnDir, gitZipDir);
-
+     
                 fs.rename(currentPath, destinationPath, function (err) {
                     if (err) {
                         throw err
