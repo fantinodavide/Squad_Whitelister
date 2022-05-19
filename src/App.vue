@@ -6,6 +6,7 @@ import tab from "./components/tab.vue";
 import AddNewClan from './components/addNewClan.vue'
 import blackoutBackground from "./components/blackoutBackground.vue";
 import AddNewGameGroup from "./components/addNewGameGroup.vue";
+import ClanCard from "./components/clanCard.vue";
 import $ from 'jquery'
 
 </script>
@@ -48,6 +49,7 @@ export default {
 				console.log(dt);
 				this.tabs = dt.tabs;
 				this.tabs.forEach(e => this.tabBtns.push(e['name']));
+				this.setCurrentTab(this.tabs[0]['name'])
 			});
 		},
 		logout: function () {
@@ -68,7 +70,7 @@ export default {
 		},
 		getClans: function () {
 			fetch("/api/clans/getAllClans").then(res => res.json()).then(dt => {
-				console.log("All clans",dt)
+				console.log("All clans", dt)
 				this.clans = dt;
 			});
 		}
@@ -108,8 +110,8 @@ export default {
 		<tab v-if="currentTab == 'Home'" :currentTab="currentTab">
 		</tab>
 		<tab v-else-if="currentTab == 'Clans'" :currentTab="currentTab" :horizontal="true">
-			<button class="addNewClan" @click="popups.addingNewClan = true"></button>
-			<div v-for="c in clans" class="clan"></div>
+			<button class="addNewClan clanCard" @click="popups.addingNewClan = true"></button>
+			<ClanCard v-for="c in clans" class="clanCard shadow" :clan_data="c"/>
 		</tab>
 		<tab v-else-if="currentTab == 'Groups'" :currentTab="currentTab">
 			<button class="addNewGameGroup" @click="popups.addingNewGameGroup = true"></button>
@@ -160,13 +162,17 @@ header .logo {
 	flex-direction: column;
 }
 
-.addNewClan {
+.addNewClan,
+.clanCard {
 	width: 250px;
 	height: 250px;
 	border: 5px solid #fff2;
 	border-radius: 15px;
 	margin: 10px;
 	background: #0000;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
 }
 
 .addNewClan::after,

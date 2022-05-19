@@ -93,7 +93,8 @@ button {
 	cursor: pointer;
 }
 
-input, select {
+input,
+select {
 	background: #333;
 	border-radius: 15px;
 	margin: 5px;
@@ -103,7 +104,7 @@ input, select {
 	color: #fff;
 	padding: 5px 10px;
 	transition: all 100ms ease-in-out;
-    width: 100%;
+	width: 100%;
 }
 
 header {
@@ -112,12 +113,17 @@ header {
 	display: flex;
 	flex-direction: row;
 	min-height: 80px;
-    background: #ffffff09;
+	background: #ffffff09;
 	flex-wrap: wrap;
 	padding-bottom: 0px;
 }
-#app{
+
+#app {
 	min-height: 100vh;
 	display: flex;
 	flex-direction: column;
+}
+
+.shadow {
+    box-shadow: 0 0 10px 0 #0004;
 }

@@ -96,12 +96,12 @@ function main() {
     })
     app.get("/api/getTabs", (req, res, next) => {
         const allTabs = [
-            {
+            /*{
                 name: "Home",
                 order: 0,
                 type: "tab",
                 max_access_level: 100
-            },
+            },*/
             {
                 name: "Clans",
                 order: 5,
