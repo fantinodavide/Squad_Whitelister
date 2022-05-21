@@ -1,9 +1,17 @@
 <script setup lang="ts">
 import { assertExpressionStatement } from "@babel/types";
+import $ from 'jquery';
+import MarqueeText from 'vue-marquee-text-component'
 </script>
 
 <script lang="ts">
 export default {
+
+	data() {
+		return {
+			clan_data: {}
+		}
+	},
 	props: {
 		clan_data: {
 			required: true,
@@ -11,17 +19,32 @@ export default {
 		}
 	},
 	methods: {
+		deleteClan: function() {
+			console.log("Removing",this.$props.clan_data)
+			$.ajax({
+				url: "/api/clans/removeClan",
+				type: "post",
+				data: this.$props.clan_data,
+				dataType: "json",
+				success: (dt) => {
+					console.log(dt);
+					location.reload();
+				}
+			})
+		}
 	}
 }
 </script>
 
 <template>
 	<div class="clanCard">
-		<div class="clanName"><span class="clanTag">{{ clan_data.tag }}</span>{{ clan_data.full_name }}</div>
+		<div class="clanName"><span class="clanTag">{{ clan_data.tag }}</span>
+			<marquee-text :duration="10" :paused="false">{{ clan_data.full_name }}</marquee-text>
+		</div>
 		<!--<div class="clanTag"></div>-->
 		<div class="mainClanContainer">
 			<div class="hoverMenu">
-				<button>Delete</button>
+				<button @click="$emit('confirm', deleteClan)">Delete</button>
 				<button>Whitelist</button>
 				<button>Admins</button>
 			</div>
@@ -52,17 +75,19 @@ export default {
 	opacity: 1;
 	pointer-events: all;
 }
-.hoverMenu button{
+
+.hoverMenu button {
 	border: 5px solid #fff2;
-    border-radius: 10px;
-    margin: 5px;
+	border-radius: 10px;
+	margin: 5px;
 	flex-grow: 1;
-    background: #0000;
-    color: #fff2;
+	background: #0000;
+	color: #fff2;
 	transition: all 100ms ease-in-out;
 }
-.hoverMenu button:hover{
-    color: var(--accent-color);
+
+.hoverMenu button:hover {
+	color: var(--accent-color);
 	border-color: var(--accent-color);
 }
 

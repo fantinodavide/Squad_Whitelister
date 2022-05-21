@@ -8,6 +8,7 @@ import blackoutBackground from "./components/blackoutBackground.vue";
 import AddNewGameGroup from "./components/addNewGameGroup.vue";
 import ClanCard from "./components/clanCard.vue";
 import $ from 'jquery'
+import type { Method } from "@babel/types";
 
 </script>
 
@@ -73,6 +74,10 @@ export default {
 				console.log("All clans", dt)
 				this.clans = dt;
 			});
+		},
+		confirmEvt: function (e = () => { }) {
+			if (confirm("Confirm deletion?"))
+				e();
 		}
 	},
 	created() {
@@ -111,7 +116,7 @@ export default {
 		</tab>
 		<tab v-else-if="currentTab == 'Clans'" :currentTab="currentTab" :horizontal="true">
 			<button class="addNewClan clanCard" @click="popups.addingNewClan = true"></button>
-			<ClanCard v-for="c in clans" class="clanCard shadow" :clan_data="c"/>
+			<ClanCard @confirm="confirmEvt" v-for="c in clans" class="clanCard shadow" :clan_data="c" />
 		</tab>
 		<tab v-else-if="currentTab == 'Groups'" :currentTab="currentTab">
 			<button class="addNewGameGroup" @click="popups.addingNewGameGroup = true"></button>
@@ -173,6 +178,7 @@ header .logo {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
+	min-width: 200px;
 }
 
 .addNewClan::after,

@@ -235,6 +235,17 @@ function main() {
             })
         })
     })
+    app.post('/api/clans/removeClan', (req, res, next) => {
+
+        mongoConn((dbo) => {
+            dbo.collection("clans").deleteOne({ _id: ObjectID(req.body._id) }, (err, dbRes) => {
+                if (err) serverError(err);
+                else {
+                    res.send({status: "removing_ok", ...dbRes})
+                }
+            })
+        })
+    })
     app.post('/api/clans/newClan', (req, res, next) => {
         const parm = req.body;
         let error;

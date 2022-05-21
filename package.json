@@ -23,7 +23,8 @@
     "nocache": "^3.0.3",
     "node-stream-zip": "^1.15.0",
     "path": "^0.12.7",
-    "vue": "^3.2.31"
+    "vue": "^3.2.31",
+    "vue-marquee-text-component": "^2.0.1"
   },
   "devDependencies": {
     "@types/jquery": "^3.5.14",

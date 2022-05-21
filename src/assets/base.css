@@ -127,3 +127,6 @@ header {
 .shadow {
     box-shadow: 0 0 10px 0 #0004;
 }
+.marquee-text-text{
+	padding-right: 30px;
+}
