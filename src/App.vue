@@ -29,9 +29,12 @@ export default {
 				addingNewClan: false,
 				addingNewGameGroup: false,
 				creatingNewRole: false,
-				confirm: true,
+				confirm: false,
 			},
-			clans: [] as Array<any>
+			clans: [] as Array<any>,
+			pointers: {
+				confirmPopup: {} as any,
+			},
 		}
 	},
 	methods: {
@@ -79,12 +82,17 @@ export default {
 				this.clans = dt;
 			});
 		},
-		confirmEvt: function (e = () => { }) {
+		confirmEvt: function (title = '', text = '', e: any) {
 			this.popups.confirm = true;
-			this.$nextTick(() => {
-				let confElm: any = this.$refs.confirmPopup;
-				console.log(confElm, e);
-			});
+			if (this.pointers.confirmPopup != null) {
+				this.pointers.confirmPopup.setProps(title, text)
+				this.pointers.confirmPopup.setCallback(()=>{
+					e.callback(()=>{
+						this.clans = this.clans.filter((a)=>a._id!=e.clan_data._id)
+						this.popups.confirm = false;
+					});
+				});
+			}
 			/*if (confirm("Confirm deletion?"))
 	e();*/
 		}
@@ -120,7 +128,8 @@ export default {
 			<AddNewClan v-if="popups.addingNewClan" @cancelBtnClick="popups.addingNewClan = false"
 				@new_clan="appendNewClan" />
 			<AddNewGameGroup v-if="popups.addingNewGameGroup" @cancelBtnClick="popups.addingNewGameGroup = false" />
-			<confirmPopup v-show="popups.confirm" ref="confirmPopup" @cancelBtnClick="popups.confirm = false" />
+			<confirmPopup :ref="(el: any) => { pointers.confirmPopup = el }" v-show="popups.confirm"
+				@cancelBtnClick="popups.confirm = false" />
 		</blackoutBackground>
 
 		<!--<button @click="setLoginRequired(!loginRequired)">Toggle</button>-->
@@ -128,7 +137,9 @@ export default {
 		</tab>
 		<tab v-else-if="currentTab == 'Clans'" :currentTab="currentTab" :horizontal="true">
 			<button class="addNewClan clanCard" @click="popups.addingNewClan = true"></button>
-			<ClanCard @confirm="confirmEvt" v-for="c in clans" class="clanCard shadow" :clan_data="c" />
+			<ClanCard
+				@confirm='(e) => { confirmEvt("Confirm deletion?", "Do you really want to delete this clan?", e) }'
+				v-for="c in clans" class="clanCard shadow" :clan_data="c" />
 		</tab>
 		<tab v-else-if="currentTab == 'Groups'" :currentTab="currentTab">
 			<button class="addNewGameGroup" @click="popups.addingNewGameGroup = true"></button>

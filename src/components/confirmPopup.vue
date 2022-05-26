@@ -14,18 +14,25 @@ export default {
 			confirmBtnShow: true,
 			rejectBtnText: "Reject",
 			rejectBtnShow: true,
-			callback: ()=>{}
+			callback: () => { }
 		}
 	},
 	methods: {
+		setProps: function (title: string, text: string) {
+			this.title = title;
+			this.text = text;
+		},
+		setCallback: function (cb = ()=>{}) {
+			this.callback = cb
+		}
 	},
 	components: { popup }
 }
 </script>
 
 <template>
-	<popup :title="title" @cancelBtnClick="$emit('cancelBtnClick', $event)">
-		<span v-if="text!=''">{{text}}</span>
+	<popup ref="confirmPopup" :title="title" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="callback">
+		<span v-if="text != ''">{{ text }}</span>
 	</popup>
 </template>
 

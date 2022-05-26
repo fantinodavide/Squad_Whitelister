@@ -19,7 +19,7 @@ export default {
 		}
 	},
 	methods: {
-		deleteClan: function() {
+		deleteClan: function(successCB: any) {
 			console.log("Removing",this.$props.clan_data)
 			$.ajax({
 				url: "/api/clans/removeClan",
@@ -28,7 +28,8 @@ export default {
 				dataType: "json",
 				success: (dt) => {
 					console.log(dt);
-					location.reload();
+					successCB();
+					//location.reload();
 				}
 			})
 		}
@@ -44,7 +45,7 @@ export default {
 		<!--<div class="clanTag"></div>-->
 		<div class="mainClanContainer">
 			<div class="hoverMenu">
-				<button @click="$emit('confirm', deleteClan)">Delete</button>
+				<button @click="$emit('confirm', {clan_data: clan_data, callback: deleteClan})">Delete</button>
 				<button>Whitelist</button>
 				<button>Admins</button>
 			</div>
