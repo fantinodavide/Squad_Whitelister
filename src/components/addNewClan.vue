@@ -15,8 +15,8 @@ export default {
 				dataType: "json",
 				success: (dt) => {
 					console.log(dt);
-					this.$emit("cancelBtnClick")
 					this.$emit("new_clan",dt)
+					this.$emit("cancelBtnClick")
 				},
 				error: (err) => {
 					console.error(err);

@@ -230,7 +230,7 @@ function main() {
     app.use('/api/clans*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next() })
     app.get('/api/clans/getAllClans', (req, res, next) => {
         mongoConn((dbo) => {
-            dbo.collection("clans").find().toArray((err, dbRes) => {
+            dbo.collection("clans").find().sort({ full_name: 1, tag: 1 }).toArray((err, dbRes) => {
                 res.send(dbRes);
             })
         })
@@ -241,7 +241,7 @@ function main() {
             dbo.collection("clans").deleteOne({ _id: ObjectID(req.body._id) }, (err, dbRes) => {
                 if (err) serverError(err);
                 else {
-                    res.send({status: "removing_ok", ...dbRes})
+                    res.send({ status: "removing_ok", ...dbRes })
                 }
             })
         })

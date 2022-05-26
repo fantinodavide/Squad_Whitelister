@@ -7,6 +7,8 @@ import AddNewClan from './components/addNewClan.vue'
 import blackoutBackground from "./components/blackoutBackground.vue";
 import AddNewGameGroup from "./components/addNewGameGroup.vue";
 import ClanCard from "./components/clanCard.vue";
+import popup from "./components/popup.vue";
+import confirmPopup from "./components/confirmPopup.vue";
 import $ from 'jquery'
 import type { Method } from "@babel/types";
 
@@ -27,6 +29,7 @@ export default {
 				addingNewClan: false,
 				addingNewGameGroup: false,
 				creatingNewRole: false,
+				confirm: true,
 			},
 			clans: [] as Array<any>
 		}
@@ -66,8 +69,9 @@ export default {
 			this.currentTab = ct;
 		},
 		appendNewClan: function (dt: any) {
-			this.clans.push(...dt)
-			this.clans.sort((a, b) => (a.full_name - b.full_name));
+			console.log("Appending new clan", dt.clan_data)
+			this.clans.push(dt.clan_data)
+			// this.clans.sort((a, b) => (a.full_name - b.full_name));
 		},
 		getClans: function () {
 			fetch("/api/clans/getAllClans").then(res => res.json()).then(dt => {
@@ -76,8 +80,13 @@ export default {
 			});
 		},
 		confirmEvt: function (e = () => { }) {
-			if (confirm("Confirm deletion?"))
-				e();
+			this.popups.confirm = true;
+			this.$nextTick(() => {
+				let confElm: any = this.$refs.confirmPopup;
+				console.log(confElm, e);
+			});
+			/*if (confirm("Confirm deletion?"))
+	e();*/
 		}
 	},
 	created() {
@@ -105,10 +114,13 @@ export default {
 	</header>
 
 	<main>
-		<blackoutBackground v-if="loginRequired || popups.addingNewClan || popups.addingNewGameGroup">
+		<blackoutBackground
+			v-show="loginRequired || popups.addingNewClan || popups.addingNewGameGroup || popups.confirm">
 			<login v-if="loginRequired" @cancelBtnClick="loginRequired = false" @login_done="loginRequired = false" />
-			<AddNewClan v-if="popups.addingNewClan" @cancelBtnClick="popups.addingNewClan = false" @new_clan="" />
+			<AddNewClan v-if="popups.addingNewClan" @cancelBtnClick="popups.addingNewClan = false"
+				@new_clan="appendNewClan" />
 			<AddNewGameGroup v-if="popups.addingNewGameGroup" @cancelBtnClick="popups.addingNewGameGroup = false" />
+			<confirmPopup v-show="popups.confirm" ref="confirmPopup" @cancelBtnClick="popups.confirm = false" />
 		</blackoutBackground>
 
 		<!--<button @click="setLoginRequired(!loginRequired)">Toggle</button>-->
