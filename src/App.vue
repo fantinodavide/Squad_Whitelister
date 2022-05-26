@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import login from "./components/login.vue";
+import registration from "./components/registration.vue";
 import tabBrowser from "./components/tabBrowser.vue";
 import tabBrowserBtn from "./components/tabBrowserButton.vue";
 import tab from "./components/tab.vue";
@@ -30,6 +31,8 @@ export default {
 				addingNewGameGroup: false,
 				creatingNewRole: false,
 				confirm: false,
+				registration: false,
+				login: false
 			},
 			clans: [] as Array<any>,
 			pointers: {
@@ -113,6 +116,8 @@ export default {
 		<h1>{{ app_title }}</h1>
 		<div id="hdBtnContainer">
 			<button v-if="!loginRequired" @click="logout">Logout</button>
+			<button v-if="loginRequired" @click="popups.login = true">Login</button>
+			<button v-if="loginRequired" @click="popups.registration = true">Sign Up</button>
 		</div>
 
 		<tabBrowser :visible="!loginRequired">
@@ -123,8 +128,9 @@ export default {
 
 	<main>
 		<blackoutBackground
-			v-show="loginRequired || popups.addingNewClan || popups.addingNewGameGroup || popups.confirm">
-			<login v-if="loginRequired" @cancelBtnClick="loginRequired = false" @login_done="loginRequired = false" />
+			v-show="popups.addingNewClan || popups.addingNewGameGroup || popups.confirm || popups.login || popups.registration">
+			<login v-if="popups.login" @cancelBtnClick="popups.login = false" @login_done="loginRequired = false; popups.login = false" />
+			<registration v-if="popups.registration" @cancelBtnClick="popups.registration = false" @registration_done="loginRequired = false; popups.registration = false"/>
 			<AddNewClan v-if="popups.addingNewClan" @cancelBtnClick="popups.addingNewClan = false"
 				@new_clan="appendNewClan" />
 			<AddNewGameGroup v-if="popups.addingNewGameGroup" @cancelBtnClick="popups.addingNewGameGroup = false" />
@@ -138,7 +144,7 @@ export default {
 		<tab v-else-if="currentTab == 'Clans'" :currentTab="currentTab" :horizontal="true">
 			<button class="addNewClan clanCard" @click="popups.addingNewClan = true"></button>
 			<ClanCard
-				@confirm='(e) => { confirmEvt("Confirm deletion?", "Do you really want to delete this clan?", e) }'
+				@confirm='(e:any) => { confirmEvt("Confirm deletion?", "Do you really want to delete "+e.clan_data.tag+" clan?", e) }'
 				v-for="c in clans" class="clanCard shadow" :clan_data="c" />
 		</tab>
 		<tab v-else-if="currentTab == 'Groups'" :currentTab="currentTab">

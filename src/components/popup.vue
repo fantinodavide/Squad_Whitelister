@@ -60,15 +60,15 @@ export default {
             return this.$el.querySelectorAll("input");
         },
         blinkAll(color: string = "#a228") {
-            for(let e of this.getInputs()) this.rawBlink(e,color);
+            for (let e of this.getInputs()) this.rawBlink(e, color);
         }
     },
 }
 </script>
 
 <template>
-    <div >
-        <div class="popupContainer" @keyup.enter="checkInputs">
+    <div>
+        <div class="popupContainer" @keyup.enter="checkInputs" @keyup.escape='(!hideCancel)?$emit("cancelBtnClick"):""' >
             <h1>{{ title }}</h1>
             <slot />
             <div class="btnContainer">

@@ -7,10 +7,10 @@ import popup from "./popup.vue";
 <script lang="ts">
 export default {
 	methods: {
-		loginBtnClick(dt: any) {
-			console.log("attempting login", dt)
+		confBtnClick(dt: any) {
+			console.log("attempting signup", dt)
 			$.ajax({
-				url: "/api/login",
+				url: "/api/signup",
 				type: "post",
 				data: dt,
 				dataType: "json",
@@ -33,10 +33,12 @@ export default {
 </script>
 
 <template>
-	<popup ref="popupLogin" title="Login" confirm-text="Login" @cancelBtnClick="$emit('cancelBtnClick', $event)"
-		@confirmBtnClick="loginBtnClick" :hide-cancel="false">
+	<popup ref="popupLogin" title="Sign Up" confirm-text="Sign Up" @cancelBtnClick="$emit('cancelBtnClick', $event)"
+		@confirmBtnClick="confBtnClick" :hide-cancel="false">
 		<input name="username" type="text" placeholder="Username" />
 		<input name="password" type="password" placeholder="Password" />
+		<input name="conf_password" type="password" placeholder="Confirm Password" />
+		<input name="clan_code" type="text" placeholder="Clan Code" />
 	</popup>
 </template>
 

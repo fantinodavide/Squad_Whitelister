@@ -130,3 +130,41 @@ header {
 .marquee-text-text{
 	padding-right: 30px;
 }
+
+input[type="checkbox"]{
+	position: relative;
+	width: 20px;
+	height: 20px;
+	border: 3px solid #444;
+	background: #777;
+}
+input[type="checkbox"]::before{
+	content: "";
+	position: absolute;
+	width: 110%;
+	height: 110%;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%,-50%);
+	/* border: 3px solid #444; */
+	border: none;
+	background: #444;
+	border-radius: 4px;
+}
+input[type="checkbox"]:checked::after{
+	content: "";
+	position: absolute;
+	width: 70%;
+	height: 70%;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%,-50%);
+    background: #aaa;
+	border-radius: 2px;
+}
+label{
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+}

@@ -46,7 +46,7 @@ export default {
 		<div class="mainClanContainer">
 			<div class="hoverMenu">
 				<button @click="$emit('confirm', {clan_data: clan_data, callback: deleteClan})">Delete</button>
-				<button>Whitelist</button>
+				<button>Manage</button>
 				<button>Admins</button>
 			</div>
 		</div>

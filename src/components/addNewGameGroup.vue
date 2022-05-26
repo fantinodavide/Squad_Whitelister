@@ -8,7 +8,7 @@ import popup from "./popup.vue";
 export default {
 	data() {
 		return {
-			permissions: ["startvote","changemap","pause","cheat","private","balance","chat","kick","ban","config","cameraman","immune","manageserver","featuretest","reserve","demos","clientdemos","debug","teamchange","forceteamchange","canseeadminchat"]
+			permissions: ["startvote", "changemap", "pause", "cheat", "private", "balance", "chat", "kick", "ban", "config", "cameraman", "immune", "manageserver", "featuretest", "reserve", "demos", "clientdemos", "debug", "teamchange", "forceteamchange", "canseeadminchat"]
 		}
 	},
 	methods: {
@@ -40,8 +40,10 @@ export default {
 		@confirmBtnClick="confirmBtnClick">
 		<input name="group_name" type="text" placeholder="Group Name" />
 		<select name="group_permissions" multiple>
-			<option v-for="p in permissions" :value="p">{{p}}</option>
+			<option v-for="p in permissions" :value="p">{{ p }}</option>
 		</select>
+		<label>Require Approval<input name="confirmation_ovrd" type="checkbox"
+				placeholder="Confirmation Override" /></label>
 	</popup>
 </template>
 

@@ -36,6 +36,7 @@ export default {
 		@confirmBtnClick="confirmBtnClick">
 		<input name="full_name" type="text" placeholder="Full Clan Name" />
 		<input name="tag" type="text" placeholder="Clan Tag" />
+		<label>Always Require Approval<input name="confirmation_ovrd" type="checkbox" placeholder="Confirmation Override" /></label>
 	</popup>
 </template>
 
