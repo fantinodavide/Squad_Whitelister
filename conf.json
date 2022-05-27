@@ -19,7 +19,7 @@
 	},
 	"other": {
 		"force_https": false,
-		"automatic_updates": true,
+		"automatic_updates": false,
 		"update_check_interval_seconds": 3600,
 		"session_duration_hours": 168
 	}

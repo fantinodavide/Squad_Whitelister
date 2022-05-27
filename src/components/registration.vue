@@ -16,7 +16,7 @@ export default {
 				dataType: "json",
 				success: (dt) => {
 					console.log(dt);
-					this.$emit("login_done")
+					this.$emit("registration_done")
 					location.reload();
 				},
 				error: (err) => {

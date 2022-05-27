@@ -168,3 +168,18 @@ label{
     flex-wrap: wrap;
     align-items: center;
 }
+.tag {
+	background: #555;
+	color: #ddd;
+	border-radius: 10px;
+	padding: 1px 5px;
+	margin-right: 5px;
+	line-height: 28px;
+	text-align: center;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+}
+.overflow{
+	overflow: auto;
+}

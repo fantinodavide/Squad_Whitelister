@@ -11,11 +11,12 @@ export default {
 			$.ajax({
 				url: "/api/clans/newClan",
 				type: "post",
-				data: dt,
+				data: JSON.stringify(dt),
 				dataType: "json",
+				contentType: 'application/json',
 				success: (dt) => {
 					console.log(dt);
-					this.$emit("new_clan",dt)
+					this.$emit("new_clan", dt)
 					this.$emit("cancelBtnClick")
 				},
 				error: (err) => {
@@ -36,7 +37,8 @@ export default {
 		@confirmBtnClick="confirmBtnClick">
 		<input name="full_name" type="text" placeholder="Full Clan Name" />
 		<input name="tag" type="text" placeholder="Clan Tag" />
-		<label>Always Require Approval<input name="confirmation_ovrd" type="checkbox" placeholder="Confirmation Override" /></label>
+		<label>Always Require Approval<input name="confirmation_ovrd" type="checkbox"
+				placeholder="Confirmation Override" /></label>
 	</popup>
 </template>
 

@@ -83,81 +83,6 @@ function main() {
     app.use(cookieParser());
     app.use(forceHTTPS);
     app.use('/', getSession);
-    app.use('/', logRequests);
-
-    app.use('/', express.static(__dirname + '/dist'));
-
-    app.use('favicon*', (req, res, next) => {
-        req.redirect(config.app_personalization.logo_url);
-    })
-
-    app.get('/api/getAppPersonalization', function (req, res, next) {
-        res.send(config.app_personalization);
-    })
-    app.get("/api/getTabs", (req, res, next) => {
-        const allTabs = [
-            /*{
-                name: "Home",
-                order: 0,
-                type: "tab",
-                max_access_level: 100
-            },*/
-            {
-                name: "Clans",
-                order: 5,
-                type: "tab",
-                max_access_level: 5
-            },
-            {
-                name: "Groups",
-                order: 10,
-                type: "tab",
-                max_access_level: 5
-            },
-            {
-                name: "Users",
-                order: 15,
-                type: "tab",
-                max_access_level: 5
-            },
-            {
-                name: "Roles",
-                order: 20,
-                type: "tab",
-                max_access_level: 5
-            },
-        ];
-        let retTabs = [];
-        if (req.userSession) {
-            for (let t of allTabs) {
-                if (req.userSession.access_level <= t.max_access_level) {
-                    retTabs.push(t)
-                }
-            }
-        }
-        res.send({ tabs: retTabs });
-    })
-    app.get("/api/getContextMenu", (req, res, next) => {
-        let ret = [
-            {
-                name: "",
-                action: "",
-                url: "",
-                method: "",
-                order: 0
-            }
-        ];
-        if (isAdmin(req)) {
-            ret = ret.concat([
-            ])
-        }
-        res.send(ret);
-    })
-
-    app.get('/api/checkSession', (req, res, next) => {
-        if (req.userSession) res.send({ status: "session_valid" })
-        else res.send({ status: "login_required" }).status(401);
-    })
 
     app.post('/api/login', (req, res, next) => {
         const parm = req.body;
@@ -211,6 +136,145 @@ function main() {
             })
         })
     })
+    app.post('/api/signup', (req, res, next) => {
+        const parm = req.body;
+
+        let insertAccount = {
+            username: parm.username,
+            password: crypto.createHash('sha512').update(parm.password).digest('hex'),
+            access_level: 100,
+            clan_code: parm.clan_code,
+            registration_date: new Date()
+        }
+
+        let error;
+        const sessDurationMS = config.other.session_duration_hours * 60 * 60 * 1000;
+
+        let userDt = insertAccount;
+        userDt.login_date = new Date();
+        userDt.session_expiration = new Date(Date.now() + sessDurationMS);
+        delete userDt.password;
+        delete userDt._id;
+
+        mongoConn((dbo) => {
+
+            dbo.collection("users").findOne({ username: parm.username }, (err, dbRes) => {
+                if (err) {
+                    res.sendStatus(500);
+                    console.error(err)
+                } else if (dbRes == null) {
+                    dbo.collection("users").insertOne(insertAccount, (err, dbRes) => {
+                        if (err) {
+                            res.sendStatus(500);
+                            console.error(err)
+                        }
+                        else {
+                            do {
+                                error = false;
+                                userDt.token = randomString(128);
+                                dbo.collection("sessions").findOne({ token: userDt.token }, (err, dbRes) => {
+                                    if (err) {
+                                        res.sendStatus(500);
+                                        console.error(err)
+                                    }
+                                    else if (dbRes == null) {
+                                        dbo.collection("sessions").insertOne(userDt, (err, dbRes) => {
+                                            if (err) {
+                                                res.sendStatus(500);
+                                                console.error(err)
+                                            }
+                                            else {
+                                                res.cookie("stok", userDt.token, { expires: userDt.session_expiration })
+                                                res.cookie("uid", userDt.user_id, { expires: userDt.session_expiration })
+                                                res.send({ status: "login_ok", userDt: userDt });
+                                            }
+                                        })
+                                    } else {
+                                        error = true;
+                                    }
+                                })
+                            } while (error);
+                        }
+                    })
+                }
+            })
+        })
+    })
+    app.use('/', logRequests);
+
+    app.use('/', express.static(__dirname + '/dist'));
+
+    app.use('favicon*', (req, res, next) => {
+        req.redirect(config.app_personalization.logo_url);
+    })
+
+    app.get('/api/getAppPersonalization', function (req, res, next) {
+        res.send(config.app_personalization);
+    })
+    app.get("/api/getTabs", (req, res, next) => {
+        const allTabs = [
+            {
+                name: "Home",
+                order: 0,
+                type: "tab",
+                max_access_level: 100
+            },
+            {
+                name: "Clans",
+                order: 5,
+                type: "tab",
+                max_access_level: 5
+            },
+            {
+                name: "Groups",
+                order: 10,
+                type: "tab",
+                max_access_level: 5
+            },
+            // {
+            //     name: "Users",
+            //     order: 15,
+            //     type: "tab",
+            //     max_access_level: 5
+            // },
+            // {
+            //     name: "Roles",
+            //     order: 20,
+            //     type: "tab",
+            //     max_access_level: 5
+            // },
+        ];
+        let retTabs = [];
+        if (req.userSession) {
+            for (let t of allTabs) {
+                if (req.userSession.access_level <= t.max_access_level) {
+                    retTabs.push(t)
+                }
+            }
+        }
+        res.send({ tabs: retTabs });
+    })
+    app.get("/api/getContextMenu", (req, res, next) => {
+        let ret = [
+            {
+                name: "",
+                action: "",
+                url: "",
+                method: "",
+                order: 0
+            }
+        ];
+        if (isAdmin(req)) {
+            ret = ret.concat([
+            ])
+        }
+        res.send(ret);
+    })
+
+    app.get('/api/checkSession', (req, res, next) => {
+        if (req.userSession) res.send({ status: "session_valid" })
+        else res.send({ status: "login_required" }).status(401);
+    })
 
     app.use('/', requireLogin);
 
@@ -231,10 +295,23 @@ function main() {
     app.post('/api/gameGroups/newGroup', (req, res, next) => {
         const parm = req.body;
         mongoConn((dbo) => {
-            dbo.collection("groups").insertOne({ _id: ObjectID(req.body._id) }, (err, dbRes) => {
+            dbo.collection("groups").insertOne(parm, (err, dbRes) => {
                 if (err) serverError(err);
                 else {
-                    res.send({ status: "removing_ok", ...dbRes })
+                    res.send({ status: "group_created", ...dbRes })
+                }
+            })
+        })
+    })
+    app.get('/api/gameGroups/getAllGroups', (req, res, next) => {
+        mongoConn((dbo) => {
+            dbo.collection("groups").find().sort({ group_name: 1 }).toArray((err, dbRes) => {
+                if (err) {
+                    res.sendStatus(500);
+                    console.error(err)
+                } else {
+                    res.send(dbRes);
+
                 }
             })
         })
@@ -373,9 +450,10 @@ function main() {
         else callback();//authorizeDCSUsers(req, res, callback)
     }
     function logRequests(req, res, next) {
-        const parm = Object.keys(req.query).length > 0 ? req.query : req.body;
+        const usingQuery = Object.keys(req.query).length > 0;
+        const parm = usingQuery ? req.query : req.body;
         const reqPath = getReqPath(req);
-        console.log("\nREQ: " + reqPath + "\nSESSION: ", req.userSession, "\nPARM: ", parm);
+        console.log("\nREQ: " + reqPath + "\nSESSION: ", req.userSession, "\nPARM " + (usingQuery ? "GET" : "POST") + ": ", parm);
         next();
     }
     function getReqPath(req, callback) {

@@ -14,22 +14,23 @@ export default {
 	methods: {
 		confirmBtnClick(dt: any) {
 			console.log(dt)
-			// $.ajax({
-			// 	url: "/api/gameGroups/newGroup",
-			// 	type: "post",
-			// 	data: dt,
-			// 	dataType: "json",
-			// 	success: (dt) => {
-			// 		console.log(dt);
-			// 		this.$emit("")
-			// 	},
-			// 	error: (err) => {
-			// 		console.error(err);
-			// 		const compPopup: any = this.$refs.popupComp;
-			// 		compPopup.blinkAll()
-			// 		//.blinkBgColor(this.$refs.popupLogin.getInputs());
-			// 	}
-			// })
+			$.ajax({
+				url: "/api/gameGroups/newGroup",
+				type: "post",
+				dataType: "json",
+				data: JSON.stringify(dt),
+				contentType: 'application/json',
+				success: (dt) => {
+					console.log(dt);
+					this.$emit(dt.status)
+				},
+				error: (err) => {
+					console.error(err);
+					const compPopup: any = this.$refs.popupComp;
+					compPopup.blinkAll()
+					//.blinkBgColor(this.$refs.popupLogin.getInputs());
+				}
+			})
 		}
 	},
 	components: { popup }

@@ -10,6 +10,7 @@ import AddNewGameGroup from "./components/addNewGameGroup.vue";
 import ClanCard from "./components/clanCard.vue";
 import popup from "./components/popup.vue";
 import confirmPopup from "./components/confirmPopup.vue";
+import gameGroupCard from "./components/gameGroupCard.vue"
 import $ from 'jquery'
 import type { Method } from "@babel/types";
 
@@ -35,6 +36,7 @@ export default {
 				login: false
 			},
 			clans: [] as Array<any>,
+			game_groups: [] as Array<any>,
 			pointers: {
 				confirmPopup: {} as any,
 			},
@@ -85,26 +87,33 @@ export default {
 				this.clans = dt;
 			});
 		},
-		confirmEvt: function (title = '', text = '', e: any) {
+		getGameGroups: function () {
+			fetch("/api/gameGroups/getAllGroups").then(res => res.json()).then(dt => {
+				console.log("All groups", dt)
+				this.game_groups = dt;
+			});
+		},
+		confirmEvt: function (title = '', text = '', callback: any) {
 			this.popups.confirm = true;
 			if (this.pointers.confirmPopup != null) {
 				this.pointers.confirmPopup.setProps(title, text)
-				this.pointers.confirmPopup.setCallback(()=>{
-					e.callback(()=>{
-						this.clans = this.clans.filter((a)=>a._id!=e.clan_data._id)
-						this.popups.confirm = false;
-					});
-				});
+				this.pointers.confirmPopup.setCallback(callback);
 			}
-			/*if (confirm("Confirm deletion?"))
-	e();*/
+		},
+		removeClan: function (dt: any) {
+			this.confirmEvt("Confirm deletion?", "Do you really want to delete " + dt.clan_data.tag + " clan?", () => {
+				dt.callback(() => {
+					this.clans = this.clans.filter((a) => a._id != dt.clan_data._id)
+					this.popups.confirm = false;
+				});
+			})
 		}
 	},
 	created() {
 		this.checkSession();
 		this.getAppPersonalization();
 		this.getTabs();
-		this.getClans();
+		// this.getClans();
 	}
 }
 </script>
@@ -129,11 +138,14 @@ export default {
 	<main>
 		<blackoutBackground
 			v-show="popups.addingNewClan || popups.addingNewGameGroup || popups.confirm || popups.login || popups.registration">
-			<login v-if="popups.login" @cancelBtnClick="popups.login = false" @login_done="loginRequired = false; popups.login = false" />
-			<registration v-if="popups.registration" @cancelBtnClick="popups.registration = false" @registration_done="loginRequired = false; popups.registration = false"/>
+			<login v-if="popups.login" @cancelBtnClick="popups.login = false"
+				@login_done="loginRequired = false; popups.login = false" />
+			<registration v-if="popups.registration" @cancelBtnClick="popups.registration = false"
+				@registration_done="loginRequired = false; popups.registration = false" />
 			<AddNewClan v-if="popups.addingNewClan" @cancelBtnClick="popups.addingNewClan = false"
 				@new_clan="appendNewClan" />
-			<AddNewGameGroup v-if="popups.addingNewGameGroup" @cancelBtnClick="popups.addingNewGameGroup = false" />
+			<AddNewGameGroup v-if="popups.addingNewGameGroup" @cancelBtnClick="popups.addingNewGameGroup = false"
+				@new_game_group="" />
 			<confirmPopup :ref="(el: any) => { pointers.confirmPopup = el }" v-show="popups.confirm"
 				@cancelBtnClick="popups.confirm = false" />
 		</blackoutBackground>
@@ -141,15 +153,13 @@ export default {
 		<!--<button @click="setLoginRequired(!loginRequired)">Toggle</button>-->
 		<tab v-if="currentTab == 'Home'" :currentTab="currentTab">
 		</tab>
-		<tab v-else-if="currentTab == 'Clans'" :currentTab="currentTab" :horizontal="true">
+		<tab v-else-if="currentTab == 'Clans'" :currentTab="currentTab" :horizontal="true" @vnodeMounted="getClans">
 			<button class="addNewClan clanCard" @click="popups.addingNewClan = true"></button>
-			<ClanCard
-				@confirm='(e:any) => { confirmEvt("Confirm deletion?", "Do you really want to delete "+e.clan_data.tag+" clan?", e) }'
-				v-for="c in clans" class="clanCard shadow" :clan_data="c" />
+			<ClanCard @confirm='removeClan' v-for="c in clans" class="clanCard shadow" :clan_data="c" />
 		</tab>
-		<tab v-else-if="currentTab == 'Groups'" :currentTab="currentTab">
+		<tab v-else-if="currentTab == 'Groups'" :currentTab="currentTab" @vnodeMounted="getGameGroups">
 			<button class="addNewGameGroup" @click="popups.addingNewGameGroup = true"></button>
-
+			<gameGroupCard v-for="g in game_groups" class="gameGroupCard shadow" :group_data="g" />
 		</tab>
 		<tab v-else-if="currentTab == 'Roles'" :currentTab="currentTab">
 			<button class="createRole" @click="popups.creatingNewRole = true"></button>
@@ -239,13 +249,18 @@ header .logo {
 	padding-top: 100px;
 }
 
-.addNewGameGroup {
+.addNewGameGroup,
+.gameGroupCard {
 	/* width: ; */
 	height: 65px;
 	border: 5px solid #fff2;
 	border-radius: 15px;
 	margin: 10px;
 	background: #0000;
+	display: flex;
+	flex-direction: row;
+	overflow: hidden;
+    align-items: center;
 }
 
 .addNewGameGroup::after,

@@ -39,7 +39,7 @@ export default {
 
 <template>
 	<div class="clanCard">
-		<div class="clanName"><span class="clanTag">{{ clan_data.tag }}</span>
+		<div class="clanName"><span class="clanTag tag">{{ clan_data.tag }}</span>
 			<marquee-text :duration="10" :paused="false">{{ clan_data.full_name }}</marquee-text>
 		</div>
 		<!--<div class="clanTag"></div>-->
@@ -113,19 +113,6 @@ export default {
 .mainClanContainer {
 	position: relative;
 	flex-grow: 1;
-}
-
-.clanTag {
-	background: #555;
-	color: #ddd;
-	border-radius: 10px;
-	padding: 1px 5px;
-	margin-right: 5px;
-	height: 28px;
-	text-align: center;
-	display: flex;
-	flex-direction: row;
-	align-items: center;
 }
 
 .clanCode {
