@@ -227,6 +227,19 @@ function main() {
         });
     })
 
+    app.use('/api/gameGroups/*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next() })
+    app.post('/api/gameGroups/newGroup', (req, res, next) => {
+        const parm = req.body;
+        mongoConn((dbo) => {
+            dbo.collection("groups").insertOne({ _id: ObjectID(req.body._id) }, (err, dbRes) => {
+                if (err) serverError(err);
+                else {
+                    res.send({ status: "removing_ok", ...dbRes })
+                }
+            })
+        })
+    })
+
     app.use('/api/clans*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next() })
     app.get('/api/clans/getAllClans', (req, res, next) => {
         mongoConn((dbo) => {

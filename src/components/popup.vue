@@ -42,7 +42,20 @@ export default {
                     valid = false;
                 } else {
                     let cName = i.name;
-                    dt[cName] = i.value
+
+                    if (i.nodeName == "SELECT") {
+                        let selOptions = [...i.querySelectorAll("option")].filter((e) => e.selected)
+                        let perms = [];
+                        for(let o of selOptions){
+                            perms.push(o._value)
+                        }
+                        dt[cName] = perms
+                    } else {
+                        if (i.type == "checkbox")
+                            dt[cName] = i.checked
+                        else
+                            dt[cName] = i.value
+                    }
                 }
             }
             if (valid) this.$emit("confirmBtnClick", dt)
@@ -57,7 +70,7 @@ export default {
             setTimeout(() => { e.style.backgroundColor = "" }, 2000);
         },
         getInputs() {
-            return this.$el.querySelectorAll("input");
+            return this.$el.querySelectorAll("input,select");
         },
         blinkAll(color: string = "#a228") {
             for (let e of this.getInputs()) this.rawBlink(e, color);
@@ -68,7 +81,7 @@ export default {
 
 <template>
     <div>
-        <div class="popupContainer" @keyup.enter="checkInputs" @keyup.escape='(!hideCancel)?$emit("cancelBtnClick"):""' >
+        <div class="popupContainer" @keyup.enter="checkInputs" @keyup.escape='(!hideCancel) ? $emit("cancelBtnClick") : ""'>
             <h1>{{ title }}</h1>
             <slot />
             <div class="btnContainer">
