@@ -283,7 +283,7 @@ function main() {
         res.clearCookie("uid")
         mongoConn((dbo) => {
             dbo.collection("sessions").deleteOne({ token: req.userSession.token }, (err, dbRes) => {
-                if (err) serverError(err);
+                if (err) serverError(res, err);
                 else {
                     res.send({ status: "logout_ok" });
                 }
@@ -296,7 +296,7 @@ function main() {
         const parm = req.body;
         mongoConn((dbo) => {
             dbo.collection("groups").insertOne(parm, (err, dbRes) => {
-                if (err) serverError(err);
+                if (err) serverError(res, err);
                 else {
                     res.send({ status: "group_created", data: parm, dbRes: { ...dbRes } })
                 }
@@ -316,11 +316,26 @@ function main() {
             })
         })
     })
+    app.post('/api/gameGroups/editGroup', (req, res, next) => {
+        let parm = { ...req.body };
+        delete parm._id;
+        console.log(parm)
+        mongoConn((dbo) => {
+            dbo.collection("groups").updateOne({ _id: ObjectID(req.body._id) }, { $set: parm }, (err, dbRes) => {
+                if (err) serverError(res, err);
+                else {
+                    dbo.collection("groups").findOne({ _id: ObjectID(req.body._id) }, (err, dbRes) => {
+                        res.send({ status: "edit_ok", ...dbRes })
+                    })
+                }
+            })
+        })
+    })
     app.post('/api/gameGroups/remove', (req, res, next) => {
 
         mongoConn((dbo) => {
             dbo.collection("groups").deleteOne({ _id: ObjectID(req.body._id) }, (err, dbRes) => {
-                if (err) serverError(err);
+                if (err) serverError(res, err);
                 else {
                     res.send({ status: "removing_ok", ...dbRes })
                 }
@@ -340,9 +355,24 @@ function main() {
 
         mongoConn((dbo) => {
             dbo.collection("clans").deleteOne({ _id: ObjectID(req.body._id) }, (err, dbRes) => {
-                if (err) serverError(err);
+                if (err) serverError(res, err);
                 else {
                     res.send({ status: "removing_ok", ...dbRes })
+                }
+            })
+        })
+    })
+    app.post('/api/clans/editClan', (req, res, next) => {
+        let parm = { ...req.body };
+        delete parm._id;
+        console.log(parm)
+        mongoConn((dbo) => {
+            dbo.collection("clans").updateOne({ _id: ObjectID(req.body._id) }, { $set: parm }, (err, dbRes) => {
+                if (err) serverError(res, err);
+                else {
+                    dbo.collection("clans").findOne({ _id: ObjectID(req.body._id) }, (err, dbRes) => {
+                        res.send({ status: "edit_ok", ...dbRes })
+                    })
                 }
             })
         })
@@ -354,8 +384,8 @@ function main() {
             let clanCode = randomString(8);
             error = false;
             mongoConn((dbo) => {
-                let reg = new RegExp("\\b"+parm.full_name+"\\b","i");
-                console.log("Regex",reg.toString())
+                let reg = new RegExp("\\b" + parm.full_name + "\\b", "i");
+                console.log("Regex", reg.toString())
                 dbo.collection("clans").findOne({ full_name: { $regex: reg } }, (err, dbRes) => {
                     const clanDbIns = { ...parm, clan_code: clanCode };
 
@@ -607,7 +637,7 @@ function mongoConn(connCallback) {
     let url = "mongodb://" + config.database.mongo.host + ":" + config.database.mongo.port;
     let dbName = config.database.mongo.database;
     let client = MongoClient.connect(url, function (err, db) {
-        if (err) serverError(err);
+        if (err) serverError(res, err);
         var dbo = db.db(dbName);
         connCallback(dbo);
     });
@@ -619,7 +649,7 @@ function getDateFromEpoch(ep) {
     return d;
 }
 
-function serverError(err) {
+function serverError(res, err) {
     res.sendStatus(500);
     console.error(err);
 }

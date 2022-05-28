@@ -61,6 +61,7 @@
 	margin: 0;
 	position: relative;
 	font-weight: normal;
+	-webkit-tap-highlight-color: transparent;
 }
 
 body {

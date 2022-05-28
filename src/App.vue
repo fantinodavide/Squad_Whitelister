@@ -10,7 +10,8 @@ import AddNewGameGroup from "./components/addNewGameGroup.vue";
 import ClanCard from "./components/clanCard.vue";
 import popup from "./components/popup.vue";
 import confirmPopup from "./components/confirmPopup.vue";
-import gameGroupCard from "./components/gameGroupCard.vue"
+import gameGroupCard from "./components/gameGroupCard.vue";
+import editClan from "./components/editClan.vue";
 import $ from 'jquery'
 import type { Method } from "@babel/types";
 
@@ -33,13 +34,15 @@ export default {
 				creatingNewRole: false,
 				confirm: false,
 				registration: false,
-				login: false
+				login: false,
+				editClan: false,
 			},
 			clans: [] as Array<any>,
 			game_groups: [] as Array<any>,
 			pointers: {
 				confirmPopup: {} as any,
 			},
+			inEditingClan: -1
 		}
 	},
 	methods: {
@@ -121,6 +124,31 @@ export default {
 					this.popups.confirm = false;
 				});
 			})
+		},
+		updateJson: function (config: any, emptyConfFile: any) {
+			for (let k in emptyConfFile) {
+				const objType = Object.prototype.toString.call(emptyConfFile[k]);
+				const parentObjType = Object.prototype.toString.call(emptyConfFile);
+				if (config[k] == undefined || (config[k] && (parentObjType == "[object Array]" && !config[k].includes(emptyConfFile[k])))) {
+					switch (objType) {
+						case "[object Object]":
+							config[k] = {}
+							break;
+						case "[object Array]":
+							config[k] = []
+							break;
+
+						default:
+							//console.log("CONFIG:", config, "\nKEY:", k, "\nCONFIG_K:", config[k], "\nEMPTY_CONFIG_K:", emptyConfFile[k], "\nPARENT_TYPE:",parentObjType,"\n");
+							if (parentObjType == "[object Array]") config.push(emptyConfFile[k])
+							else config[k] = emptyConfFile[k]
+							break;
+					}
+				}
+				if (typeof (emptyConfFile[k]) === "object") {
+					this.updateJson(config[k], emptyConfFile[k])
+				}
+			}
 		}
 	},
 	created() {
@@ -151,7 +179,7 @@ export default {
 
 	<main>
 		<blackoutBackground
-			v-show="popups.addingNewClan || popups.addingNewGameGroup || popups.confirm || popups.login || popups.registration">
+			v-show="popups.addingNewClan || popups.addingNewGameGroup || popups.confirm || popups.login || popups.registration || popups.editClan">
 			<login v-if="popups.login" @cancelBtnClick="popups.login = false"
 				@login_done="loginRequired = false; popups.login = false" />
 			<registration v-if="popups.registration" @cancelBtnClick="popups.registration = false"
@@ -162,6 +190,8 @@ export default {
 				@new_game_group="appendNewGroup" />
 			<confirmPopup :ref="(el: any) => { pointers.confirmPopup = el }" v-show="popups.confirm"
 				@cancelBtnClick="popups.confirm = false" />
+			<edit-clan v-if="popups.editClan" @cancelBtnClick="popups.editClan = false"
+				:clan_data="clans[inEditingClan]" @clan_edited="clans[inEditingClan] = $event" />
 		</blackoutBackground>
 
 		<!--<button @click="setLoginRequired(!loginRequired)">Toggle</button>-->
@@ -169,7 +199,8 @@ export default {
 		</tab>
 		<tab v-else-if="currentTab == 'Clans'" :currentTab="currentTab" :horizontal="true" @vnodeMounted="getClans">
 			<button class="addNewClan clanCard" @click="popups.addingNewClan = true"></button>
-			<ClanCard @confirm='removeClan' v-for="c in clans" class="clanCard shadow" :clan_data="c" />
+			<ClanCard @confirm='removeClan' v-for="c in clans" class="clanCard shadow" :clan_data="c"
+				@edit_clan="popups.editClan = true; inEditingClan = clans.indexOf(c)" />
 		</tab>
 		<tab v-else-if="currentTab == 'Groups'" :currentTab="currentTab" @vnodeMounted="getGameGroups">
 			<button class="addNewGameGroup" @click="popups.addingNewGameGroup = true"></button>

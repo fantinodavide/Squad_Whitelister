@@ -57,7 +57,7 @@ export default {
 				<button>Permissions</button>
 			</div>
 		</div>
-		<div class="btnContainer"><button @click="hoverMenuVisible = !hoverMenuVisible">Edit</button></div>
+		<!-- <div class="btnContainer"><button @click="hoverMenuVisible = !hoverMenuVisible">Edit</button></div> -->
 	</div>
 </template>
 
@@ -80,7 +80,7 @@ export default {
     border-top-left-radius: 15px;
     border-top-right-radius: 15px;
 }
-.hoverMenu.vis{
+.gameGroupCard:hover .hoverMenu, .hoverMenu.vis{
 	bottom: 0;
 }
 
@@ -121,6 +121,7 @@ export default {
 	overflow: hidden;
     width: 0px;
     overflow-x: auto;
+	margin-right: 10px;
 }
 
 .groupName {
