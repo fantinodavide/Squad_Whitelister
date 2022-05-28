@@ -8,24 +8,29 @@ import popup from "./popup.vue";
 export default {
 	methods: {
 		confBtnClick(dt: any) {
-			console.log("attempting signup", dt)
-			$.ajax({
-				url: "/api/signup",
-				type: "post",
-				data: dt,
-				dataType: "json",
-				success: (dt) => {
-					console.log(dt);
-					this.$emit("registration_done")
-					location.reload();
-				},
-				error: (err) => {
-					console.error(err);
-					const compPopup: any = this.$refs.popupLogin;
-					compPopup.blinkAll()
-					//.blinkBgColor(this.$refs.popupLogin.getInputs());
-				}
-			})
+			const compPopup: any = this.$refs.popupLogin;
+			if (dt.password == dt.conf_password) {
+				console.log("attempting signup", dt)
+				$.ajax({
+					url: "/api/signup",
+					type: "post",
+					data: dt,
+					dataType: "json",
+					success: (dt) => {
+						console.log(dt);
+						this.$emit("registration_done")
+						location.reload();
+					},
+					error: (err) => {
+						console.error(err);
+						compPopup.blinkAll()
+						//.blinkBgColor(this.$refs.popupLogin.getInputs());
+					}
+				})
+			} else {
+				compPopup.blinkName("password");
+				compPopup.blinkName("conf_password");
+			}
 		}
 	},
 	components: { popup }

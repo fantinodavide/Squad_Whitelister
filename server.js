@@ -153,8 +153,6 @@ function main() {
         let userDt = insertAccount;
         userDt.login_date = new Date();
         userDt.session_expiration = new Date(Date.now() + sessDurationMS);
-        delete userDt.password;
-        delete userDt._id;
 
         mongoConn((dbo) => {
 
@@ -319,7 +317,6 @@ function main() {
     app.post('/api/gameGroups/editGroup', (req, res, next) => {
         let parm = { ...req.body };
         delete parm._id;
-        console.log(parm)
         mongoConn((dbo) => {
             dbo.collection("groups").updateOne({ _id: ObjectID(req.body._id) }, { $set: parm }, (err, dbRes) => {
                 if (err) serverError(res, err);
@@ -365,7 +362,6 @@ function main() {
     app.post('/api/clans/editClan', (req, res, next) => {
         let parm = { ...req.body };
         delete parm._id;
-        console.log(parm)
         mongoConn((dbo) => {
             dbo.collection("clans").updateOne({ _id: ObjectID(req.body._id) }, { $set: parm }, (err, dbRes) => {
                 if (err) serverError(res, err);

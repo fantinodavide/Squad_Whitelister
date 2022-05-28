@@ -35,7 +35,7 @@ export default {
 				}
 			})
 		},
-		updateHoverMenuLeft: function(e:any){
+		updateHoverMenuLeft: function (e: any) {
 			this.hoverMenuLeft = e.target.scrollLeft
 		}
 	}
@@ -49,12 +49,12 @@ export default {
 		<!--<div class="clanTag"></div>-->
 		<div class="mainGroupContainer" @scroll="updateHoverMenuLeft">
 			<!-- <marquee-text :duration="10" :paused="false"></marquee-text> -->
-				<span class="tag" v-for="p of group_data.group_permissions">{{ p }}</span>
+			<span class="tag" v-for="p of group_data.group_permissions">{{ p }}</span>
 			<!-- <div class="overflow">
 			</div> -->
-			<div class="hoverMenu" :class="{vis: hoverMenuVisible}">
+			<div class="hoverMenu" :class="{ vis: hoverMenuVisible }">
 				<button @click="$emit('confirm', { group_data: group_data, callback: deleteGroup })">Delete</button>
-				<button>Permissions</button>
+				<button @click="$emit('edit', { group_data: group_data })">Edit</button>
 			</div>
 		</div>
 		<!-- <div class="btnContainer"><button @click="hoverMenuVisible = !hoverMenuVisible">Edit</button></div> -->
@@ -76,11 +76,13 @@ export default {
 	align-items: stretch;
 	transition: all 150ms ease-in-out;
 	background: #222;
-    overflow: auto;
-    border-top-left-radius: 15px;
-    border-top-right-radius: 15px;
+	overflow: auto;
+	border-top-left-radius: 15px;
+	border-top-right-radius: 15px;
 }
-.gameGroupCard:hover .hoverMenu, .hoverMenu.vis{
+
+.gameGroupCard:hover .hoverMenu,
+.hoverMenu.vis {
 	bottom: 0;
 }
 
@@ -119,8 +121,8 @@ export default {
 	flex-direction: row;
 	align-items: center;
 	overflow: hidden;
-    width: 0px;
-    overflow-x: auto;
+	width: 0px;
+	overflow-x: auto;
 	margin-right: 10px;
 }
 

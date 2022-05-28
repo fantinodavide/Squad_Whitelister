@@ -12,6 +12,7 @@ import popup from "./components/popup.vue";
 import confirmPopup from "./components/confirmPopup.vue";
 import gameGroupCard from "./components/gameGroupCard.vue";
 import editClan from "./components/editClan.vue";
+import editGameGroup from "./components/editGameGroup.vue";
 import $ from 'jquery'
 import type { Method } from "@babel/types";
 
@@ -36,13 +37,15 @@ export default {
 				registration: false,
 				login: false,
 				editClan: false,
+				editGameGroup: false,
 			},
 			clans: [] as Array<any>,
+			inEditingClan: -1,
 			game_groups: [] as Array<any>,
+			inEditingGroup: -1,
 			pointers: {
 				confirmPopup: {} as any,
 			},
-			inEditingClan: -1
 		}
 	},
 	methods: {
@@ -179,7 +182,7 @@ export default {
 
 	<main>
 		<blackoutBackground
-			v-show="popups.addingNewClan || popups.addingNewGameGroup || popups.confirm || popups.login || popups.registration || popups.editClan">
+			v-show="popups.addingNewClan || popups.addingNewGameGroup || popups.confirm || popups.login || popups.registration || popups.editClan || popups.editGameGroup">
 			<login v-if="popups.login" @cancelBtnClick="popups.login = false"
 				@login_done="loginRequired = false; popups.login = false" />
 			<registration v-if="popups.registration" @cancelBtnClick="popups.registration = false"
@@ -192,6 +195,8 @@ export default {
 				@cancelBtnClick="popups.confirm = false" />
 			<edit-clan v-if="popups.editClan" @cancelBtnClick="popups.editClan = false"
 				:clan_data="clans[inEditingClan]" @clan_edited="clans[inEditingClan] = $event" />
+			<editGameGroup v-if="popups.editGameGroup" @cancelBtnClick="popups.editGameGroup = false"
+				:group_data="game_groups[inEditingGroup]" @edited="game_groups[inEditingGroup] = $event" />
 		</blackoutBackground>
 
 		<!--<button @click="setLoginRequired(!loginRequired)">Toggle</button>-->
@@ -205,7 +210,7 @@ export default {
 		<tab v-else-if="currentTab == 'Groups'" :currentTab="currentTab" @vnodeMounted="getGameGroups">
 			<button class="addNewGameGroup" @click="popups.addingNewGameGroup = true"></button>
 			<gameGroupCard @confirm='removeGroup' v-for="g in game_groups" class="gameGroupCard shadow"
-				:group_data="g" />
+				:group_data="g" @edit="popups.editGameGroup = true; inEditingGroup = game_groups.indexOf(g)"/>
 		</tab>
 		<tab v-else-if="currentTab == 'Roles'" :currentTab="currentTab">
 			<button class="createRole" @click="popups.creatingNewRole = true"></button>

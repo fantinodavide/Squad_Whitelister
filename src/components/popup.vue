@@ -46,7 +46,7 @@ export default {
                     if (i.nodeName == "SELECT") {
                         let selOptions = [...i.querySelectorAll("option")].filter((e) => e.selected)
                         let perms = [];
-                        for(let o of selOptions){
+                        for (let o of selOptions) {
                             perms.push(o._value)
                         }
                         dt[cName] = perms
@@ -74,6 +74,9 @@ export default {
         },
         blinkAll(color: string = "#a228") {
             for (let e of this.getInputs()) this.rawBlink(e, color);
+        },
+        blinkName(name: string,color: string = "#a228") {
+            this.rawBlink(this.$el.querySelector('input[name="'+name+'"]'), color);
         }
     },
 }
@@ -81,7 +84,8 @@ export default {
 
 <template>
     <div>
-        <div class="popupContainer" @keyup.enter="checkInputs" @keyup.escape='(!hideCancel) ? $emit("cancelBtnClick") : ""'>
+        <div class="popupContainer" @keyup.enter="checkInputs"
+            @keyup.escape='(!hideCancel) ? $emit("cancelBtnClick") : ""'>
             <h1>{{ title }}</h1>
             <slot />
             <div class="btnContainer">

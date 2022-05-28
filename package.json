@@ -7,7 +7,7 @@
     "preview": "vite preview --port 5050",
     "typecheck": "vue-tsc --noEmit",
     "app": "vue-tsc --noEmit && vite build && node server",
-    "release": "npm run build && powershell Compress-Archive dist release.zip -Force && powershell Compress-Archive server.js release.zip -Update && powershell Compress-Archive package-lock.json release.zip -Update"
+    "release": "npm run build && powershell Compress-Archive dist release.zip -Force && powershell Compress-Archive server.js release.zip -Update && powershell Compress-Archive package-lock.json release.zip -Update && powershell Compress-Archive package.json release.zip -Update"
   },
   "dependencies": {
     "axios": "^0.26.1",
