@@ -81,6 +81,12 @@ export default {
 			this.clans.push(dt.clan_data)
 			// this.clans.sort((a, b) => (a.full_name - b.full_name));
 		},
+		appendNewGroup: function (dt: any) {
+			console.log("Appending new group", dt.clan_data)
+			this.game_groups.push(dt.data)
+			this.popups.addingNewGameGroup = false;
+			// this.clans.sort((a, b) => (a.full_name - b.full_name));
+		},
 		getClans: function () {
 			fetch("/api/clans/getAllClans").then(res => res.json()).then(dt => {
 				console.log("All clans", dt)
@@ -104,6 +110,14 @@ export default {
 			this.confirmEvt("Confirm deletion?", "Do you really want to delete " + dt.clan_data.tag + " clan?", () => {
 				dt.callback(() => {
 					this.clans = this.clans.filter((a) => a._id != dt.clan_data._id)
+					this.popups.confirm = false;
+				});
+			})
+		},
+		removeGroup: function (dt: any) {
+			this.confirmEvt("Confirm deletion?", "Do you really want to delete " + dt.group_data.group_name + " group?", () => {
+				dt.callback(() => {
+					this.game_groups = this.game_groups.filter((a) => a._id != dt.group_data._id)
 					this.popups.confirm = false;
 				});
 			})
@@ -145,7 +159,7 @@ export default {
 			<AddNewClan v-if="popups.addingNewClan" @cancelBtnClick="popups.addingNewClan = false"
 				@new_clan="appendNewClan" />
 			<AddNewGameGroup v-if="popups.addingNewGameGroup" @cancelBtnClick="popups.addingNewGameGroup = false"
-				@new_game_group="" />
+				@new_game_group="appendNewGroup" />
 			<confirmPopup :ref="(el: any) => { pointers.confirmPopup = el }" v-show="popups.confirm"
 				@cancelBtnClick="popups.confirm = false" />
 		</blackoutBackground>
@@ -159,7 +173,8 @@ export default {
 		</tab>
 		<tab v-else-if="currentTab == 'Groups'" :currentTab="currentTab" @vnodeMounted="getGameGroups">
 			<button class="addNewGameGroup" @click="popups.addingNewGameGroup = true"></button>
-			<gameGroupCard v-for="g in game_groups" class="gameGroupCard shadow" :group_data="g" />
+			<gameGroupCard @confirm='removeGroup' v-for="g in game_groups" class="gameGroupCard shadow"
+				:group_data="g" />
 		</tab>
 		<tab v-else-if="currentTab == 'Roles'" :currentTab="currentTab">
 			<button class="createRole" @click="popups.creatingNewRole = true"></button>
@@ -260,7 +275,7 @@ header .logo {
 	display: flex;
 	flex-direction: row;
 	overflow: hidden;
-    align-items: center;
+	align-items: center;
 }
 
 .addNewGameGroup::after,

@@ -213,12 +213,12 @@ function main() {
     })
     app.get("/api/getTabs", (req, res, next) => {
         const allTabs = [
-            {
-                name: "Home",
-                order: 0,
-                type: "tab",
-                max_access_level: 100
-            },
+            // {
+            //     name: "Home",
+            //     order: 0,
+            //     type: "tab",
+            //     max_access_level: 100
+            // },
             {
                 name: "Clans",
                 order: 5,
@@ -298,7 +298,7 @@ function main() {
             dbo.collection("groups").insertOne(parm, (err, dbRes) => {
                 if (err) serverError(err);
                 else {
-                    res.send({ status: "group_created", ...dbRes })
+                    res.send({ status: "group_created", data: parm, dbRes: { ...dbRes } })
                 }
             })
         })
@@ -312,6 +312,17 @@ function main() {
                 } else {
                     res.send(dbRes);
 
+                }
+            })
+        })
+    })
+    app.post('/api/gameGroups/remove', (req, res, next) => {
+
+        mongoConn((dbo) => {
+            dbo.collection("groups").deleteOne({ _id: ObjectID(req.body._id) }, (err, dbRes) => {
+                if (err) serverError(err);
+                else {
+                    res.send({ status: "removing_ok", ...dbRes })
                 }
             })
         })
@@ -343,7 +354,8 @@ function main() {
             let clanCode = randomString(8);
             error = false;
             mongoConn((dbo) => {
-                let reg = new RegExp(parm.full_name, "i");
+                let reg = new RegExp("\\b"+parm.full_name+"\\b","i");
+                console.log("Regex",reg.toString())
                 dbo.collection("clans").findOne({ full_name: { $regex: reg } }, (err, dbRes) => {
                     const clanDbIns = { ...parm, clan_code: clanCode };
 

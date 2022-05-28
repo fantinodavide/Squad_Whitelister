@@ -11,6 +11,7 @@ export default {
 		return {
 			clan_data: {},
 			hoverMenuVisible: false,
+			hoverMenuLeft: 0
 		}
 	},
 	props: {
@@ -23,7 +24,7 @@ export default {
 		deleteGroup: function (successCB: any) {
 			console.log("Removing", this.$props.group_data)
 			$.ajax({
-				url: "/api/gameGroups/removeGroup",
+				url: "/api/gameGroups/remove",
 				type: "post",
 				data: this.$props.group_data,
 				dataType: "json",
@@ -33,6 +34,9 @@ export default {
 					//location.reload();
 				}
 			})
+		},
+		updateHoverMenuLeft: function(e:any){
+			this.hoverMenuLeft = e.target.scrollLeft
 		}
 	}
 }
@@ -43,13 +47,13 @@ export default {
 		<div class="groupName tag">{{ group_data.group_name }}
 		</div>
 		<!--<div class="clanTag"></div>-->
-		<div class="mainGroupContainer">
+		<div class="mainGroupContainer" @scroll="updateHoverMenuLeft">
 			<!-- <marquee-text :duration="10" :paused="false"></marquee-text> -->
 				<span class="tag" v-for="p of group_data.group_permissions">{{ p }}</span>
 			<!-- <div class="overflow">
 			</div> -->
 			<div class="hoverMenu" :class="{vis: hoverMenuVisible}">
-				<button @click="$emit('confirm', { clan_data: group_data, callback: deleteGroup })">Delete</button>
+				<button @click="$emit('confirm', { group_data: group_data, callback: deleteGroup })">Delete</button>
 				<button>Permissions</button>
 			</div>
 		</div>
@@ -61,7 +65,7 @@ export default {
 .hoverMenu {
 	position: absolute;
 	bottom: -100%;
-	left: 0;
+	left: v-bind(hoverMenuLeft + "px");
 	width: 100%;
 	height: calc(100% - 5px);
 	opacity: 1;
@@ -70,7 +74,6 @@ export default {
 	flex-direction: row;
 	flex-wrap: nowrap;
 	align-items: stretch;
-	justify-content: stretch;
 	transition: all 150ms ease-in-out;
 	background: #222;
     overflow: auto;
@@ -116,6 +119,8 @@ export default {
 	flex-direction: row;
 	align-items: center;
 	overflow: hidden;
+    width: 0px;
+    overflow-x: auto;
 }
 
 .groupName {

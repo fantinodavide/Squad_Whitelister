@@ -22,7 +22,7 @@ export default {
 				contentType: 'application/json',
 				success: (dt) => {
 					console.log(dt);
-					this.$emit(dt.status)
+					this.$emit("new_game_group",dt)
 				},
 				error: (err) => {
 					console.error(err);

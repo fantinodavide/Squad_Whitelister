@@ -61,20 +61,20 @@ export default {
 	left: 0;
 	width: 100%;
 	height: 100%;
+	visibility: hidden;
 	opacity: 0;
 	padding: 5px;
 	display: flex;
 	flex-direction: column;
 	align-items: stretch;
 	justify-content: stretch;
-	transition: all 100ms ease-in-out pointer-events 0ms 500ms ease-in-out;
+	transition: all 150ms ease-in-out;
 	background: #0003;
-	pointer-events: none;
 }
 
 .clanCard:hover .hoverMenu {
 	opacity: 1;
-	pointer-events: all;
+	visibility: visible;
 }
 
 .hoverMenu button {
