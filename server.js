@@ -373,6 +373,34 @@ function main() {
             })
         })
     })
+    app.get('/api/clans/getClanUsers', (req, res, next) => {
+        const parm = req.query;
+        mongoConn((dbo) => {
+            dbo.collection("users").find({ clan_code: parm.clan_code }).toArray((err, dbRes) => {
+                res.send(dbRes)
+            })
+        })
+    })
+    app.get('/api/clans/getClanAdmins', (req, res, next) => {
+        const parm = req.query;
+        mongoConn((dbo) => {
+            dbo.collection("clans").findOne({ _id: ObjectID(parm._id) }, { projection: { admins: 1 } }, (err, dbRes) => {
+                if (err) serverError(res, err);
+                else {
+                    let toSend = dbRes.admins ? dbRes.admins : []
+                    res.send(toSend)
+                }
+            })
+        })
+    })
+    app.post('/api/clans/editClanAdmins', (req, res, next) => {
+        const parm = req.body;
+        mongoConn((dbo) => {
+            dbo.collection("clans").updateOne({ _id: ObjectID(req.body._id) }, { $set: { admins: parm.clan_admins } }, (err, dbRes) => {
+                res.send({ status: "edit_ok", ...dbRes })
+            })
+        })
+    })
     app.post('/api/clans/newClan', (req, res, next) => {
         const parm = req.body;
         let error;

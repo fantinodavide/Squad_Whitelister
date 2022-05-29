@@ -47,7 +47,7 @@ export default {
 			<div class="hoverMenu">
 				<button @click="$emit('confirm', { clan_data: clan_data, callback: deleteClan })">Delete</button>
 				<button @click="$emit('edit_clan', { clan_data: clan_data })">Manage</button>
-				<button>Admins</button>
+				<button @click="$emit('edit_clan_users', { clan_data: clan_data })">Admins</button>
 			</div>
 		</div>
 		<div class="clanCode">{{ clan_data.clan_code }}</div>
