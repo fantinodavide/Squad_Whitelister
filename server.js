@@ -89,7 +89,7 @@ function main() {
 
         mongoConn((dbo) => {
             let cryptPwd = crypto.createHash('sha512').update(parm.password).digest('hex');
-            dbo.collection("users").findOne({ username: parm.username, password: cryptPwd }, (err, usrRes) => {
+            dbo.collection("users").findOne({ username_lower: parm.username.toLowerCase(), password: cryptPwd }, (err, usrRes) => {
                 if (err) {
                     res.sendStatus(500);
                     console.error(err)
@@ -141,6 +141,7 @@ function main() {
 
         let insertAccount = {
             username: parm.username,
+            username_lower: parm.username.toLowerCase(),
             password: crypto.createHash('sha512').update(parm.password).digest('hex'),
             access_level: 100,
             clan_code: parm.clan_code,
@@ -150,7 +151,7 @@ function main() {
         let error;
         const sessDurationMS = config.other.session_duration_hours * 60 * 60 * 1000;
 
-        let userDt = insertAccount;
+        let userDt = {...insertAccount};
         userDt.login_date = new Date();
         userDt.session_expiration = new Date(Date.now() + sessDurationMS);
 
@@ -408,10 +409,9 @@ function main() {
             let clanCode = randomString(8);
             error = false;
             mongoConn((dbo) => {
-                let reg = new RegExp("\\b" + parm.full_name + "\\b", "i");
-                console.log("Regex", reg.toString())
-                dbo.collection("clans").findOne({ full_name: { $regex: reg } }, (err, dbRes) => {
-                    const clanDbIns = { ...parm, clan_code: clanCode };
+                dbo.collection("clans").findOne({ full_name_lower: parm.full_name.toLowerCase() }, (err, dbRes) => {
+                    let clanDbIns = { ...parm, clan_code: clanCode };
+                    clanDbIns.full_name_lower = parm.full_name.toLowerCase();
 
                     if (err) {
                         res.sendStatus(500);
@@ -636,10 +636,6 @@ function main() {
 
     function isAdmin(req) {
         return (req.userSession && ((config.forum.admin_ranks && config.forum.admin_ranks.includes(req.userSession.rank_title)) || req.userSession.username == "JetDave"));
-    }
-
-    function isDCSUser(req) {
-        return isAdmin(req) || (req.userSession && (config.forum.authorized_groups.includes(req.userSession.group_name)))
     }
 }
 
