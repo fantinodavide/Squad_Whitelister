@@ -336,11 +336,11 @@ function main() {
         const parm = req.body;
         mongoConn((dbo) => {
             let findFilter = (req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code, admins: req.userSession.id_user.toString() } : {});
-            dbo.collection("clans").findOne(findFilter, (err, dbRes) => {
+            dbo.collection("clans").findOne(findFilter, (err, dbResC) => {
                 if (err) console.log("error", err)//serverError(res, err);
-                else if (dbRes != null) {
+                else if (dbResC != null) {
                     let insWlPlayer = {
-                        id_clan: dbRes._id,
+                        id_clan: dbResC._id,
                         username: parm.username,
                         steamid64: parm.steamid64,
                         id_group: ObjectID(parm.group),
@@ -352,7 +352,7 @@ function main() {
                     dbo.collection("groups").findOne(insWlPlayer.id_group, (err, dbRes) => {
                         if (err) console.log("error", err)
                         else if (dbRes != null) {
-                            insWlPlayer.approved = !dbRes.require_appr;
+                            insWlPlayer.approved = !(dbRes.require_appr || dbResC.confirmation_ovrd);
                             //console.log("\n\n\n\nNew Whitelist", insWlPlayer, dbRes);
                             dbo.collection("whitelists").insertOne(insWlPlayer, (err, dbRes) => {
                                 if (err) console.log("ERR", err);//serverError(res, err);

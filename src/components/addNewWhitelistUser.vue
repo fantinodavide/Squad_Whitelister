@@ -23,6 +23,7 @@ export default {
 				timeout: 60000,
 				success: (dt) => {
 					console.log(dt);
+					this.$emit('cancelBtnClick')
 				},
 				error: (err) => {
 					console.error(err);
