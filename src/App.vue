@@ -15,6 +15,7 @@ import editClan from "./components/editClan.vue";
 import editGameGroup from "./components/editGameGroup.vue";
 import editClanUsers from "./components/editClanUsers.vue";
 import whitelistTab from "./components/whitelistTab.vue";
+import addNewWhitelistUser from "./components/addNewWhitelistUser.vue";
 import $ from 'jquery'
 import type { Method } from "@babel/types";
 
@@ -41,6 +42,7 @@ export default {
 				editClan: false,
 				editGameGroup: false,
 				editClanUsers: false,
+				addNewWhitelistUser: false,
 			},
 			clans: [] as Array<any>,
 			inEditingClan: -1,
@@ -105,7 +107,7 @@ export default {
 			});
 		},
 		getGameGroups: function () {
-			fetch("/api/gameGroups/getAllGroups").then(res => res.json()).then(dt => {
+			fetch("/api/gameGroups/read/getAllGroups").then(res => res.json()).then(dt => {
 				console.log("All groups", dt)
 				this.game_groups = dt;
 			});
@@ -187,7 +189,7 @@ export default {
 
 	<main>
 		<blackoutBackground
-			v-show="popups.addingNewClan || popups.addingNewGameGroup || popups.confirm || popups.login || popups.registration || popups.editClan || popups.editGameGroup || popups.editClanUsers">
+			v-show="popups.addingNewClan || popups.addingNewGameGroup || popups.confirm || popups.login || popups.registration || popups.editClan || popups.editGameGroup || popups.editClanUsers || popups.addNewWhitelistUser">
 			<login v-if="popups.login" @cancelBtnClick="popups.login = false"
 				@login_done="loginRequired = false; popups.login = false" />
 			<registration v-if="popups.registration" @cancelBtnClick="popups.registration = false"
@@ -204,6 +206,7 @@ export default {
 				:group_data="game_groups[inEditingGroup]" @edited="game_groups[inEditingGroup] = $event" />
 			<editClanUsers v-if="popups.editClanUsers" :clan_data="clans[inUserEditingClan]"
 				@cancelBtnClick="popups.editClanUsers = false;" />
+			<addNewWhitelistUser v-if="popups.addNewWhitelistUser" @cancelBtnClick="popups.addNewWhitelistUser = false"/>
 		</blackoutBackground>
 
 		<!--<button @click="setLoginRequired(!loginRequired)">Toggle</button>-->
@@ -225,7 +228,7 @@ export default {
 
 		</tab>
 		<tab v-else-if="currentTab == 'Whitelist'" :currentTab="currentTab">
-			<whitelistTab />
+			<whitelistTab @addNewWhitelistUser="popups.addNewWhitelistUser = true"/>
 		</tab>
 	</main>
 </template>
@@ -311,6 +314,7 @@ header .logo {
 	padding-top: 100px;
 }
 
+button.addHorizontal,
 .addNewGameGroup,
 .gameGroupCard {
 	/* width: ; */
@@ -325,6 +329,8 @@ header .logo {
 	align-items: center;
 }
 
+button.addHorizontal::after,
+button.addHorizontal::before,
 .addNewGameGroup::after,
 .addNewGameGroup::before {
 	content: "";
@@ -338,6 +344,7 @@ header .logo {
 	transform: translate(-50%, -50%) rotate(90deg);
 }
 
+button.addHorizontal::before,
 .addNewGameGroup::before {
 	transform: translate(-50%, -50%) rotate(0deg);
 }

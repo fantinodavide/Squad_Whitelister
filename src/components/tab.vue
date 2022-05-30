@@ -43,8 +43,8 @@ export default {
 	flex-direction: row;
 }
 
-.tab.Clans{
-    justify-content: center;
-    align-content: baseline;
+.tab.Clans {
+	justify-content: center;
+	align-content: baseline;
 }
 </style>

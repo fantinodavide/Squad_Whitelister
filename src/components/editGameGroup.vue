@@ -21,7 +21,7 @@ export default {
 		confirmBtnClick(dt: any) {
 			console.log(dt)
 			$.ajax({
-				url: "/api/gameGroups/editGroup",
+				url: "/api/gameGroups/write/editGroup",
 				type: "post",
 				dataType: "json",
 				data: JSON.stringify({ _id: this.group_data._id, ...dt }),

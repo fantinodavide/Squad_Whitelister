@@ -15,7 +15,7 @@ export default {
 		confirmBtnClick(dt: any) {
 			console.log(dt)
 			$.ajax({
-				url: "/api/gameGroups/newGroup",
+				url: "/api/gameGroups/write/newGroup",
 				type: "post",
 				dataType: "json",
 				data: JSON.stringify(dt),

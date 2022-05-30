@@ -37,13 +37,13 @@ export default {
             let valid = true;
             let dt: { [key: string]: any } = {};
             for (let i of inputs) {
-                if (i.value == "") {
+                if ((!i.value || i.value == "") && !i.hasAttribute("optional")) {
                     this.blinkBgColor(i);
                     valid = false;
                 } else {
                     let cName = i.name;
 
-                    if (i.nodeName == "SELECT") {
+                    if (i.nodeName == "SELECT" && i.hasAttribute("multiple")) {
                         let selOptions = [...i.querySelectorAll("option")].filter((e) => e.selected)
                         let perms = [];
                         for (let o of selOptions) {
@@ -75,10 +75,15 @@ export default {
         blinkAll(color: string = "#a228") {
             for (let e of this.getInputs()) this.rawBlink(e, color);
         },
-        blinkName(name: string,color: string = "#a228") {
-            this.rawBlink(this.$el.querySelector('input[name="'+name+'"]'), color);
+        blinkName(name: string, color: string = "#a228") {
+            this.rawBlink(this.$el.querySelector('input[name="' + name + '"]'), color);
         }
     },
+    created() {
+        this.$nextTick(() => {
+            this.getInputs()[0].focus();
+        });
+    }
 }
 </script>
 

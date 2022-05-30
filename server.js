@@ -232,7 +232,7 @@ function main() {
                 name: "Groups",
                 order: 10,
                 type: "tab",
-                max_access_level: 5
+                max_access_level: 100
             },
             {
                 name: "Whitelist",
@@ -315,13 +315,104 @@ function main() {
             })
         })
     })
-    app.get('/testRaw', (req, res, next) => {
+    app.post('/api/whitelist/write/*', (req, res, next) => {
+        if (req.userSession && req.userSession.access_level < 100) next()
+        else {
+            mongoConn((dbo) => {
+                let findFilter = req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code } : {};
+
+                dbo.collection("clans").find(findFilter).sort({ full_name: 1 }).toArray((err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else if (dbRes != null) {
+                        next();
+                    } else {
+                        console.log("blocking", dbRes)
+                    }
+                })
+            })
+        }
+    })
+    app.post('/api/whitelist/write/addPlayer', (req, res, next) => {
+        const parm = req.body;
+        mongoConn((dbo) => {
+            let findFilter = (req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code, admins: req.userSession.id_user.toString() } : {});
+            dbo.collection("clans").findOne(findFilter, (err, dbRes) => {
+                if (err) console.log("error", err)//serverError(res, err);
+                else if (dbRes != null) {
+                    let insWlPlayer = {
+                        id_clan: dbRes._id,
+                        username: parm.username,
+                        steamid64: parm.steamid64,
+                        id_group: ObjectID(parm.group),
+                        discord_username: parm.discordUsername,
+                        inserted_by: ObjectID(req.userSession.id_user),
+                        insert_date: new Date(),
+                        approved: false,
+                    }
+                    dbo.collection("groups").findOne(insWlPlayer.id_group, (err, dbRes) => {
+                        if (err) console.log("error", err)
+                        else if (dbRes != null) {
+                            insWlPlayer.approved = !dbRes.require_appr;
+                            //console.log("\n\n\n\nNew Whitelist", insWlPlayer, dbRes);
+                            dbo.collection("whitelists").insertOne(insWlPlayer, (err, dbRes) => {
+                                if (err) console.log("ERR", err);//serverError(res, err);
+                                else {
+                                    res.send({ status: "inserted_new_player", player: insWlPlayer, ...dbRes })
+                                }
+                            })
+                        } else {
+                            res.send({ status: "not_inserted", reason: "could find corresponding id" });
+                        }
+                    })
+                } else {
+                    res.sendStatus(401);
+                }
+            })
+        })
+    })
+    app.get('/wl/:clan_code?', (req, res, next) => {
         res.type('text/plain');
-        res.send("Abbelloooo\nPorcoddumbooo");
+
+        mongoConn((dbo) => {
+            let findFilter = req.params.clan_code ? { clan_code: req.params.clan_code } : {};
+            let wlRes = "";
+            let groups = [];
+            let clansById = [];
+            let clansIds = [];
+            // let clansByCode = [];
+            dbo.collection("clans").find(findFilter).toArray((err, dbRes) => {
+                for (let c of dbRes) {
+                    clansById[c._id.toString()] = c;
+                    clansIds.push(c._id)
+                    // clansByCode[c.clan_code] = c;
+                }
+                dbo.collection("groups").find().sort({ group_name: 1 }).toArray((err, dbRes) => {
+                    for (let g of dbRes) {
+                        groups[g._id.toString()] = g;
+                        wlRes += "Group=" + g.group_name + ":" + g.group_permissions.join(',') + "\n";
+                    }
+                    wlRes += "\n";
+                    //res.send(wlRes)
+                    let findF2 = { approved: true, id_clan: { $in: clansIds } };
+                    console.log(findF2);
+                    dbo.collection("whitelists").find(findF2).sort({ id_clan: 1, id_group: 1 }).toArray((err, dbRes) => {
+                        if (err) serverError(res, err);
+                        else if (dbRes != null) {
+                            for (let w of dbRes) {
+                                wlRes += "Admin=" + w.steamid64 + ":" + groups[w.id_group].group_name + " // [" + clansById[w.id_clan].tag + "]" + w.username + "\n"
+                            }
+                            res.send(wlRes)
+                        } else {
+                            res.send("");
+                        }
+                    })
+                })
+            })
+        })
     })
 
-    app.use('/api/gameGroups/*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next() })
-    app.post('/api/gameGroups/newGroup', (req, res, next) => {
+    app.use('/api/gameGroups/write/*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next() })
+    app.post('/api/gameGroups/write/newGroup', (req, res, next) => {
         const parm = req.body;
         mongoConn((dbo) => {
             dbo.collection("groups").insertOne(parm, (err, dbRes) => {
@@ -332,20 +423,7 @@ function main() {
             })
         })
     })
-    app.get('/api/gameGroups/getAllGroups', (req, res, next) => {
-        mongoConn((dbo) => {
-            dbo.collection("groups").find().sort({ group_name: 1 }).toArray((err, dbRes) => {
-                if (err) {
-                    res.sendStatus(500);
-                    console.error(err)
-                } else {
-                    res.send(dbRes);
-
-                }
-            })
-        })
-    })
-    app.post('/api/gameGroups/editGroup', (req, res, next) => {
+    app.post('/api/gameGroups/write/editGroup', (req, res, next) => {
         let parm = { ...req.body };
         delete parm._id;
         mongoConn((dbo) => {
@@ -359,7 +437,7 @@ function main() {
             })
         })
     })
-    app.post('/api/gameGroups/remove', (req, res, next) => {
+    app.post('/api/gameGroups/write/remove', (req, res, next) => {
 
         mongoConn((dbo) => {
             dbo.collection("groups").deleteOne({ _id: ObjectID(req.body._id) }, (err, dbRes) => {
@@ -368,6 +446,35 @@ function main() {
                     res.send({ status: "removing_ok", ...dbRes })
                 }
             })
+        })
+    })
+    //app.use('/api/gameGroups/read/*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next() })
+    app.get('/api/gameGroups/read/getAllGroups', (req, res, next) => {
+        mongoConn((dbo) => {
+            let findFilter = {};
+            if (req.userSession && req.userSession.access_level >= 100) {
+                dbo.collection("clans").findOne({ clan_code: req.userSession.clan_code }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        let avGroups = [];
+                        for (let g of dbRes.available_groups) avGroups.push(ObjectID(g));
+                        findFilter = { _id: { $in: avGroups } };
+                        getGroups();
+                    }
+                })
+            } else {
+                getGroups();
+            }
+
+            function getGroups() {
+                dbo.collection("groups").find(findFilter).sort({ group_name: 1 }).toArray((err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        res.send(dbRes);
+
+                    }
+                })
+            }
         })
     })
 
@@ -517,7 +624,7 @@ function main() {
                     else if (dbRes != null && dbRes.session_expiration > new Date()) {
                         req.userSession = dbRes;
                         dbo.collection("users").findOne({ _id: dbRes.id_user }, { projection: { _id: 0 } }, (err, dbRes) => {
-                            req.userSession = {...req.userSession, ...dbRes}                     
+                            req.userSession = { ...req.userSession, ...dbRes }
                             if (callback)
                                 callback();
 

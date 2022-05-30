@@ -34,7 +34,7 @@ export default {
 			})
 		},
 		getGameGroups(){
-			fetch("/api/gameGroups/getAllGroups").then(res => res.json()).then(dt => {
+			fetch("/api/gameGroups/read/getAllGroups").then(res => res.json()).then(dt => {
 				console.log(dt);
 				this.available_game_groups = dt;
 			});

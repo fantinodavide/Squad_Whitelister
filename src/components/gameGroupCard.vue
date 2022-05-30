@@ -24,7 +24,7 @@ export default {
 		deleteGroup: function (successCB: any) {
 			console.log("Removing", this.$props.group_data)
 			$.ajax({
-				url: "/api/gameGroups/remove",
+				url: "/api/gameGroups/write/remove",
 				type: "post",
 				data: this.$props.group_data,
 				dataType: "json",
