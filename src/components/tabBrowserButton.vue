@@ -27,7 +27,7 @@ button {
     border-radius: 10px 10px 0 0;
     border-bottom: 3px solid #fff2;
     color: #ddd;
-    padding: 10px 10px;
+    padding: 10px 25px;
     max-width: 200px;
     flex-grow: 1;
     margin-bottom: 0;
