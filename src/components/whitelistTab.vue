@@ -28,6 +28,7 @@ export default {
 	<select name="clan_selector" :disabled="whitelist_clans.length==1">
 		<option v-for="c of whitelist_clans" :value="c._id">{{ c.full_name }}</option>
 	</select>
+	
 </template>
 
 <style scoped>

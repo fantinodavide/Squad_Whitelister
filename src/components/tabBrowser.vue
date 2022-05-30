@@ -26,6 +26,7 @@ export default {
 	flex-wrap: nowrap;
 	overflow-x: auto;
 	height: 0px;
+	overflow-y: hidden;
 	/* transition: all 150ms ease-in-out 300ms; */
 }
 
@@ -38,5 +39,11 @@ export default {
 
 #tabBrowser.visible {
 	height: 45px;
+}
+
+
+#tabBrowser::-webkit-scrollbar {
+	height: 0px;
+	width: 0px;
 }
 </style>

@@ -98,31 +98,32 @@ function main() {
                 else {
                     const sessDurationMS = config.other.session_duration_hours * 60 * 60 * 1000;
 
-                    let userDt = usrRes;
-                    userDt.login_date = new Date();
-                    userDt.session_expiration = new Date(Date.now() + sessDurationMS);
-                    delete userDt.password;
+                    let sessionsDt = {
+                        login_date: new Date(),
+                        session_expiration: new Date(Date.now() + sessDurationMS),
+                        id_user: usrRes._id,
+                    }
 
                     let error;
                     do {
                         error = false;
-                        userDt.token = randomString(128);
+                        sessionsDt.token = randomString(128);
                         mongoConn((dbo) => {
-                            dbo.collection("sessions").findOne({ token: userDt.token }, (err, dbRes) => {
+                            dbo.collection("sessions").findOne({ token: sessionsDt.token }, (err, dbRes) => {
                                 if (err) {
                                     res.sendStatus(500);
                                     console.error(err)
                                 }
                                 else if (dbRes == null) {
-                                    dbo.collection("sessions").insertOne(userDt, (err, dbRes) => {
+                                    dbo.collection("sessions").insertOne(sessionsDt, (err, dbRes) => {
                                         if (err) {
                                             res.sendStatus(500);
                                             console.error(err)
                                         }
                                         else {
-                                            res.cookie("stok", userDt.token, { expires: userDt.session_expiration })
-                                            res.cookie("uid", userDt.user_id, { expires: userDt.session_expiration })
-                                            res.send({ status: "login_ok", userDt: userDt });
+                                            res.cookie("stok", sessionsDt.token, { expires: sessionsDt.session_expiration })
+                                            res.cookie("uid", sessionsDt.id_user, { expires: sessionsDt.session_expiration })
+                                            res.send({ status: "login_ok", userDt: sessionsDt });
                                         }
                                     })
                                 } else {
@@ -168,10 +169,10 @@ function main() {
                         }
                         else {
                             do {
-                                console.log("\n\n\n\n\ninserted id=>", dbRes.insertedId,"=>",insertAccount,"\n\n\n\n\n\n")
+                                console.log("\n\n\n\n\ninserted id=>", dbRes.insertedId, "=>", insertAccount, "\n\n\n\n\n\n")
                                 error = false;
                                 userDt.token = randomString(128);
-                                res.redirect(307,"/api/login");
+                                res.redirect(307, "/api/login");
                                 // dbo.collection("sessions").findOne({ token: userDt.token }, (err, dbRes) => {
                                 //     if (err) {
                                 //         res.sendStatus(500);
@@ -196,7 +197,7 @@ function main() {
                             } while (error);
                         }
                     })
-                }else{
+                } else {
                     res.sendStatus(401);
                 }
             })
@@ -313,6 +314,10 @@ function main() {
                 }
             })
         })
+    })
+    app.get('/testRaw', (req, res, next) => {
+        res.type('text/plain');
+        res.send("Abbelloooo\nPorcoddumbooo");
     })
 
     app.use('/api/gameGroups/*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next() })
@@ -507,13 +512,16 @@ function main() {
         const parm = req.cookies;
         if (parm.stok != null && parm.stok != "") {
             mongoConn((dbo) => {
-                dbo.collection("sessions").findOne({ token: parm.stok }, (err, dbRes) => {
+                dbo.collection("sessions").findOne({ token: parm.stok }, { projection: { _id: 0 } }, (err, dbRes) => {
                     if (err) res.sendStatus(500);
                     else if (dbRes != null && dbRes.session_expiration > new Date()) {
-                        req.userSession = dbRes
-                        delete req.userSession._id;
-                        if (callback)
-                            callback();
+                        req.userSession = dbRes;
+                        dbo.collection("users").findOne({ _id: dbRes.id_user }, { projection: { _id: 0 } }, (err, dbRes) => {
+                            req.userSession = {...req.userSession, ...dbRes}                     
+                            if (callback)
+                                callback();
+
+                        })
                     } else {
                         if (callback)
                             callback();
