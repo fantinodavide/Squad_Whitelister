@@ -89,7 +89,7 @@ function main() {
 
         mongoConn((dbo) => {
             let cryptPwd = crypto.createHash('sha512').update(parm.password).digest('hex');
-            dbo.collection("users").findOne({ username_lower: parm.username.toLowerCase(), password: cryptPwd }, (err, usrRes) => {
+            dbo.collection("users").findOne({ $or: [{ username_lower: parm.username.toLowerCase() }, { username: parm.username }], password: cryptPwd }, (err, usrRes) => {
                 if (err) {
                     res.sendStatus(500);
                     console.error(err)
@@ -102,7 +102,6 @@ function main() {
                     userDt.login_date = new Date();
                     userDt.session_expiration = new Date(Date.now() + sessDurationMS);
                     delete userDt.password;
-                    delete userDt._id;
 
                     let error;
                     do {
@@ -151,13 +150,13 @@ function main() {
         let error;
         const sessDurationMS = config.other.session_duration_hours * 60 * 60 * 1000;
 
-        let userDt = {...insertAccount};
+        let userDt = { ...insertAccount };
         userDt.login_date = new Date();
         userDt.session_expiration = new Date(Date.now() + sessDurationMS);
 
         mongoConn((dbo) => {
 
-            dbo.collection("users").findOne({ username: parm.username }, (err, dbRes) => {
+            dbo.collection("users").findOne({ $or: [{ username_lower: parm.username.toLowerCase() }, { username: parm.username }] }, (err, dbRes) => {
                 if (err) {
                     res.sendStatus(500);
                     console.error(err)
@@ -169,32 +168,36 @@ function main() {
                         }
                         else {
                             do {
+                                console.log("\n\n\n\n\ninserted id=>", dbRes.insertedId,"=>",insertAccount,"\n\n\n\n\n\n")
                                 error = false;
                                 userDt.token = randomString(128);
-                                dbo.collection("sessions").findOne({ token: userDt.token }, (err, dbRes) => {
-                                    if (err) {
-                                        res.sendStatus(500);
-                                        console.error(err)
-                                    }
-                                    else if (dbRes == null) {
-                                        dbo.collection("sessions").insertOne(userDt, (err, dbRes) => {
-                                            if (err) {
-                                                res.sendStatus(500);
-                                                console.error(err)
-                                            }
-                                            else {
-                                                res.cookie("stok", userDt.token, { expires: userDt.session_expiration })
-                                                res.cookie("uid", userDt.user_id, { expires: userDt.session_expiration })
-                                                res.send({ status: "login_ok", userDt: userDt });
-                                            }
-                                        })
-                                    } else {
-                                        error = true;
-                                    }
-                                })
+                                res.redirect(307,"/api/login");
+                                // dbo.collection("sessions").findOne({ token: userDt.token }, (err, dbRes) => {
+                                //     if (err) {
+                                //         res.sendStatus(500);
+                                //         console.error(err)
+                                //     }
+                                //     else if (dbRes == null) {
+                                //         dbo.collection("sessions").insertOne(userDt, (err, dbRes) => {
+                                //             if (err) {
+                                //                 res.sendStatus(500);
+                                //                 console.error(err)
+                                //             }
+                                //             else {
+                                //                 res.cookie("stok", userDt.token, { expires: userDt.session_expiration })
+                                //                 res.cookie("uid", userDt.user_id, { expires: userDt.session_expiration })
+                                //                 res.send({ status: "login_ok", userDt: userDt });
+                                //             }
+                                //         })
+                                //     } else {
+                                //         error = true;
+                                //     }
+                                // })
                             } while (error);
                         }
                     })
+                }else{
+                    res.sendStatus(401);
                 }
             })
         })
@@ -229,6 +232,12 @@ function main() {
                 order: 10,
                 type: "tab",
                 max_access_level: 5
+            },
+            {
+                name: "Whitelist",
+                order: 15,
+                type: "tab",
+                max_access_level: 100
             },
             // {
             //     name: "Users",
@@ -288,6 +297,22 @@ function main() {
                 }
             })
         });
+    })
+
+    app.use('/api/whitelist/read/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
+    app.get('/api/whitelist/read/getAllClans', (req, res, next) => {
+        const parm = req.body;
+        mongoConn((dbo) => {
+            let findFilter = req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code/*, admins: req.userSession._id*/ } : {};
+            dbo.collection("clans").find(findFilter).sort({ full_name: 1 }).toArray((err, dbRes) => {
+                if (err) {
+                    res.sendStatus(500);
+                    console.error(err)
+                } else {
+                    res.send(dbRes);
+                }
+            })
+        })
     })
 
     app.use('/api/gameGroups/*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next() })

@@ -14,6 +14,7 @@ import gameGroupCard from "./components/gameGroupCard.vue";
 import editClan from "./components/editClan.vue";
 import editGameGroup from "./components/editGameGroup.vue";
 import editClanUsers from "./components/editClanUsers.vue";
+import whitelistTab from "./components/whitelistTab.vue";
 import $ from 'jquery'
 import type { Method } from "@babel/types";
 
@@ -49,7 +50,7 @@ export default {
 			pointers: {
 				confirmPopup: {} as any,
 				editClanUsers: {} as any
-			},
+			}
 		}
 	},
 	methods: {
@@ -156,7 +157,7 @@ export default {
 					this.updateJson(config[k], emptyConfFile[k])
 				}
 			}
-		}
+		},
 	},
 	created() {
 		this.checkSession();
@@ -201,7 +202,8 @@ export default {
 				:clan_data="clans[inEditingClan]" @clan_edited="clans[inEditingClan] = $event" />
 			<editGameGroup v-if="popups.editGameGroup" @cancelBtnClick="popups.editGameGroup = false"
 				:group_data="game_groups[inEditingGroup]" @edited="game_groups[inEditingGroup] = $event" />
-			<editClanUsers v-if="popups.editClanUsers" :clan_data="clans[inUserEditingClan]" @cancelBtnClick="popups.editClanUsers = false;"/>
+			<editClanUsers v-if="popups.editClanUsers" :clan_data="clans[inUserEditingClan]"
+				@cancelBtnClick="popups.editClanUsers = false;" />
 		</blackoutBackground>
 
 		<!--<button @click="setLoginRequired(!loginRequired)">Toggle</button>-->
@@ -210,7 +212,8 @@ export default {
 		<tab v-else-if="currentTab == 'Clans'" :currentTab="currentTab" :horizontal="true" @vnodeMounted="getClans">
 			<button class="addNewClan clanCard" @click="popups.addingNewClan = true"></button>
 			<ClanCard @confirm='removeClan' v-for="c in clans" class="clanCard shadow" :clan_data="c"
-				@edit_clan="popups.editClan = true; inEditingClan = clans.indexOf(c)" @edit_clan_users="popups.editClanUsers = true; inUserEditingClan = clans.indexOf(c)"/>
+				@edit_clan="popups.editClan = true; inEditingClan = clans.indexOf(c)"
+				@edit_clan_users="popups.editClanUsers = true; inUserEditingClan = clans.indexOf(c)" />
 		</tab>
 		<tab v-else-if="currentTab == 'Groups'" :currentTab="currentTab" @vnodeMounted="getGameGroups">
 			<button class="addNewGameGroup" @click="popups.addingNewGameGroup = true"></button>
@@ -220,6 +223,9 @@ export default {
 		<tab v-else-if="currentTab == 'Roles'" :currentTab="currentTab">
 			<button class="createRole" @click="popups.creatingNewRole = true"></button>
 
+		</tab>
+		<tab v-else-if="currentTab == 'Whitelist'" :currentTab="currentTab">
+			<whitelistTab />
 		</tab>
 	</main>
 </template>
