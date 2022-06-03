@@ -64,9 +64,9 @@
 	-webkit-tap-highlight-color: transparent;
 }
 
-*:focus {
-	/* outline: none; */
-}
+/* *:focus {
+	outline: none;
+} */
 
 ::-webkit-scrollbar {
 	height: 5px;
