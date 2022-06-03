@@ -12,10 +12,12 @@ export default {
 		return {
 			whitelist_clans: [] as Array<any>,
 			sel_clan: {} as any,
-			wl_players: [] as Array<any>
+			wl_players: [] as Array<any>,
+			editor: false,
 		}
 	},
 	methods: {
+		log: console.log,
 		getWhitelistTabClans: function () {
 			fetch("/api/whitelist/read/getAllClans").then(res => res.json()).then(dt => {
 				this.whitelist_clans = dt;
@@ -43,10 +45,16 @@ export default {
 				}
 			})
 		},
-		log: console.log
+		checkPerms: function () {
+			fetch("/api/whitelist/write/checkPerm").then(res => res.json()).then(dt => {
+				console.log("editor?", dt)
+				this.editor = true
+			});
+		},
 	},
 	created() {
-		this.getWhitelistTabClans()
+		this.checkPerms();
+		this.getWhitelistTabClans();
 	},
 	components: { whitelistUserCard }
 }
@@ -58,8 +66,8 @@ export default {
 		<option v-for="c of whitelist_clans" :value="c._id">{{ c.full_name }}
 		</option>
 	</select>
-	<button class="addHorizontal" @click="$emit('addNewWhitelistUser', sel_clan)"></button>
-	<whitelistUserCard v-for="w of wl_players" :wl_data="w" />
+	<button v-if="editor" class="addHorizontal" @click="$emit('addNewWhitelistUser', sel_clan)"></button>
+	<whitelistUserCard v-for="w of wl_players" :wl_data="w" :hoverMenuVisible="editor" />
 </template>
 
 <style scoped>

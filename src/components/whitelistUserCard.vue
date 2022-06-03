@@ -9,7 +9,7 @@ export default {
 
 	data() {
 		return {
-			hoverMenuVisible: false,
+			onHover: false,
 			hoverMenuLeft: 0
 		}
 	},
@@ -17,7 +17,12 @@ export default {
 		wl_data: {
 			required: true,
 			type: Object
-		}
+		},
+		hoverMenuVisible: {
+			required: false,
+			type: Boolean,
+			default: true
+		},
 	},
 	methods: {
 		deleteRecord: function (successCB: any) {
@@ -42,16 +47,18 @@ export default {
 </script>
 
 <template>
-	<div class="gameGroupCard">
+	<div class="gameGroupCard shadow">
+		<span class="dot" :class="{ fill: wl_data.approved }"></span>
 		<div class="groupName tag">{{ wl_data.username }}
 		</div>
-		<span class="dot" :class="{ fill: wl_data.approved }"></span>
 		<!--<div class="clanTag"></div>-->
 		<div class="mainGroupContainer" @scroll="updateHoverMenuLeft">
 			<!-- <marquee-text :duration="10" :paused="false"></marquee-text> -->
-			<span class="tag">{{ wl_data.steamid64 }}</span>
+			<span class="tag">{{ wl_data.group_full_data[0].group_name }}</span>
+			<span class="tag noBg redTrans">{{ wl_data.steamid64 }}</span>
+			<span class="tag noBg redTrans">{{ wl_data.discord_username }}</span>
 			<!-- <span class="steamid64">{{ wl_data.steamid64 }}</span> -->
-			<div class="hoverMenu" :class="{ vis: hoverMenuVisible }">
+			<div v-if="hoverMenuVisible" class="hoverMenu" :class="{ vis: onHover }">
 				<button @click="$emit('confirm', { wl_data: wl_data, callback: deleteRecord })">Delete</button>
 				<button @click="$emit('edit', { wl_data: wl_data })">Edit</button>
 			</div>
@@ -62,22 +69,14 @@ export default {
 
 <style scoped>
 .hoverMenu {
-	position: absolute;
 	bottom: -100%;
 	left: v-bind(hoverMenuLeft + "px");
 	width: 100%;
 	height: calc(100% - 5px);
-	opacity: 1;
-	padding: 5px;
-	display: flex;
-	flex-direction: row;
-	flex-wrap: nowrap;
-	align-items: stretch;
-	transition: all 150ms ease-in-out;
 	background: #222;
-	overflow: auto;
 	border-top-left-radius: 15px;
 	border-top-right-radius: 15px;
+	visibility: visible;
 }
 
 .dot {
@@ -94,7 +93,7 @@ export default {
 }
 
 .groupName.tag {
-	margin-right: 0px;
+	margin-left: 0px;
 }
 
 .gameGroupCard:hover .hoverMenu,

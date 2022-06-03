@@ -10,7 +10,7 @@ export default {
 	data() {
 		return {
 			clan_data: {},
-			hoverMenuVisible: false,
+			onHover: false,
 			hoverMenuLeft: 0
 		}
 	},
@@ -18,7 +18,12 @@ export default {
 		group_data: {
 			required: true,
 			type: Object
-		}
+		},
+		hoverMenuVisible: {
+			required: false,
+			type: Boolean,
+			default: true
+		},
 	},
 	methods: {
 		deleteGroup: function (successCB: any) {
@@ -52,7 +57,7 @@ export default {
 			<span class="tag" v-for="p of group_data.group_permissions">{{ p }}</span>
 			<!-- <div class="overflow">
 			</div> -->
-			<div class="hoverMenu" :class="{ vis: hoverMenuVisible }">
+			<div v-if="hoverMenuVisible" class="hoverMenu" :class="{ vis: onHover }">
 				<button @click="$emit('confirm', { group_data: group_data, callback: deleteGroup })">Delete</button>
 				<button @click="$emit('edit', { group_data: group_data })">Edit</button>
 			</div>
@@ -63,22 +68,14 @@ export default {
 
 <style scoped>
 .hoverMenu {
-	position: absolute;
 	bottom: -100%;
 	left: v-bind(hoverMenuLeft + "px");
 	width: 100%;
 	height: calc(100% - 5px);
-	opacity: 1;
-	padding: 5px;
-	display: flex;
-	flex-direction: row;
-	flex-wrap: nowrap;
-	align-items: stretch;
-	transition: all 150ms ease-in-out;
 	background: #222;
-	overflow: auto;
 	border-top-left-radius: 15px;
 	border-top-right-radius: 15px;
+	visibility: visible;
 }
 
 .gameGroupCard:hover .hoverMenu,

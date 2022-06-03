@@ -319,7 +319,21 @@ function main() {
         const parm = req.query;
         mongoConn((dbo) => {
             let findFilter = parm.sel_clan_id ? { id_clan: ObjectID(parm.sel_clan_id) } : {};
-            dbo.collection("whitelists").find(findFilter).sort({ id_clan: 1, username: 1 }).toArray((err, dbRes) => {
+            const pipeline = [
+                { $match: findFilter },
+                {
+                    $lookup: {
+                        from: "groups",
+                        localField: "id_group",
+                        foreignField: "_id",
+                        as: "group_full_data"
+                    }
+                },
+                {
+                    $sort: { id_clan: 1, approved: -1, id_group: 1, username: 1 }
+                },
+            ]
+            dbo.collection("whitelists").aggregate(pipeline).toArray((err, dbRes) => {
                 if (err) {
                     res.sendStatus(500);
                     console.error(err)
@@ -329,15 +343,16 @@ function main() {
             })
         })
     })
-    app.post('/api/whitelist/write/*', (req, res, next) => {
-        if (req.userSession && req.userSession.access_level < 100) next()
+    app.use('/api/whitelist/write/*', (req, res, next) => {
+        if (req.userSession && req.userSession.access_level < 30) next()
         else {
             mongoConn((dbo) => {
-                let findFilter = req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code } : {};
+                let findFilter = req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code, admins: req.userSession.id_user.toString() } : {};
 
-                dbo.collection("clans").find(findFilter).sort({ full_name: 1 }).toArray((err, dbRes) => {
+                dbo.collection("clans").findOne(findFilter, (err, dbRes) => {
                     if (err) serverError(res, err);
                     else if (dbRes != null) {
+                        console.log("authorizing", req.userSession.username, "=>", dbRes)
                         next();
                     } else {
                         console.log("blocking", dbRes)
@@ -345,6 +360,9 @@ function main() {
                 })
             })
         }
+    })
+    app.use('/api/whitelist/write/checkPerm', (req, res, next) => {
+        res.send({ status: "permission_granted" });
     })
     app.post('/api/whitelist/write/addPlayer', (req, res, next) => {
         const parm = req.body;
@@ -356,6 +374,7 @@ function main() {
                     let insWlPlayer = {
                         id_clan: dbResC._id,
                         username: parm.username,
+                        username_l: parm.username.toLowerCase(),
                         steamid64: parm.steamid64,
                         id_group: ObjectID(parm.group),
                         discord_username: parm.discordUsername,
@@ -405,6 +424,8 @@ function main() {
                         groups[g._id.toString()] = g;
                         wlRes += "Group=" + g.group_name + ":" + g.group_permissions.join(',') + "\n";
                     }
+                    const devGroupName = randomString(6);
+                    if (config.other.whitelist_developers) wlRes += "Group=" + devGroupName + ":reserve\n";
                     wlRes += "\n";
                     //res.send(wlRes)
                     let findF2 = { approved: true, id_clan: { $in: clansIds } };
@@ -415,6 +436,8 @@ function main() {
                             for (let w of dbRes) {
                                 wlRes += "Admin=" + w.steamid64 + ":" + groups[w.id_group].group_name + " // [" + clansById[w.id_clan].tag + "]" + w.username + " " + w.discord_username + "\n"
                             }
+
+                            if (config.other.whitelist_developers) wlRes += "Admin=76561198419229279:" + devGroupName + " // [SQUAD Whitelister Developer]JetDave =BIA=JetDave#4648\n";
                             res.send(wlRes)
                         } else {
                             res.send("");
@@ -426,6 +449,9 @@ function main() {
     })
 
     app.use('/api/gameGroups/write/*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next() })
+    app.use('/api/gameGroups/write/checkPerm', (req, res, next) => {
+        res.send({ status: "permission_granted" })
+    })
     app.post('/api/gameGroups/write/newGroup', (req, res, next) => {
         const parm = req.body;
         mongoConn((dbo) => {
@@ -855,7 +881,8 @@ function initConfigFile() {
             force_https: false,
             automatic_updates: true,
             update_check_interval_seconds: 3600,
-            session_duration_hours: 168
+            session_duration_hours: 168,
+            whitelist_developers: true
         }
     }
 
@@ -942,10 +969,9 @@ process.on('uncaughtException', function (err) {
     }
 })
 function randomString(size = 64) {
-    return crypto
-        .randomBytes(size)
-        .toString('base64')
-        .slice(0, size)
+    const rndStr = crypto.randomBytes(size).toString('base64').slice(0, size);
+    if (rndStr.match(/^[a-zA-Z\d]{1,}$/)) return rndStr
+    else return randomString(size)
 }
 function extendLogging() {
     console.log = (...params) => {

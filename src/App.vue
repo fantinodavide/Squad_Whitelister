@@ -56,6 +56,9 @@ export default {
 			tabData: {
 				Whitelist: {
 					sel_clan: {} as any
+				},
+				Groups: {
+					editor: false,
 				}
 			}
 		}
@@ -79,7 +82,10 @@ export default {
 				console.log(dt);
 				this.tabs = dt.tabs;
 				this.tabs.forEach(e => this.tabBtns.push(e['name']));
-				this.setCurrentTab(this.tabs[0]['name'])
+
+				this.$nextTick(() => {
+					this.setCurrentTab(this.tabs[0]['name'])
+				});
 			});
 		},
 		logout: function () {
@@ -165,6 +171,12 @@ export default {
 				}
 			}
 		},
+		checkPerms: function (url: string, callback = (dt: any) => { }) {
+			fetch(url).then(res => res.json()).then(dt => {
+				console.log("editor?", dt)
+				callback(dt);
+			});
+		},
 	},
 	created() {
 		this.checkSession();
@@ -211,8 +223,8 @@ export default {
 				:group_data="game_groups[inEditingGroup]" @edited="game_groups[inEditingGroup] = $event" />
 			<editClanUsers v-if="popups.editClanUsers" :clan_data="clans[inUserEditingClan]"
 				@cancelBtnClick="popups.editClanUsers = false;" />
-			<addNewWhitelistUser v-if="popups.addNewWhitelistUser"
-				@cancelBtnClick="popups.addNewWhitelistUser = false" :sel_clan="tabData.Whitelist.sel_clan"/>
+			<addNewWhitelistUser v-if="popups.addNewWhitelistUser" @cancelBtnClick="popups.addNewWhitelistUser = false"
+				:sel_clan="tabData.Whitelist.sel_clan" />
 		</blackoutBackground>
 
 		<!--<button @click="setLoginRequired(!loginRequired)">Toggle</button>-->
@@ -224,17 +236,21 @@ export default {
 				@edit_clan="popups.editClan = true; inEditingClan = clans.indexOf(c)"
 				@edit_clan_users="popups.editClanUsers = true; inUserEditingClan = clans.indexOf(c)" />
 		</tab>
-		<tab v-else-if="currentTab == 'Groups'" :currentTab="currentTab" @vnodeMounted="getGameGroups">
-			<button class="addNewGameGroup" @click="popups.addingNewGameGroup = true"></button>
+		<tab v-else-if="currentTab == 'Groups'" :currentTab="currentTab"
+			@vnodeMounted="() => { getGameGroups(); checkPerms('/api/gameGroups/write/checkPerm', (dt) => { tabData.Groups.editor = (dt ? true : false) }) }">
+			<button v-if="tabData.Groups.editor" class="addNewGameGroup"
+				@click="popups.addingNewGameGroup = true"></button>
 			<gameGroupCard @confirm='removeGroup' v-for="g in game_groups" class="gameGroupCard shadow" :group_data="g"
-				@edit="popups.editGameGroup = true; inEditingGroup = game_groups.indexOf(g)" />
+				@edit="popups.editGameGroup = true; inEditingGroup = game_groups.indexOf(g)"
+				:hoverMenuVisible="tabData.Groups.editor" />
 		</tab>
 		<tab v-else-if="currentTab == 'Roles'" :currentTab="currentTab">
 			<button class="createRole" @click="popups.creatingNewRole = true"></button>
 
 		</tab>
 		<tab v-else-if="currentTab == 'Whitelist'" :currentTab="currentTab">
-			<whitelistTab @addNewWhitelistUser="popups.addNewWhitelistUser = true; tabData.Whitelist.sel_clan = $event" />
+			<whitelistTab
+				@addNewWhitelistUser="popups.addNewWhitelistUser = true; tabData.Whitelist.sel_clan = $event" />
 		</tab>
 	</main>
 </template>

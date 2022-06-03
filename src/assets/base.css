@@ -136,7 +136,8 @@ select[multiple] {
 	/* border-radius: 10px; */
 	/* margin: 0; */
 }
-select:disabled{
+
+select:disabled {
 	opacity: 1;
 	appearance: none;
 }
@@ -145,6 +146,7 @@ select:disabled{
 	height: 40px;
 	border-radius: 10px;
 	margin: 0;
+	margin-bottom: 5px;
 }
 
 header {
@@ -226,6 +228,28 @@ label {
 	align-items: center;
 }
 
+.tag.noBg {
+	background: #0000;
+}
+
+.tag.redTrans {
+	opacity: 0.6;
+}
+
 .overflow {
+	overflow: auto;
+}
+
+.hoverMenu {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	padding: 5px;
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	align-items: stretch;
+	transition: all 150ms ease-in-out, left 0ms linear;
+	background: #222;
 	overflow: auto;
 }
