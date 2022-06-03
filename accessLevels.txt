@@ -1,0 +1,3 @@
+30=moderator
+5=admin
+100=user

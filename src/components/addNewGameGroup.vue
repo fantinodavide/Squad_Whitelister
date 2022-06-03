@@ -40,7 +40,7 @@ export default {
 <template>
 	<popup ref="popupComp" title="New Group" @cancelBtnClick="$emit('cancelBtnClick', $event)"
 		@confirmBtnClick="confirmBtnClick">
-		<input name="group_name" type="text" placeholder="Group Name" />
+		<input name="group_name" type="text" placeholder="Group Name" regex="^[a-zA-Z\d]{2,}$"/>
 		<select name="group_permissions" multiple>
 			<option v-for="p in permissions.sort()" :value="p">{{ p }}</option>
 		</select>

@@ -42,19 +42,30 @@ export default {
                     valid = false;
                 } else {
                     let cName = i.name;
+                    let i_valid = true;
 
-                    if (i.nodeName == "SELECT" && i.hasAttribute("multiple")) {
-                        let selOptions = [...i.querySelectorAll("option")].filter((e) => e.selected)
-                        let perms = [];
-                        for (let o of selOptions) {
-                            perms.push(o._value)
+                    if (i.hasAttribute("regex") && !(i.value=="" && i.hasAttribute("optional"))) {
+                        i_valid = i.value.match(new RegExp(i.getAttribute("regex")));
+                        if (!i_valid) {
+                            valid = false;
+                            this.blinkBgColor(i);
                         }
-                        dt[cName] = perms
-                    } else {
-                        if (i.type == "checkbox")
-                            dt[cName] = i.checked
-                        else
-                            dt[cName] = i.value
+                    }
+
+                    if (i_valid) {
+                        if (i.nodeName == "SELECT" && i.hasAttribute("multiple")) {
+                            let selOptions = [...i.querySelectorAll("option")].filter((e) => e.selected)
+                            let perms = [];
+                            for (let o of selOptions) {
+                                perms.push(o._value)
+                            }
+                            dt[cName] = perms
+                        } else {
+                            if (i.type == "checkbox")
+                                dt[cName] = i.checked
+                            else
+                                dt[cName] = i.value
+                        }
                     }
                 }
             }

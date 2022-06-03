@@ -52,6 +52,11 @@ export default {
 			pointers: {
 				confirmPopup: {} as any,
 				editClanUsers: {} as any
+			},
+			tabData: {
+				Whitelist: {
+					sel_clan: {} as any
+				}
 			}
 		}
 	},
@@ -206,7 +211,8 @@ export default {
 				:group_data="game_groups[inEditingGroup]" @edited="game_groups[inEditingGroup] = $event" />
 			<editClanUsers v-if="popups.editClanUsers" :clan_data="clans[inUserEditingClan]"
 				@cancelBtnClick="popups.editClanUsers = false;" />
-			<addNewWhitelistUser v-if="popups.addNewWhitelistUser" @cancelBtnClick="popups.addNewWhitelistUser = false"/>
+			<addNewWhitelistUser v-if="popups.addNewWhitelistUser"
+				@cancelBtnClick="popups.addNewWhitelistUser = false" :sel_clan="tabData.Whitelist.sel_clan"/>
 		</blackoutBackground>
 
 		<!--<button @click="setLoginRequired(!loginRequired)">Toggle</button>-->
@@ -228,7 +234,7 @@ export default {
 
 		</tab>
 		<tab v-else-if="currentTab == 'Whitelist'" :currentTab="currentTab">
-			<whitelistTab @addNewWhitelistUser="popups.addNewWhitelistUser = true"/>
+			<whitelistTab @addNewWhitelistUser="popups.addNewWhitelistUser = true; tabData.Whitelist.sel_clan = $event" />
 		</tab>
 	</main>
 </template>

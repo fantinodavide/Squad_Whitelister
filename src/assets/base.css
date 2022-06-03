@@ -136,6 +136,10 @@ select[multiple] {
 	/* border-radius: 10px; */
 	/* margin: 0; */
 }
+select:disabled{
+	opacity: 1;
+	appearance: none;
+}
 
 .tab select {
 	height: 40px;

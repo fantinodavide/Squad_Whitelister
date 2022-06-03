@@ -59,7 +59,7 @@ export default {
 		@confirmBtnClick="confirmBtnClick">
 		<input name="full_name" type="text" placeholder="Full Clan Name" :value="clan_data.full_name" />
 		<input name="tag" type="text" placeholder="Clan Tag" :value="clan_data.tag" />
-		<select name="available_groups" placeholder="Available Groups" multiple>
+		<select name="available_groups" placeholder="Available Groups" multiple optional>
 			<option v-for="p in available_game_groups.sort()" :value="p._id"
 				:selected="clan_data.available_groups.includes(p._id)">{{ p.group_name }}</option>
 		</select>

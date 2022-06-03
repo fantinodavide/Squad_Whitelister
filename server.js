@@ -302,10 +302,24 @@ function main() {
 
     app.use('/api/whitelist/read/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
     app.get('/api/whitelist/read/getAllClans', (req, res, next) => {
-        const parm = req.body;
+        const parm = req.query;
         mongoConn((dbo) => {
             let findFilter = req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code/*, admins: req.userSession._id*/ } : {};
             dbo.collection("clans").find(findFilter).sort({ full_name: 1 }).toArray((err, dbRes) => {
+                if (err) {
+                    res.sendStatus(500);
+                    console.error(err)
+                } else {
+                    res.send(dbRes);
+                }
+            })
+        })
+    })
+    app.get('/api/whitelist/read/getAll', (req, res, next) => {
+        const parm = req.query;
+        mongoConn((dbo) => {
+            let findFilter = parm.sel_clan_id ? { id_clan: ObjectID(parm.sel_clan_id) } : {};
+            dbo.collection("whitelists").find(findFilter).sort({ id_clan: 1, username: 1 }).toArray((err, dbRes) => {
                 if (err) {
                     res.sendStatus(500);
                     console.error(err)
@@ -335,7 +349,7 @@ function main() {
     app.post('/api/whitelist/write/addPlayer', (req, res, next) => {
         const parm = req.body;
         mongoConn((dbo) => {
-            let findFilter = (req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code, admins: req.userSession.id_user.toString() } : {});
+            let findFilter = (req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code, admins: req.userSession.id_user.toString() } : { _id: ObjectID(parm.sel_clan_id) });
             dbo.collection("clans").findOne(findFilter, (err, dbResC) => {
                 if (err) console.log("error", err)//serverError(res, err);
                 else if (dbResC != null) {
@@ -352,7 +366,7 @@ function main() {
                     dbo.collection("groups").findOne(insWlPlayer.id_group, (err, dbRes) => {
                         if (err) console.log("error", err)
                         else if (dbRes != null) {
-                            insWlPlayer.approved = !(dbRes.require_appr || dbResC.confirmation_ovrd);
+                            insWlPlayer.approved = !(dbRes.require_appr || dbResC.confirmation_ovrd) || req.userSession.access_level <= 30;
                             //console.log("\n\n\n\nNew Whitelist", insWlPlayer, dbRes);
                             dbo.collection("whitelists").insertOne(insWlPlayer, (err, dbRes) => {
                                 if (err) console.log("ERR", err);//serverError(res, err);
@@ -399,7 +413,7 @@ function main() {
                         if (err) serverError(res, err);
                         else if (dbRes != null) {
                             for (let w of dbRes) {
-                                wlRes += "Admin=" + w.steamid64 + ":" + groups[w.id_group].group_name + " // [" + clansById[w.id_clan].tag + "]" + w.username + "\n"
+                                wlRes += "Admin=" + w.steamid64 + ":" + groups[w.id_group].group_name + " // [" + clansById[w.id_clan].tag + "]" + w.username + " " + w.discord_username + "\n"
                             }
                             res.send(wlRes)
                         } else {

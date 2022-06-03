@@ -11,8 +11,15 @@ export default {
 			game_groups: [] as Array<any>
 		}
 	},
+	props: {
+		sel_clan: {
+			required: true,
+			type: Object
+		}
+	},
 	methods: {
 		confBtnClick: function (dt: any) {
+			dt.sel_clan_id = this.sel_clan;
 			const compPopup: any = this.$refs.popupLogin;
 			$.ajax({
 				url: "/api/whitelist/write/addPlayer",
@@ -38,6 +45,7 @@ export default {
 		}
 	},
 	created() {
+		console.log("Adding new whitelist user for",this.sel_clan,"clan")
 		this.getGameGroups();
 	},
 	components: { popup }
@@ -48,12 +56,12 @@ export default {
 	<popup ref="popupLogin" title="Add Player" @cancelBtnClick="$emit('cancelBtnClick', $event)"
 		@confirmBtnClick="confBtnClick" :hide-cancel="false">
 		<input name="username" type="text" placeholder="Username" />
-		<input name="steamid64" type="text" placeholder="SteamID64" />
+		<input name="steamid64" type="text" regex="^\d{17}$" placeholder="SteamID64" />
 		<select name="group">
-			<option hidden selected>Select a group</option>
+			<option hidden selected value>Select a group</option>
 			<option v-for="g of game_groups" :value="g._id">{{ g.group_name }}</option>
 		</select>
-		<input name="discordUsername" type="text" placeholder="Discord Username" optional />
+		<input name="discordUsername" type="text" placeholder="Discord Username" optional regex="^.{3,32}#[0-9]{4}$"/>
 	</popup>
 </template>
 
