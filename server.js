@@ -145,7 +145,8 @@ function main() {
             password: crypto.createHash('sha512').update(parm.password).digest('hex'),
             access_level: 100,
             clan_code: parm.clan_code,
-            registration_date: new Date()
+            registration_date: new Date(),
+            discord_username: parm.discord_username
         }
 
         let error;

@@ -44,6 +44,7 @@ export default {
 		<input name="password" type="password" placeholder="Password" />
 		<input name="conf_password" type="password" placeholder="Confirm Password" />
 		<input name="clan_code" type="text" placeholder="Clan Code" />
+		<input name="discord_username" type="text" placeholder="Discord Username" optional regex="^.{3,32}#[0-9]{4}$"/>
 	</popup>
 </template>
 
