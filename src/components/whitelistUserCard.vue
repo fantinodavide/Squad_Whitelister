@@ -28,14 +28,14 @@ export default {
 		deleteRecord: function (successCB: any) {
 			console.log("Removing", this.$props.wl_data)
 			$.ajax({
-				url: "/api/gameGroups/write/remove",
+				url: "/api/whitelist/write/removePlayer",
 				type: "post",
 				data: this.$props.wl_data,
 				dataType: "json",
 				success: (dt) => {
 					console.log(dt);
-					successCB();
-					//location.reload();
+					if (successCB) successCB();
+					this.$emit("removedPlayer",this.$props.wl_data)
 				}
 			})
 		},
@@ -60,7 +60,7 @@ export default {
 			<!-- <span class="steamid64">{{ wl_data.steamid64 }}</span> -->
 			<div v-if="hoverMenuVisible" class="hoverMenu" :class="{ vis: onHover }">
 				<button @click="$emit('confirm', { wl_data: wl_data, callback: deleteRecord })">Delete</button>
-				<button @click="$emit('edit', { wl_data: wl_data })">Edit</button>
+				<!-- <button @click="$emit('edit', { wl_data: wl_data })">Edit</button> -->
 			</div>
 		</div>
 		<!-- <div class="btnContainer"><button @click="hoverMenuVisible = !hoverMenuVisible">Edit</button></div> -->

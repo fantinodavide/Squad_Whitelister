@@ -29,5 +29,6 @@ coverage
 *.sw?
 
 release.zip
+release
 
 conf.json

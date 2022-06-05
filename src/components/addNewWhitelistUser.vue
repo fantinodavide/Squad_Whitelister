@@ -12,14 +12,14 @@ export default {
 		}
 	},
 	props: {
-		sel_clan: {
+		add_data: {
 			required: true,
 			type: Object
 		}
 	},
 	methods: {
 		confBtnClick: function (dt: any) {
-			dt.sel_clan_id = this.sel_clan;
+			dt.sel_clan_id = this.add_data.sel_clan;
 			const compPopup: any = this.$refs.popupLogin;
 			$.ajax({
 				url: "/api/whitelist/write/addPlayer",
@@ -29,7 +29,9 @@ export default {
 				contentType: 'application/json',
 				timeout: 60000,
 				success: (dt) => {
-					console.log(dt);
+					const plDt = {...dt.player, group_full_data: this.game_groups.filter((g)=>g._id == dt.player.id_group)};
+					console.log(dt, plDt);
+					this.add_data.callback(plDt);
 					this.$emit('cancelBtnClick')
 				},
 				error: (err) => {
@@ -41,11 +43,13 @@ export default {
 		getGameGroups() {
 			fetch("/api/gameGroups/read/getAllGroups").then(res => res.json()).then(dt => {
 				this.game_groups = dt;
+				console.log("game groups", this.game_groups);
+				
 			});
 		}
 	},
 	created() {
-		console.log("Adding new whitelist user for",this.sel_clan,"clan")
+		console.log("Adding new whitelist user for",this.add_data.sel_clan,"clan")
 		this.getGameGroups();
 	},
 	components: { popup }

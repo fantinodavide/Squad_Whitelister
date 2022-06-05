@@ -404,6 +404,17 @@ function main() {
             })
         })
     })
+    app.post('/api/whitelist/write/removePlayer', (req, res, next) => {
+        const parm = req.body;
+        mongoConn((dbo) => {
+            dbo.collection("whitelists").deleteOne({ _id: ObjectID(parm._id) }, (err, dbRes) => {
+                if (err) serverError(res, err);
+                else {
+                    res.send({ status: "removing_ok", ...dbRes })
+                }
+            })
+        })
+    })
     app.get('/wl/:clan_code?', (req, res, next) => {
         res.type('text/plain');
 

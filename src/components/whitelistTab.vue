@@ -51,6 +51,13 @@ export default {
 				this.editor = true
 			});
 		},
+		removePlayer: function (e: any) {
+			console.log("removing player", e, this.wl_players)
+			this.wl_players = this.wl_players.filter((p) => p._id != e._id)
+		},
+		appendPlayer: function (e: any) {
+			this.wl_players.push(e)
+		},
 	},
 	created() {
 		this.checkPerms();
@@ -66,8 +73,10 @@ export default {
 		<option v-for="c of whitelist_clans" :value="c._id">{{ c.full_name }}
 		</option>
 	</select>
-	<button v-if="editor" class="addHorizontal" @click="$emit('addNewWhitelistUser', sel_clan)"></button>
-	<whitelistUserCard v-for="w of wl_players" :wl_data="w" :hoverMenuVisible="editor" />
+	<button v-if="editor" class="addHorizontal"
+		@click="$emit('addNewWhitelistUser', { sel_clan: sel_clan, callback: appendPlayer})"></button>
+	<whitelistUserCard v-for="w of wl_players" :wl_data="w" :hoverMenuVisible="editor"
+		@confirm="$emit('confirm', $event)" @removedPlayer="removePlayer" />
 </template>
 
 <style scoped>
