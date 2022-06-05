@@ -230,13 +230,13 @@ function main() {
                 max_access_level: 5
             },
             {
-                name: "Groups",
+                name: "Whitelist",
                 order: 10,
                 type: "tab",
                 max_access_level: 100
             },
             {
-                name: "Whitelist",
+                name: "Groups",
                 order: 15,
                 type: "tab",
                 max_access_level: 100
