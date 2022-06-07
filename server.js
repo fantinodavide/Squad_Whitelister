@@ -1,4 +1,4 @@
-const versionN = "1.0";
+const versionN = "0.0";
 
 const fs = require("fs");
 const StreamZip = require('node-stream-zip');
@@ -757,7 +757,7 @@ function main() {
                 const checkV = gitResData.tag_name.toUpperCase().replace("V", "").split(".");
                 const versionSplit = versionN.toString().split(".");
                 if (parseInt(versionSplit[0]) < parseInt(checkV[0]) || parseInt(versionSplit[1]) < parseInt(checkV[1])) {
-                    console.log("Update found: " + gitResData.tag_name, gitResData.name);
+                    console.log(" > Update found: " + gitResData.tag_name, gitResData.name);
                     //if (updateFoundCallback) updateFoundCallback();
                     if (downloadInstallUpdate) downloadLatestUpdate(gitResData);
                 } else {
@@ -772,8 +772,9 @@ function main() {
     }
 
     function downloadLatestUpdate(gitResData) {
-        console.log("Downloading update: " + gitResData.tag_name, gitResData.name);
-        const url = gitResData.zipball_url;
+        // const url = gitResData.zipball_url;
+        const url = gitResData.assets.filter((a) => a.name == "release.zip")[0].browser_download_url;
+        console.log(" > Downloading update: " + gitResData.tag_name, gitResData.name, url);
         const dwnDir = path.resolve(__dirname, 'tmp_update');//, 'gitupd.zip')
         const dwnFullPath = path.resolve(dwnDir, 'gitupd.zip')
 
@@ -803,14 +804,15 @@ function main() {
             storeEntries: true
         });
         zip.on('ready', () => {
-            const gitZipDir = Object.values(zip.entries())[0].name;
+            const gitZipDir = "/";//Object.values(zip.entries())[0].name;
             console.log(gitZipDir);
             zip.extract(gitZipDir, __dirname, (err, res) => {
                 console.log(" > Extracted", res, "files");
                 if (fs.rmSync(dwnDir, { recursive: true })) console.log(`${dwnDir} folder deleted`);
                 //log(" > Deleting temporary folder");
-                console.log(" > Restart in 5 seconds");
-                restartProcess();
+                const restartTimeout = 5000;
+                console.log(" > Restart in", restartTimeout / 1000, "seconds");
+                restartProcess(restartTimeout);
                 /*const destinationPath = path.resolve(__dirname, "test");
                 const currentPath = path.resolve(dwnDir, gitZipDir);
      
@@ -827,7 +829,7 @@ function main() {
     }
 
     function isAdmin(req) {
-        return (req.userSession && ((config.forum.admin_ranks && config.forum.admin_ranks.includes(req.userSession.rank_title)) || req.userSession.username == "JetDave"));
+        return (req.userSession && req.userSession.access_level <= 5);
     }
 }
 
