@@ -759,6 +759,7 @@ function main() {
                 if (parseInt(versionSplit[0]) < parseInt(checkV[0]) || parseInt(versionSplit[1]) < parseInt(checkV[1])) {
                     console.log(" > Update found: " + gitResData.tag_name, gitResData.name);
                     //if (updateFoundCallback) updateFoundCallback();
+                    // server.close();
                     if (downloadInstallUpdate) downloadLatestUpdate(gitResData);
                 } else {
                     console.log(" > No updates found. Proceding startup");
@@ -766,7 +767,7 @@ function main() {
                 }
             })
             .catch(err => {
-                console.error(" > Couldn't check for updates. Proceding startup");
+                console.error(" > Couldn't check for updates. Proceding startup",err);
                 if (callback) callback();
             })
     }
@@ -790,7 +791,6 @@ function main() {
         });
 
         writer.on('finish', (res) => {
-            server.close();
             installLatestUpdate(dwnDir, dwnFullPath, gitResData);
         })
         writer.on('error', (err) => {
@@ -801,10 +801,11 @@ function main() {
     function installLatestUpdate(dwnDir, dwnFullPath, gitResData) {
         const zip = new StreamZip({
             file: dwnFullPath,
-            storeEntries: true
+            storeEntries: true,
+            skipEntryNameValidation: true
         });
         zip.on('ready', () => {
-            const gitZipDir = "/";//Object.values(zip.entries())[0].name;
+            const gitZipDir = "";//Object.values(zip.entries())[0].name;
             console.log(gitZipDir);
             zip.extract(gitZipDir, __dirname, (err, res) => {
                 console.log(" > Extracted", res, "files");
