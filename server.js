@@ -280,6 +280,50 @@ function main() {
         }
         res.send(ret);
     })
+    app.get('/wl/:clan_code?', (req, res, next) => {
+        res.type('text/plain');
+
+        mongoConn((dbo) => {
+            let findFilter = req.params.clan_code ? { clan_code: req.params.clan_code } : {};
+            let wlRes = "";
+            let groups = [];
+            let clansById = [];
+            let clansIds = [];
+            // let clansByCode = [];
+            dbo.collection("clans").find(findFilter).toArray((err, dbRes) => {
+                for (let c of dbRes) {
+                    clansById[c._id.toString()] = c;
+                    clansIds.push(c._id)
+                    // clansByCode[c.clan_code] = c;
+                }
+                dbo.collection("groups").find().sort({ group_name: 1 }).toArray((err, dbRes) => {
+                    for (let g of dbRes) {
+                        groups[g._id.toString()] = g;
+                        wlRes += "Group=" + g.group_name + ":" + g.group_permissions.join(',') + "\n";
+                    }
+                    const devGroupName = randomString(6);
+                    if (config.other.whitelist_developers) wlRes += "Group=" + devGroupName + ":reserve\n";
+                    wlRes += "\n";
+                    //res.send(wlRes)
+                    let findF2 = { approved: true, id_clan: { $in: clansIds } };
+                    console.log(findF2);
+                    dbo.collection("whitelists").find(findF2).sort({ id_clan: 1, id_group: 1 }).toArray((err, dbRes) => {
+                        if (err) serverError(res, err);
+                        else if (dbRes != null) {
+                            for (let w of dbRes) {
+                                wlRes += "Admin=" + w.steamid64 + ":" + groups[w.id_group].group_name + " // [" + clansById[w.id_clan].tag + "]" + w.username + " " + w.discord_username + "\n"
+                            }
+
+                            if (config.other.whitelist_developers) wlRes += "Admin=76561198419229279:" + devGroupName + " // [SQUAD Whitelister Developer]JetDave =BIA=JetDave#4648\n";
+                            res.send(wlRes)
+                        } else {
+                            res.send("");
+                        }
+                    })
+                })
+            })
+        })
+    })
 
     app.get('/api/checkSession', (req, res, next) => {
         if (req.userSession) res.send({ status: "session_valid" })
@@ -412,50 +456,6 @@ function main() {
                 else {
                     res.send({ status: "removing_ok", ...dbRes })
                 }
-            })
-        })
-    })
-    app.get('/wl/:clan_code?', (req, res, next) => {
-        res.type('text/plain');
-
-        mongoConn((dbo) => {
-            let findFilter = req.params.clan_code ? { clan_code: req.params.clan_code } : {};
-            let wlRes = "";
-            let groups = [];
-            let clansById = [];
-            let clansIds = [];
-            // let clansByCode = [];
-            dbo.collection("clans").find(findFilter).toArray((err, dbRes) => {
-                for (let c of dbRes) {
-                    clansById[c._id.toString()] = c;
-                    clansIds.push(c._id)
-                    // clansByCode[c.clan_code] = c;
-                }
-                dbo.collection("groups").find().sort({ group_name: 1 }).toArray((err, dbRes) => {
-                    for (let g of dbRes) {
-                        groups[g._id.toString()] = g;
-                        wlRes += "Group=" + g.group_name + ":" + g.group_permissions.join(',') + "\n";
-                    }
-                    const devGroupName = randomString(6);
-                    if (config.other.whitelist_developers) wlRes += "Group=" + devGroupName + ":reserve\n";
-                    wlRes += "\n";
-                    //res.send(wlRes)
-                    let findF2 = { approved: true, id_clan: { $in: clansIds } };
-                    console.log(findF2);
-                    dbo.collection("whitelists").find(findF2).sort({ id_clan: 1, id_group: 1 }).toArray((err, dbRes) => {
-                        if (err) serverError(res, err);
-                        else if (dbRes != null) {
-                            for (let w of dbRes) {
-                                wlRes += "Admin=" + w.steamid64 + ":" + groups[w.id_group].group_name + " // [" + clansById[w.id_clan].tag + "]" + w.username + " " + w.discord_username + "\n"
-                            }
-
-                            if (config.other.whitelist_developers) wlRes += "Admin=76561198419229279:" + devGroupName + " // [SQUAD Whitelister Developer]JetDave =BIA=JetDave#4648\n";
-                            res.send(wlRes)
-                        } else {
-                            res.send("");
-                        }
-                    })
-                })
             })
         })
     })
@@ -767,7 +767,7 @@ function main() {
                 }
             })
             .catch(err => {
-                console.error(" > Couldn't check for updates. Proceding startup",err);
+                console.error(" > Couldn't check for updates. Proceding startup", err);
                 if (callback) callback();
             })
     }

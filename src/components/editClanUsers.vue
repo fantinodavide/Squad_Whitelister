@@ -89,7 +89,7 @@ export default {
 <template>
 	<popup ref="popupLogin" title="Clan Admins" @cancelBtnClick="$emit('cancelBtnClick', $event)"
 		@confirmBtnClick="confirmBtnClick">
-		<select name="clan_admins" placeholder="Clan Users" multiple>
+		<select name="clan_admins" placeholder="Clan Users" multiple optional>
 			<option v-for="p in clan_users.sort()" :value="p._id" :selected="clan_admins.includes(p._id)">{{
 					p.username
 			}}</option>

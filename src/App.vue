@@ -16,6 +16,7 @@ import editGameGroup from "./components/editGameGroup.vue";
 import editClanUsers from "./components/editClanUsers.vue";
 import whitelistTab from "./components/whitelistTab.vue";
 import addNewWhitelistUser from "./components/addNewWhitelistUser.vue";
+import thanksCard from "./components/thanksCard.vue";
 import $ from 'jquery'
 import type { Method } from "@babel/types";
 
@@ -258,10 +259,26 @@ export default {
 
 		</tab>
 		<tab v-else-if="currentTab == 'Whitelist'" :currentTab="currentTab">
-			<whitelistTab
-				@addNewWhitelistUser="popups.addNewWhitelistUser = true; tabData.Whitelist.add_data = $event;" @confirm="removeWhitelistPlayer"/>
+			<whitelistTab @addNewWhitelistUser="popups.addNewWhitelistUser = true; tabData.Whitelist.add_data = $event;"
+				@confirm="removeWhitelistPlayer" />
 		</tab>
 	</main>
+	<footer>
+		<h2>Special Thanks</h2>
+		<div class="thanksCard">
+			<img src="/src/assets/bia_logo.png" alt="Brigata Italiana Ariete">
+			<div class="desc">
+				<h3>Brigata Italiana Ariete</h3>
+				<p>
+					<a href="https://biaclan.it/" target="_blank">Official Website</a>
+					<a href="https://discord.gg/dXHVfQZcxJ" target="_blank">Official Discord</a>
+				</p>
+			</div>
+		</div>
+		<thanksCard title="Offworld Industries" website="https://www.offworldindustries.com/"
+			src="https://www.offworldindustries.com/wp-content/themes/owitheme/img/logo_white.svg"
+			discord="https://discord.com/invite/kRkqJgXW" />
+	</footer>
 </template>
 
 <style>
@@ -294,6 +311,38 @@ header .logo {
 	flex-grow: 100;
 	justify-content: end;
 	align-items: center;
+}
+
+.thanksCard {
+	width: fit-content;
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	background: #fff1;
+	border-radius: 15px;
+	padding: 10px;
+	align-items: center;
+	margin: 5px;
+}
+
+.thanksCard .desc {
+	display: flex;
+	flex-direction: column;
+}
+
+.thanksCard .desc p {
+	display: flex;
+	flex-direction: column;
+}
+
+.thanksCard .desc p a {
+	text-decoration: none;
+	font-size: 14px;
+	font-style: italic;
+}
+
+.thanksCard .desc p a:hover {
+	text-decoration: underline;
 }
 
 .popupsArea {

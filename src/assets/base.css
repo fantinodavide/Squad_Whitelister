@@ -160,6 +160,39 @@ header {
 	padding-bottom: 0px;
 }
 
+footer {
+	display: flex;
+	flex-wrap: wrap;
+	background: #ffffff09;
+	padding: 10px;
+	justify-content: center;
+	flex-direction: column;
+	align-items: center;
+}
+
+footer img {
+	width: 65px;
+	height: 65px;
+	object-fit: contain;
+	margin-right: 10px;
+}
+
+a:link {
+	color: #aaa;
+}
+
+a:visited {
+	color: #aaa;
+}
+
+a:hover {
+	color: #ccc;
+}
+
+a:active {
+	color: #aaa;
+}
+
 #app {
 	min-height: 100vh;
 	display: flex;
