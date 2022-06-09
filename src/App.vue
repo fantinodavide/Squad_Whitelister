@@ -320,6 +320,7 @@
 			<thanksCard title="Brigata Italiana Ariete" :src="bia_logo" website="https://biaclan.it/" discord="https://discord.gg/dXHVfQZcxJ" />
 			<thanksCard title="Offworld Industries" website="https://www.offworldindustries.com/" src="https://www.offworldindustries.com/wp-content/themes/owitheme/img/logo_white.svg" discord="https://discord.com/invite/kRkqJgXW" />
 		</div>
+		<span class="copyright">&copy; {{(new Date()).getFullYear()}} Squad Whitelister, JetDave | Fantino Davide</span>
 	</footer>
 </template>
 

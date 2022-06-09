@@ -177,6 +177,11 @@ footer img {
 	margin-right: 10px;
 }
 
+footer .copyright{
+	color: #aaa;
+	margin: 10px;
+}
+
 a:link {
 	color: #aaa;
 }

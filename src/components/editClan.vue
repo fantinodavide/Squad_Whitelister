@@ -63,6 +63,7 @@ export default {
 			<option v-for="p in available_game_groups.sort()" :value="p._id"
 				:selected="clan_data.available_groups.includes(p._id)">{{ p.group_name }}</option>
 		</select>
+		<label>Player Limit<input name="player_limit" type="number" placeholder="&infin;" style="width: 100px" :value="clan_data.player_limit"/></label>
 		<label>Always Require Approval<input name="confirmation_ovrd" type="checkbox"
 				:checked="clan_data.confirmation_ovrd" placeholder="Confirmation Override" /></label>
 	</popup>

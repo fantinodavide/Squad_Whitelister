@@ -413,35 +413,66 @@ function main() {
         const parm = req.body;
         mongoConn((dbo) => {
             let findFilter = (req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code, admins: req.userSession.id_user.toString() } : { _id: ObjectID(parm.sel_clan_id) });
-            dbo.collection("clans").findOne(findFilter, (err, dbResC) => {
+            const pipeline = [
+                { $match: findFilter },
+                {
+                    $lookup: {
+                        from: "whitelists",
+                        localField: "_id",
+                        foreignField: "id_clan",
+                        as: "clan_whitelist"
+                    }
+                },
+                {
+                    $addFields: {
+                        player_count: { $size: "$clan_whitelist" }
+                    }
+                },
+                {
+                    $project: {
+                        clan_whitelist: 0,
+                    }
+                }
+            ]
+            //dbo.collection("clans").findOne(findFilter, (err, dbResC) => {
+            dbo.collection("clans").aggregate(pipeline).toArray((err, aDbResC) => {
+                console.log("====>", aDbResC)
+                let dbResC = aDbResC[0];
+
                 if (err) console.log("error", err)//serverError(res, err);
                 else if (dbResC != null) {
-                    let insWlPlayer = {
-                        id_clan: dbResC._id,
-                        username: parm.username,
-                        username_l: parm.username.toLowerCase(),
-                        steamid64: parm.steamid64,
-                        id_group: ObjectID(parm.group),
-                        discord_username: parm.discordUsername,
-                        inserted_by: ObjectID(req.userSession.id_user),
-                        insert_date: new Date(),
-                        approved: false,
-                    }
-                    dbo.collection("groups").findOne(insWlPlayer.id_group, (err, dbRes) => {
-                        if (err) console.log("error", err)
-                        else if (dbRes != null) {
-                            insWlPlayer.approved = !(dbRes.require_appr || dbResC.confirmation_ovrd) || req.userSession.access_level <= 30;
-                            //console.log("\n\n\n\nNew Whitelist", insWlPlayer, dbRes);
-                            dbo.collection("whitelists").insertOne(insWlPlayer, (err, dbRes) => {
-                                if (err) console.log("ERR", err);//serverError(res, err);
-                                else {
-                                    res.send({ status: "inserted_new_player", player: insWlPlayer, ...dbRes })
-                                }
-                            })
-                        } else {
-                            res.send({ status: "not_inserted", reason: "could find corresponding id" });
+                    if(dbResC.player_count < parseInt(dbResC.player_limit)){
+                        let insWlPlayer = {
+                            id_clan: dbResC._id,
+                            username: parm.username,
+                            username_l: parm.username.toLowerCase(),
+                            steamid64: parm.steamid64,
+                            id_group: ObjectID(parm.group),
+                            discord_username: parm.discordUsername,
+                            inserted_by: ObjectID(req.userSession.id_user),
+                            insert_date: new Date(),
+                            approved: false,
                         }
-                    })
+                        dbo.collection("groups").findOne(insWlPlayer.id_group, (err, dbRes) => {
+                            if (err) console.log("error", err)
+                            else if (dbRes != null) {
+                                insWlPlayer.approved = !(dbRes.require_appr || dbResC.confirmation_ovrd) || req.userSession.access_level <= 30;
+                                //console.log("\n\n\n\nNew Whitelist", insWlPlayer, dbRes);
+    
+    
+                                dbo.collection("whitelists").insertOne(insWlPlayer, (err, dbRes) => {
+                                    if (err) console.log("ERR", err);//serverError(res, err);
+                                    else {
+                                        res.send({ status: "inserted_new_player", player: insWlPlayer, ...dbRes })
+                                    }
+                                })
+                            } else {
+                                res.send({ status: "not_inserted", reason: "could find corresponding id" });
+                            }
+                        })
+                    }else{
+                        res.send({ status: "not_inserted", reason: "Player limit reached" });
+                    }
                 } else {
                     res.sendStatus(401);
                 }
