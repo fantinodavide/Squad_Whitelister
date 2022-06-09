@@ -12,11 +12,11 @@ export default {
 			type: String
 		},
 		website: {
-			required: true,
+			required: false,
 			type: String
 		},
 		discord: {
-			required: true,
+			required: false,
 			type: String
 		},
 		src: {
@@ -25,6 +25,9 @@ export default {
 		}
 	},
 	methods: {
+		getSrc: function(){
+			return require(this.src);
+		}
 	}
 }
 </script>
@@ -35,8 +38,8 @@ export default {
 		<div class="desc">
 			<h3>{{ title }}</h3>
 			<p>
-				<a :href="website" target="_blank">Official Website</a>
-				<a :href="discord" target="_blank">Official Discord</a>
+				<a v-if="website" :href="website" target="_blank">Official Website</a>
+				<a v-if="discord" :href="discord" target="_blank">Official Discord</a>
 			</p>
 		</div>
 	</div>
@@ -53,6 +56,7 @@ export default {
 	padding: 10px;
 	align-items: center;
 	margin: 5px;
+	flex-shrink: 0;
 }
 
 .thanksCard .desc {
