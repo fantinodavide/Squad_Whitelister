@@ -71,7 +71,7 @@
 </script>
 
 <template>
-	<select name="clan_selector" ref="clan_selector" :disabled="whitelist_clans.length == 1" @change="selectClanChanged">
+	<select name="clan_selector" ref="clan_selector" :disabled="whitelist_clans.length <= 1" @change="selectClanChanged">
 		<option v-for="c of whitelist_clans" :value="c._id">{{ c.full_name }}</option>
 	</select>
 	<approveUserCard v-for="w of wl_players" :wl_data="w" :hoverMenuVisible="editor" @confirm="$emit('confirm', $event)" @removedPlayer="removePlayer" />

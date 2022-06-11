@@ -573,7 +573,7 @@ function main() {
     app.use('/api/approval/write/setApprovedStatus', (req, res, next) => {
         const parm = req.body;
         mongoConn((dbo) => {
-            if (parm.approve_update && parm.approve_update == true) {
+            if (parm.approve_update && (parm.approve_update == true || parm.approve_update == 'true')) {
                 dbo.collection("whitelists").updateOne({ _id: ObjectID(parm._id) }, { $set: { approved: true } }, (err, dbRes) => {
                     if (err) serverError(res, err);
                     else {
