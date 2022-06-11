@@ -22,6 +22,7 @@
 					.then((res) => res.json())
 					.then((dt) => {
 						this.whitelist_clans = dt;
+						console.log('Pending approval clans:', dt);
 						this.sel_clan = this.whitelist_clans[0]._id;
 						this.getClanWhitelist();
 					});
@@ -38,7 +39,7 @@
 					dataType: 'json',
 					contentType: 'application/json',
 					success: (dt) => {
-						console.log('Whitelist player', dt);
+						//console.log('Pending approval clans:', dt);
 						this.wl_players = dt;
 					},
 					error: (err) => {

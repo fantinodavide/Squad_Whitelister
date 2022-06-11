@@ -403,27 +403,22 @@ function main() {
                 {
                     $lookup: {
                         from: "whitelists",
-                        localField: "_id",
-                        foreignField: "id_clan",
+                        let: { id_clan: "$_id" },
                         pipeline: [
                             {
                                 $match: {
-                                    approved: false,
-                                },
-                            },
-                            {
-                                $project: {
+                                    $expr: { $eq: ["$id_clan", "$$id_clan"] },
                                     approved: false,
                                 }
                             }
                         ],
-                        as: "whitelists_data"
+                        as: "whitelists",
                     }
                 },
                 {
                     $sort: { whitelists_data: -1 }
                 },
-                { $match: { whitelists_data: { $exists: true, $ne: [] } } }
+                { $match: { whitelists: { $exists: true, $ne: [] } } }
             ]
             dbo.collection("clans").aggregate(pipeline).toArray((err, dbRes) => {
                 if (err) {
