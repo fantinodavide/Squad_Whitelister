@@ -1,4 +1,4 @@
-const versionN = "0.1";
+const versionN = "0.2";
 
 const fs = require("fs");
 const StreamZip = require('node-stream-zip');
@@ -936,27 +936,32 @@ function main() {
             skipEntryNameValidation: true
         });
         zip.on('ready', () => {
-            const gitZipDir = "";//Object.values(zip.entries())[0].name;
-            console.log(gitZipDir);
-            zip.extract(gitZipDir, __dirname, (err, res) => {
-                console.log(" > Extracted", res, "files");
-                if (fs.rmSync(dwnDir, { recursive: true })) console.log(`${dwnDir} folder deleted`);
-                //log(" > Deleting temporary folder");
-                const restartTimeout = 5000;
-                console.log(" > Restart in", restartTimeout / 1000, "seconds");
-                restartProcess(restartTimeout);
-                /*const destinationPath = path.resolve(__dirname, "test");
-                const currentPath = path.resolve(dwnDir, gitZipDir);
-     
-                fs.rename(currentPath, destinationPath, function (err) {
-                    if (err) {
-                        throw err
-                    } else {
-                        log("Successfully moved the file!");
-                    }
-                });*/
-                zip.close();
-            });
+            const gitZipDir = "release";//Object.values(zip.entries())[0].name;
+            //if () console.log(`${dwnDir} folder deleted`);
+            fs.rmdir(__dirname + "/dist", { recursive: true }, () => {
+                zip.extract(gitZipDir, __dirname, (err, res) => {
+                    console.log(" > Extracted", res, "files");
+                    fs.rmdir(dwnDir, { recursive: true }, () => {
+                        console.log(`${dwnDir} folder deleted`);
+                        const restartTimeout = 5000;
+                        console.log(" > Restart in", restartTimeout / 1000, "seconds");
+                        restartProcess(restartTimeout);
+                        /*const destinationPath = path.resolve(__dirname, "test");
+                        const currentPath = path.resolve(dwnDir, gitZipDir);
+             
+                        fs.rename(currentPath, destinationPath, function (err) {
+                            if (err) {
+                                throw err
+                            } else {
+                                log("Successfully moved the file!");
+                            }
+                        });*/
+                        zip.close();
+                    })
+                    //log(" > Deleting temporary folder");
+                });
+            })
+
         });
     }
 
@@ -1004,6 +1009,8 @@ function toUpperFirstChar(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
 function initConfigFile() {
+
+    console.log("Current dir: ", __dirname);
     let emptyConfFile = {
         http_server: {
             bind_ip: "0.0.0.0",

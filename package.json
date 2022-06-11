@@ -7,7 +7,8 @@
     "preview": "vite preview --port 5050",
     "typecheck": "vue-tsc --noEmit",
     "app": "vue-tsc --noEmit && vite build && node server",
-    "releasezip": "npm run build && powershell Compress-Archive dist release.zip -Force && powershell Compress-Archive server.js release.zip -Update && powershell Compress-Archive package-lock.json release.zip -Update && powershell Compress-Archive package.json release.zip -Update",
+    "releasezipold": "npm run build && powershell Compress-Archive dist release.zip -Force && powershell Compress-Archive server.js release.zip -Update && powershell Compress-Archive package-lock.json release.zip -Update && powershell Compress-Archive package.json release.zip -Update",
+    "releasezip": "npm run build && npm run release && powershell Compress-Archive release release.zip -Force",
     "release": "rmdir /S /Q release && xcopy /E /I /Y dist release\\dist && xcopy /I /Y server.js release && xcopy /I /Y package-lock.json release && xcopy /I /Y package.json release"
   },
   "dependencies": {
