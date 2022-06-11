@@ -19,6 +19,8 @@
 	import whitelistTab from './components/whitelistTab.vue';
 	import addNewWhitelistUser from './components/addNewWhitelistUser.vue';
 	import thanksCard from './components/thanksCard.vue';
+	import approvalsTab from './components/approvalsTab.vue';
+
 	import bia_logo from './assets/bia_logo.png';
 	import jd_logo from './assets/jd_logo.png';
 </script>
@@ -309,18 +311,21 @@
 				@confirm="removeWhitelistPlayer"
 			/>
 		</tab>
+		<tab v-else-if="currentTab == 'Approvals'" :currentTab="currentTab">
+			<approvalsTab/>
+		</tab>
 	</main>
 	<footer>
 		<h2>Official Support</h2>
-		<div style="display: flex; flex-wrap: wrap; justify-content: center;">
+		<div style="display: flex; flex-wrap: wrap; justify-content: center">
 			<thanksCard title="JetDave Development | Fantino Davide" :src="jd_logo" discord="https://discord.com/invite/5hfcjNYdCP" />
 		</div>
 		<h2>Special Thanks</h2>
-		<div style="display: flex; flex-wrap: wrap; justify-content: center;">
+		<div style="display: flex; flex-wrap: wrap; justify-content: center">
 			<thanksCard title="Brigata Italiana Ariete" :src="bia_logo" website="https://biaclan.it/" discord="https://discord.gg/dXHVfQZcxJ" />
 			<thanksCard title="Offworld Industries" website="https://www.offworldindustries.com/" src="https://www.offworldindustries.com/wp-content/themes/owitheme/img/logo_white.svg" discord="https://discord.com/invite/kRkqJgXW" />
 		</div>
-		<span class="copyright">&copy; {{(new Date()).getFullYear()}} Squad Whitelister, JetDave | Fantino Davide</span>
+		<span class="copyright">&copy; {{ new Date().getFullYear() }} Squad Whitelister, JetDave | Fantino Davide</span>
 	</footer>
 </template>
 

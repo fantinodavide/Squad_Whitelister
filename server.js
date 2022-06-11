@@ -1,4 +1,4 @@
-const versionN = "0.0";
+const versionN = "0.1";
 
 const fs = require("fs");
 const StreamZip = require('node-stream-zip');
@@ -241,6 +241,12 @@ function main() {
                 type: "tab",
                 max_access_level: 100
             },
+            {
+                name: "Approvals",
+                order: 15,
+                type: "tab",
+                max_access_level: 30
+            },
             // {
             //     name: "Users",
             //     order: 15,
@@ -388,6 +394,76 @@ function main() {
             })
         })
     })
+    app.get('/api/whitelist/read/getPendingApprovalClans', (req, res, next) => {
+        const parm = req.query;
+        mongoConn((dbo) => {
+            let findFilter = req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code } : {};
+            const pipeline = [
+                { $match: findFilter },
+                {
+                    $lookup: {
+                        from: "whitelists",
+                        localField: "_id",
+                        foreignField: "id_clan",
+                        pipeline: [
+                            {
+                                $match: {
+                                    approved: false,
+                                },
+                            },
+                            {
+                                $project: {
+                                    approved: false,
+                                }
+                            }
+                        ],
+                        as: "whitelists_data"
+                    }
+                },
+                {
+                    $sort: { whitelists_data: -1 }
+                },
+                { $match: { whitelists_data: { $exists: true, $ne: [] } } }
+            ]
+            dbo.collection("clans").aggregate(pipeline).toArray((err, dbRes) => {
+                if (err) {
+                    res.sendStatus(500);
+                    console.error(err)
+                } else {
+                    console.log(dbRes)
+                    res.send(dbRes);
+                }
+            })
+        })
+    })
+    app.get('/api/whitelist/read/getPendingApproval', (req, res, next) => {
+        const parm = req.query;
+        mongoConn((dbo) => {
+            let findFilter = parm.sel_clan_id ? { id_clan: ObjectID(parm.sel_clan_id), approved: false } : { approved: false };
+            const pipeline = [
+                { $match: findFilter },
+                {
+                    $lookup: {
+                        from: "groups",
+                        localField: "id_group",
+                        foreignField: "_id",
+                        as: "group_full_data"
+                    }
+                },
+                {
+                    $sort: { id_clan: 1, approved: -1, id_group: 1, username: 1 }
+                },
+            ]
+            dbo.collection("whitelists").aggregate(pipeline).toArray((err, dbRes) => {
+                if (err) {
+                    res.sendStatus(500);
+                    console.error(err)
+                } else {
+                    res.send(dbRes);
+                }
+            })
+        })
+    })
     app.use('/api/whitelist/write/*', (req, res, next) => {
         if (req.userSession && req.userSession.access_level < 30) next()
         else {
@@ -441,7 +517,7 @@ function main() {
 
                 if (err) console.log("error", err)//serverError(res, err);
                 else if (dbResC != null) {
-                    if(dbResC.player_count < parseInt(dbResC.player_limit)){
+                    if (dbResC.player_count < parseInt(dbResC.player_limit)) {
                         let insWlPlayer = {
                             id_clan: dbResC._id,
                             username: parm.username,
@@ -458,8 +534,8 @@ function main() {
                             else if (dbRes != null) {
                                 insWlPlayer.approved = !(dbRes.require_appr || dbResC.confirmation_ovrd) || req.userSession.access_level <= 30;
                                 //console.log("\n\n\n\nNew Whitelist", insWlPlayer, dbRes);
-    
-    
+
+
                                 dbo.collection("whitelists").insertOne(insWlPlayer, (err, dbRes) => {
                                     if (err) console.log("ERR", err);//serverError(res, err);
                                     else {
@@ -470,7 +546,7 @@ function main() {
                                 res.send({ status: "not_inserted", reason: "could find corresponding id" });
                             }
                         })
-                    }else{
+                    } else {
                         res.send({ status: "not_inserted", reason: "Player limit reached" });
                     }
                 } else {
@@ -488,6 +564,30 @@ function main() {
                     res.send({ status: "removing_ok", ...dbRes })
                 }
             })
+        })
+    })
+    app.use('/api/approval/write/*', (req, res, next) => {
+        if (req.userSession && req.userSession.access_level < 30) next()
+        else res.sendStatus(401)
+    })
+    app.use('/api/approval/write/setApprovedStatus', (req, res, next) => {
+        const parm = req.body;
+        mongoConn((dbo) => {
+            if (parm.approve_update && parm.approve_update == true) {
+                dbo.collection("whitelists").updateOne({ _id: ObjectID(parm._id) }, { $set: { approved: true } }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        res.send({ status: "approved", ...dbRes })
+                    }
+                })
+            } else {
+                dbo.collection("whitelists").deleteOne({ _id: ObjectID(parm._id) }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        res.send({ status: "rejected", ...dbRes })
+                    }
+                })
+            }
         })
     })
 
