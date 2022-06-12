@@ -16,29 +16,31 @@
 
 #### conf.json Example
 ```json
-    http_server: {
-        bind_ip: "0.0.0.0",
-        port: 80,
-        https_port: 443
-    },
-    database: {
-        mongo: {
-            host: "127.0.0.1",
-            port: 27017,
-            database: "Squad_Whitelister"
-        }
-    },
-    app_personalization: {
-        name: "Squad Whitelister",
-        favicon: "",
-        accent_color: "#ffc40b",
-        logo_url: "https://joinsquad.com/wp-content/themes/squad/img/logo.png"
-    },
-    other: {
-        force_https: false,
-        automatic_updates: true,
-        update_check_interval_seconds: 3600,
-        session_duration_hours: 168,
-        whitelist_developers: true
-    }
+{
+	"http_server": {
+		"bind_ip": "0.0.0.0",
+		"port": 80,
+		"https_port": 443
+	},
+	"database": {
+		"mongo": {
+			"host": "127.0.0.1",
+			"port": 27017,
+			"database": "Squad_Whitelister"
+		}
+	},
+	"app_personalization": {
+		"name": "Squad Whitelister",
+		"favicon": "",
+		"accent_color": "#ffc40b",
+		"logo_url": "https://joinsquad.com/wp-content/themes/squad/img/logo.png"
+	},
+	"other": {
+		"force_https": false,
+		"automatic_updates": true,
+		"update_check_interval_seconds": 3600,
+		"session_duration_hours": 168,
+		"whitelist_developers": true
+	}
+}
 ```
