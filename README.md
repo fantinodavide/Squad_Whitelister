@@ -16,7 +16,6 @@
 
 #### conf.json Example
 ```json
-{
     http_server: {
         bind_ip: "0.0.0.0",
         port: 80,
@@ -42,5 +41,4 @@
         session_duration_hours: 168,
         whitelist_developers: true
     }
-}
 ```
