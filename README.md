@@ -18,7 +18,7 @@
 ```json
 {
 	"http_server": {
-		"bind_ip": "0.0.0.0",
+		"bind_ip": "0.0.0.0", //HTTP server bind ip (0.0.0.0 to bind every ip)
 		"port": 80,
 		"https_port": 443
 	},
