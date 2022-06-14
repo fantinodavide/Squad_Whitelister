@@ -312,7 +312,7 @@
 			/>
 		</tab>
 		<tab v-else-if="currentTab == 'Approvals'" :currentTab="currentTab">
-			<approvalsTab/>
+			<approvalsTab />
 		</tab>
 	</main>
 	<footer>
@@ -352,6 +352,7 @@
 
 	header .logo {
 		max-height: 50px;
+		margin-right: 10px;
 	}
 
 	#hdBtnContainer {

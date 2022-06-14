@@ -1,4 +1,4 @@
-const versionN = "0.3";
+const versionN = "0.5";
 
 const fs = require("fs");
 const StreamZip = require('node-stream-zip');
@@ -512,7 +512,7 @@ function main() {
 
                 if (err) console.log("error", err)//serverError(res, err);
                 else if (dbResC != null) {
-                    if (dbResC.player_count < parseInt(dbResC.player_limit)) {
+                    if (dbResC.player_count=='' ||dbResC.player_count < parseInt(dbResC.player_limit)) {
                         let insWlPlayer = {
                             id_clan: dbResC._id,
                             username: parm.username,
@@ -917,7 +917,9 @@ function main() {
         });
 
         writer.on('finish', (res) => {
-            installLatestUpdate(dwnDir, dwnFullPath, gitResData);
+            setTimeout(()=>{
+                installLatestUpdate(dwnDir, dwnFullPath, gitResData);
+            },1000)
         })
         writer.on('error', (err) => {
             console.error(err);
@@ -930,13 +932,14 @@ function main() {
             storeEntries: true,
             skipEntryNameValidation: true
         });
-        zip.on('ready', () => {
-            const gitZipDir = "release";//Object.values(zip.entries())[0].name;
+        zip.on('ready', async () => {
+            const gitZipDir = await zip.entries()[0];//Object.values(zip.entries())[0].name;
             //if () console.log(`${dwnDir} folder deleted`);
-            fs.rmdir(__dirname + "/dist", { recursive: true }, () => {
+            fs.rm(__dirname + "/dist", { recursive: true }, () => {
                 zip.extract(gitZipDir, __dirname, (err, res) => {
+                    zip.close();
                     console.log(" > Extracted", res, "files");
-                    fs.rmdir(dwnDir, { recursive: true }, () => {
+                    fs.rm(dwnDir, { recursive: true }, () => {
                         console.log(`${dwnDir} folder deleted`);
                         const restartTimeout = 5000;
                         console.log(" > Restart in", restartTimeout / 1000, "seconds");
@@ -951,9 +954,8 @@ function main() {
                                 log("Successfully moved the file!");
                             }
                         });*/
-                        zip.close();
                     })
-                    //log(" > Deleting temporary folder");
+                    log(" > Deleting temporary folder");
                 });
             })
 
