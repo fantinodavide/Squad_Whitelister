@@ -53,6 +53,7 @@ function start() {
 
 function main() {
     checkUpdates(config.other.automatic_updates, () => {
+        console.log("ARGS:",args)
         if (enableServer) {
             const privKPath = 'certificates/privatekey.pem';
             const certPath = 'certificates/certificate.pem';
@@ -982,7 +983,7 @@ function restartProcess(delay = 5000, code = 0) {
             });
         });
         setTimeout(() => {
-            process.exit(0);
+            process.exit(code);
         }, delay)
     }
 }
@@ -1119,9 +1120,9 @@ function updateConfig(config, emptyConfFile) {
 }
 process.on('uncaughtException', function (err) {
     console.error("Uncaught Exception", err.message, err.stack)
-    if (++errorCount >= 5) {
+    if (++errorCount >= (args["using-pm"]?0:5)) {
         console.error("Too many errors occurred during the current run. Terminating execution...");
-        restartProcess(0, 0);
+        restartProcess(0, 1);
     }
 })
 function randomString(size = 64) {
