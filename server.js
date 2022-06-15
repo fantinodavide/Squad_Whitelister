@@ -16,6 +16,7 @@ const nocache = require('nocache');
 const log4js = require('log4js');
 const axios = require('axios');
 const { mainModule } = require("process");
+const args = require('minimist')(process.argv.slice(2));
 
 const enableServer = true;
 var errorCount = 0;
@@ -512,7 +513,7 @@ function main() {
 
                 if (err) console.log("error", err)//serverError(res, err);
                 else if (dbResC != null) {
-                    if (dbResC.player_count=='' ||dbResC.player_count < parseInt(dbResC.player_limit)) {
+                    if (dbResC.player_count == '' || dbResC.player_count < parseInt(dbResC.player_limit)) {
                         let insWlPlayer = {
                             id_clan: dbResC._id,
                             username: parm.username,
@@ -917,9 +918,9 @@ function main() {
         });
 
         writer.on('finish', (res) => {
-            setTimeout(()=>{
+            setTimeout(() => {
                 installLatestUpdate(dwnDir, dwnFullPath, gitResData);
-            },1000)
+            }, 1000)
         })
         writer.on('error', (err) => {
             console.error(err);
@@ -968,17 +969,22 @@ function main() {
 }
 
 function restartProcess(delay = 5000, code = 0) {
-    process.on("exit", function () {
-        console.log("Process terminated");
-        require("child_process").spawn(process.argv.shift(), process.argv, {
-            cwd: process.cwd(),
-            detached: true,
-            stdio: "inherit"
+    if (args["using-pm"] && args["using-pm"] == true) {
+        console.log("Terminating execution. Process manager will restart me.")
+        process.exit(code)
+    } else {
+        process.on("exit", function () {
+            console.log("Process terminated\nStarting new process");
+            require("child_process").spawn(process.argv.shift(), process.argv, {
+                cwd: process.cwd(),
+                detached: true,
+                stdio: "inherit"
+            });
         });
-    });
-    setTimeout(() => {
-        process.exit(code);
-    }, delay)
+        setTimeout(() => {
+            process.exit(0);
+        }, delay)
+    }
 }
 
 function mongoConn(connCallback) {

@@ -21,6 +21,7 @@
     "https": "^1.0.0",
     "jquery": "^3.6.0",
     "log4js": "^6.4.4",
+    "minimist": "^1.2.6",
     "mongodb": "^4.5.0",
     "nocache": "^3.0.3",
     "node-stream-zip": "^1.15.0",
