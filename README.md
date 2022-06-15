@@ -13,6 +13,11 @@
 3. `node server` *To start the server. The application will automatically stop to create the configuration file*
 4. Configure as needed the application from **conf.js** file
 5. `node server` *To start the server*
+
+#### Using process managers *(ex. PM2)*
+To avoid issues with process managers add run argument `--using-pm`
+- PM2: `pm2 start server -- --using-pm`
+
 #### Linking to the *RemoteAdminListHosts.cfg*
 - Full output is found at path **/wl** (*ex. https://example.ex/wl*)
 - If you need the output for a specific clan the path is **/wl/*{clan_code}*** (ex. https://example.ex/wl/1a2b3c4d)
