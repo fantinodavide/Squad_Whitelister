@@ -1,6 +1,6 @@
-const versionN = "0.5";
+const versionN = "0.7";
 
-const fs = require("fs");
+const fs = require("fs-extra");
 const StreamZip = require('node-stream-zip');
 const https = require('https');
 const express = require('express');
@@ -15,8 +15,9 @@ const cookieParser = require('cookie-parser');
 const nocache = require('nocache');
 const log4js = require('log4js');
 const axios = require('axios');
-const { mainModule } = require("process");
 const args = require('minimist')(process.argv.slice(2));
+const nrc = require('node-run-cmd');
+const { mainModule } = require("process");
 
 const enableServer = true;
 var errorCount = 0;
@@ -53,7 +54,7 @@ function start() {
 
 function main() {
     checkUpdates(config.other.automatic_updates, () => {
-        console.log("ARGS:",args)
+        console.log("ARGS:", args)
         if (enableServer) {
             const privKPath = 'certificates/privatekey.pem';
             const certPath = 'certificates/certificate.pem';
@@ -934,30 +935,18 @@ function main() {
             storeEntries: true,
             skipEntryNameValidation: true
         });
-        zip.on('ready', async () => {
-            const gitZipDir = await zip.entries()[0];//Object.values(zip.entries())[0].name;
-            //if () console.log(`${dwnDir} folder deleted`);
-            fs.rm(__dirname + "/dist", { recursive: true }, () => {
-                zip.extract(gitZipDir, __dirname, (err, res) => {
+        zip.on('ready', () => {
+            fs.remove(__dirname + "/dist", () => {
+                zip.extract("release/", __dirname, (err, res) => {
                     zip.close();
+                    nrc.run('npm install');
                     console.log(" > Extracted", res, "files");
-                    fs.rm(dwnDir, { recursive: true }, () => {
+                    fs.remove(dwnDir, () => {
                         console.log(`${dwnDir} folder deleted`);
                         const restartTimeout = 5000;
                         console.log(" > Restart in", restartTimeout / 1000, "seconds");
                         restartProcess(restartTimeout);
-                        /*const destinationPath = path.resolve(__dirname, "test");
-                        const currentPath = path.resolve(dwnDir, gitZipDir);
-             
-                        fs.rename(currentPath, destinationPath, function (err) {
-                            if (err) {
-                                throw err
-                            } else {
-                                log("Successfully moved the file!");
-                            }
-                        });*/
                     })
-                    log(" > Deleting temporary folder");
                 });
             })
 
@@ -1120,7 +1109,7 @@ function updateConfig(config, emptyConfFile) {
 }
 process.on('uncaughtException', function (err) {
     console.error("Uncaught Exception", err.message, err.stack)
-    if (++errorCount >= (args["using-pm"]?0:5)) {
+    if (++errorCount >= (args["using-pm"] ? 0 : 5)) {
         console.error("Too many errors occurred during the current run. Terminating execution...");
         restartProcess(0, 1);
     }

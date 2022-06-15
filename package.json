@@ -24,6 +24,7 @@
     "minimist": "^1.2.6",
     "mongodb": "^4.5.0",
     "nocache": "^3.0.3",
+    "node-run-cmd": "^1.0.1",
     "node-stream-zip": "^1.15.0",
     "path": "^0.12.7",
     "vue": "^3.2.31",
