@@ -16,7 +16,8 @@
 
 #### Using process managers *(ex. PM2)*
 To avoid issues with process managers add run argument `--using-pm`
-- PM2: `pm2 start server -- --using-pm`
+- PM2: `pm2 start server.js -- --using-pm`
+- Forever: `forever start server.js --using-pm`
 
 #### Linking to the *RemoteAdminListHosts.cfg*
 - Full output is found at path **/wl** (*ex. https://example.ex/wl*)
