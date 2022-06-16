@@ -255,7 +255,7 @@
 			<editGameGroup v-if="popups.editGameGroup" @cancelBtnClick="popups.editGameGroup = false" :group_data="game_groups[inEditingGroup]" @edited="game_groups[inEditingGroup] = $event" />
 			<editClanUsers v-if="popups.editClanUsers" :clan_data="clans[inUserEditingClan]" @cancelBtnClick="popups.editClanUsers = false" />
 			<addNewWhitelistUser v-if="popups.addNewWhitelistUser" @cancelBtnClick="popups.addNewWhitelistUser = false" :add_data="tabData.Whitelist.add_data" />
-			<importWhitelist v-if="popups.importWhitelist" />
+			<importWhitelist v-if="popups.importWhitelist" @cancelBtnClick="popups.importWhitelist = false" />
 		</blackoutBackground>
 
 		<!--<button @click="setLoginRequired(!loginRequired)">Toggle</button>-->

@@ -357,9 +357,37 @@ function main() {
     app.use('/api/whitelist/read/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
     app.get('/api/whitelist/read/getAllClans', (req, res, next) => {
         const parm = req.query;
+
         mongoConn((dbo) => {
             let findFilter = req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code/*, admins: req.userSession._id*/ } : {};
-            dbo.collection("clans").find(findFilter).sort({ full_name: 1 }).toArray((err, dbRes) => {
+            const pipeline = [
+                { $match: findFilter },
+                {
+                    $lookup: {
+                        from: "whitelists",
+                        localField: "_id",
+                        foreignField: "id_clan",
+                        as: "clan_whitelist"
+                    }
+                },
+                {
+                    $addFields: {
+                        player_count: { $size: "$clan_whitelist" }
+                    }
+                },
+                {
+                    $project: {
+                        clan_whitelist: 0,
+                    }
+                },
+                {
+                    $sort: {
+                        full_name: 1
+                    }
+                }
+            ]
+            //dbo.collection("clans").findOne(findFilter, (err, dbResC) => {
+            dbo.collection("clans").aggregate(pipeline).toArray((err, dbRes) => {
                 if (err) {
                     res.sendStatus(500);
                     console.error(err)
