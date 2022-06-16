@@ -79,7 +79,7 @@
 			<option v-for="c of whitelist_clans" :value="c._id">{{ c.full_name }}</option>
 		</select>
 		<button v-if="editor" @click="$emit('import_whitelist')">Import</button>
-		<span class="playerCounter">{{ sel_clan_obj.player_count }}/{{ sel_clan_obj.player_limit && sel_clan_obj.player_limit != '' ? sel_clan_obj.player_limit : '&infin;' }}</span>
+		<span class="playerCounter">{{ sel_clan_obj.player_count }}/ {{ sel_clan_obj.player_limit && sel_clan_obj.player_limit != '' ? sel_clan_obj.player_limit : '&infin;' }}</span>
 	</div>
 
 	<button v-if="editor" class="addHorizontal" @click="$emit('addNewWhitelistUser', { sel_clan: sel_clan, callback: appendPlayer })"></button>
@@ -112,21 +112,26 @@
 		align-items: stretch;
 		margin-bottom: 10px;
 	}
+
 	.selectorContainer > * {
 		margin: 0;
 	}
+
 	.selectorContainer select {
 		border-top-right-radius: 0;
 		border-bottom-right-radius: 0;
 	}
+
 	.selectorContainer button {
 		border-radius: 0;
 		background: #444;
 		color: #ddd;
 	}
+
 	.selectorContainer button:hover {
 		background: #555;
 	}
+
 	.selectorContainer .playerCounter {
 		display: flex;
 		flex-direction: row;
