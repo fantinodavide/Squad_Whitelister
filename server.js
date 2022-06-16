@@ -543,7 +543,7 @@ function main() {
 
                 if (err) console.log("error", err)//serverError(res, err);
                 else if (dbResC != null) {
-                    if (dbResC.player_count == '' || dbResC.player_count < parseInt(dbResC.player_limit)) {
+                    if (dbResC.player_limit == '' || dbResC.player_count < parseInt(dbResC.player_limit) || req.userSession.access_level <= 5) {
                         let insWlPlayer = {
                             id_clan: dbResC._id,
                             username: parm.username,
