@@ -20,6 +20,7 @@
 	import addNewWhitelistUser from './components/addNewWhitelistUser.vue';
 	import thanksCard from './components/thanksCard.vue';
 	import approvalsTab from './components/approvalsTab.vue';
+	import importWhitelist from './components/importWhitelist.vue';
 
 	import bia_logo from './assets/bia_logo.png';
 	import jd_logo from './assets/jd_logo.png';
@@ -47,6 +48,7 @@
 					editGameGroup: false,
 					editClanUsers: false,
 					addNewWhitelistUser: false,
+					importWhitelist: false,
 				},
 				clans: [] as Array<any>,
 				inEditingClan: -1,
@@ -236,7 +238,7 @@
 	</header>
 
 	<main>
-		<blackoutBackground v-show="popups.addingNewClan || popups.addingNewGameGroup || popups.confirm || popups.login || popups.registration || popups.editClan || popups.editGameGroup || popups.editClanUsers || popups.addNewWhitelistUser">
+		<blackoutBackground v-show="popups.addingNewClan || popups.addingNewGameGroup || popups.confirm || popups.login || popups.registration || popups.editClan || popups.editGameGroup || popups.editClanUsers || popups.addNewWhitelistUser || popups.importWhitelist">
 			<login
 				v-if="popups.login"
 				@cancelBtnClick="popups.login = false"
@@ -253,6 +255,7 @@
 			<editGameGroup v-if="popups.editGameGroup" @cancelBtnClick="popups.editGameGroup = false" :group_data="game_groups[inEditingGroup]" @edited="game_groups[inEditingGroup] = $event" />
 			<editClanUsers v-if="popups.editClanUsers" :clan_data="clans[inUserEditingClan]" @cancelBtnClick="popups.editClanUsers = false" />
 			<addNewWhitelistUser v-if="popups.addNewWhitelistUser" @cancelBtnClick="popups.addNewWhitelistUser = false" :add_data="tabData.Whitelist.add_data" />
+			<importWhitelist v-if="popups.importWhitelist" />
 		</blackoutBackground>
 
 		<!--<button @click="setLoginRequired(!loginRequired)">Toggle</button>-->
@@ -309,6 +312,7 @@
 					tabData.Whitelist.add_data = $event;
 				"
 				@confirm="removeWhitelistPlayer"
+				@import_whitelist="popups.importWhitelist = true"
 			/>
 		</tab>
 		<tab v-else-if="currentTab == 'Approvals'" :currentTab="currentTab">
