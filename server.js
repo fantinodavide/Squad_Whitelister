@@ -1,4 +1,4 @@
-const versionN = "0.8";
+const versionN = "0.10";
 
 const fs = require("fs-extra");
 const StreamZip = require('node-stream-zip');
@@ -87,6 +87,9 @@ function main() {
     app.use(forceHTTPS);
     app.use('/', getSession);
 
+    app.get('/api/getVersion', (req, res, next) => {
+        res.send(versionN);
+    })
     app.post('/api/login', (req, res, next) => {
         const parm = req.body;
 
@@ -592,6 +595,17 @@ function main() {
             })
         })
     })
+    app.post('/api/whitelist/write/clearList', (req, res, next) => {
+        const parm = req.body;
+        mongoConn((dbo) => {
+            dbo.collection("whitelists").deleteMany({ id_clan: ObjectID(parm.sel_clan_id) }, (err, dbRes) => {
+                if (err) serverError(res, err);
+                else {
+                    res.send({ status: "clearing_ok", ...dbRes })
+                }
+            })
+        })
+    })
     app.use('/api/approval/write/*', (req, res, next) => {
         if (req.userSession && req.userSession.access_level < 30) next()
         else res.sendStatus(401)
@@ -814,10 +828,6 @@ function main() {
     app.get("/api/admin/restartApplication", (req, res, next) => {
         res.send({ status: "Ok" });
         restartProcess(req.query.delay ? req.query.delay : 0, 0);
-    })
-
-    app.get('/api/getVersion', (req, res, next) => {
-        res.send(versionN);
     })
 
     app.use((req, res, next) => {

@@ -14,6 +14,7 @@
 				sel_clan_obj: {} as any,
 				wl_players: [] as Array<any>,
 				editor: false,
+				record_refs: [] as Array<any>,
 			};
 		},
 		methods: {
@@ -28,6 +29,7 @@
 					});
 			},
 			selectClanChanged: function (e: any) {
+				this.record_refs = [];
 				this.sel_clan = e.target.value;
 				this.getClanWhitelist();
 			},
@@ -58,11 +60,44 @@
 					});
 			},
 			removePlayer: function (e: any) {
-				console.log('removing player', e, this.wl_players);
+				// console.log('removing player', e, this.wl_players);
 				this.wl_players = this.wl_players.filter((p) => p._id != e._id);
 			},
 			appendPlayer: function (e: any) {
 				this.wl_players.push(e);
+			},
+			removeAllPlayers: function () {
+				const delay = 50;
+				let c = 0;
+				for (let p of this.wl_players) {
+					setTimeout(() => {
+						this.removePlayer(p);
+					}, delay * c++);
+				}
+			},
+			clearAllList: function () {
+				// const delay = 50;
+				// let c = 0;
+				// for (let pr of this.record_refs) {
+				// 	setTimeout(() => {
+				// 		pr.deleteRecord(() => {
+				// 			this.removePlayer(pr.wl_data);
+				// 		}, true);
+				// 	}, delay * c++);
+				// }
+				$.ajax({
+					url: '/api/whitelist/write/clearList',
+					type: 'post',
+					data: JSON.stringify({ sel_clan_id: this.sel_clan }),
+					dataType: 'json',
+					contentType: 'application/json',
+					success: (dt) => {
+						this.wl_players = [];
+					},
+					error: (err) => {
+						console.error(err);
+					},
+				});
 			},
 		},
 		created() {
@@ -79,11 +114,12 @@
 			<option v-for="c of whitelist_clans" :value="c._id">{{ c.full_name }}</option>
 		</select>
 		<button v-if="editor" @click="$emit('import_whitelist', { sel_clan: sel_clan, callback: appendPlayer })">Import</button>
-		<span class="playerCounter">{{ sel_clan_obj.player_count }}/ {{ sel_clan_obj.player_limit && sel_clan_obj.player_limit != '' ? sel_clan_obj.player_limit : '&infin;' }}</span>
+		<button v-if="editor" @click="$emit('confirm_clearing', { callback: clearAllList })">Clear</button>
+		<span class="playerCounter">{{ wl_players.length }}/ {{ sel_clan_obj.player_limit && sel_clan_obj.player_limit != '' ? sel_clan_obj.player_limit : '&infin;' }}</span>
 	</div>
 
 	<button v-if="editor" class="addHorizontal" @click="$emit('addNewWhitelistUser', { sel_clan: sel_clan, callback: appendPlayer })"></button>
-	<whitelistUserCard v-for="w of wl_players" :wl_data="w" :hoverMenuVisible="editor" @confirm="$emit('confirm', $event)" @removedPlayer="removePlayer" />
+	<whitelistUserCard v-for="w of wl_players" :ref="(r:any)=>{record_refs.push(r)}" :wl_data="w" :hoverMenuVisible="editor" @confirm="$emit('confirm', $event)" @removedPlayer="removePlayer" />
 </template>
 
 <style scoped>

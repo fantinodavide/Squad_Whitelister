@@ -147,6 +147,14 @@
 					this.pointers.confirmPopup.setCallback(callback);
 				}
 			},
+			clearAdminList: function (dt: any) {
+				console.log('clearing entire admin list');
+
+				this.confirmEvt('Confirm clearing?', 'Do you really want to delete entire list for this clan?', () => {
+					dt.callback();
+					this.popups.confirm = false;
+				});
+			},
 			removeClan: function (dt: any) {
 				this.confirmEvt('Confirm deletion?', 'Do you really want to delete ' + dt.clan_data.tag + ' clan?', () => {
 					dt.callback(() => {
@@ -159,7 +167,7 @@
 				this.confirmEvt('Confirm deletion?', 'Do you really want to delete ' + dt.wl_data.username + '?', () => {
 					dt.callback(() => {
 						//this.clans = this.clans.filter((a) => a._id != dt.clan_data._id)
-						dt.callback();
+						//dt.callback();
 						this.popups.confirm = false;
 					});
 				});
@@ -316,6 +324,7 @@
 					popups.importWhitelist = true;
 					tabData.Whitelist.add_data = $event;
 				"
+				@confirm_clearing="clearAdminList"
 			/>
 		</tab>
 		<tab v-else-if="currentTab == 'Approvals'" :currentTab="currentTab">
