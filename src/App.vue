@@ -363,7 +363,7 @@
 			"
 		>
 			<input type="search" placeholder="Search User" name="usrSearch" id="" v-model="tabData.UsersAndRoles.userSearch" />
-			<userCard v-for="u in tabData.UsersAndRoles.users" v-show="levenshtein(u.username, tabData.UsersAndRoles.userSearch) <= 2 || tabData.UsersAndRoles.userSearch == ''" :user_data="u" :roles="tabData.UsersAndRoles.roles" @delete-record="removeUser" />
+			<userCard v-for="u in tabData.UsersAndRoles.users" v-show="levenshtein(u.username.toLowerCase(), tabData.UsersAndRoles.userSearch.toLowerCase()) <= 2 || tabData.UsersAndRoles.userSearch == ''" :user_data="u" :roles="tabData.UsersAndRoles.roles" @delete-record="removeUser" />
 		</tab>
 	</main>
 	<footer>
