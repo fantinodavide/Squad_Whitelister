@@ -1,4 +1,4 @@
-const versionN = "0.12";
+const versionN = "0.13";
 
 const fs = require("fs-extra");
 const StreamZip = require('node-stream-zip');
@@ -55,7 +55,7 @@ function start() {
 function main() {
     checkUpdates(config.other.automatic_updates, () => {
         console.log("ARGS:", args)
-        setInterval(() => { checkUpdates(config.other.automatic_updates) }, config.other.update_check_interval_seconds);
+        setInterval(() => { checkUpdates(config.other.automatic_updates) }, config.other.update_check_interval_seconds*1000);
         if (enableServer) {
             const privKPath = 'certificates/privatekey.pem';
             const certPath = 'certificates/certificate.pem';
