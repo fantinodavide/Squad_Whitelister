@@ -249,9 +249,15 @@ function main() {
             },
             {
                 name: "Approvals",
-                order: 15,
+                order: 25,
                 type: "tab",
                 max_access_level: 30
+            },
+            {
+                name: "Users and Roles",
+                order: 30,
+                type: "tab",
+                max_access_level: 5
             },
             // {
             //     name: "Users",
@@ -357,6 +363,85 @@ function main() {
         });
     })
 
+    app.use('/api/users/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
+    app.get('/api/users/read/getAll', (req, res, next) => {
+        const parm = req.query;
+
+        mongoConn((dbo) => {
+            let findFilter = req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code/*, admins: req.userSession._id*/ } : {};
+            const pipeline = [
+                { $match: findFilter },
+                {
+                    $lookup: {
+                        from: "clans",
+                        localField: "clan_code",
+                        foreignField: "clan_code",
+                        as: "clan_data"
+                    }
+                },
+                {
+                    $sort: {
+                        username: 1
+                    }
+                }
+            ]
+            //dbo.collection("clans").findOne(findFilter, (err, dbResC) => {
+            dbo.collection("users").aggregate(pipeline).toArray((err, dbRes) => {
+                if (err) {
+                    res.sendStatus(500);
+                    console.error(err)
+                } else {
+                    res.send(dbRes);
+                }
+            })
+        })
+    })
+    app.post('/api/users/write/remove', (req, res, next) => {
+        const parm = req.body;
+
+        mongoConn((dbo) => {
+            dbo.collection("users").deleteOne({ _id: ObjectID(parm._id) }, (err, dbRes) => {
+                if (err) {
+                    res.sendStatus(500);
+                    console.error(err)
+                } else {
+                    res.send(dbRes);
+                }
+            })
+        })
+    })
+    app.post('/api/users/write/updateAccessLevel', (req, res, next) => {
+        const parm = req.body;
+
+        mongoConn((dbo) => {
+            dbo.collection("users").updateOne({ _id: ObjectID(parm._id) },{$set:{access_level:parm.upd}}, (err, dbRes) => {
+                if (err) {
+                    res.sendStatus(500);
+                    console.error(err)
+                } else {
+                    res.send(dbRes);
+                }
+            })
+        })
+    })
+    app.use('/api/roles/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
+    app.get('/api/roles/read/getAll', (req, res, next) => {
+        const roles = {
+            5: {
+                name: "Admin",
+                access_level: 5
+            },
+            30: {
+                name: "Approver",
+                access_level: 30
+            },
+            100: {
+                name: "User",
+                access_level: 100
+            }
+        }
+        res.send(roles)
+    })
     app.use('/api/whitelist/read/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
     app.get('/api/whitelist/read/getAllClans', (req, res, next) => {
         const parm = req.query;

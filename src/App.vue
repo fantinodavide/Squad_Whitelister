@@ -1,5 +1,3 @@
-<!-- @format -->
-
 <script setup lang="ts">
 	import login from './components/login.vue';
 	import registration from './components/registration.vue';
@@ -21,6 +19,7 @@
 	import thanksCard from './components/thanksCard.vue';
 	import approvalsTab from './components/approvalsTab.vue';
 	import importWhitelist from './components/importWhitelist.vue';
+	import userCard from './components/userCard.vue';
 
 	import bia_logo from './assets/bia_logo.png';
 	import jd_logo from './assets/jd_logo.png';
@@ -65,6 +64,10 @@
 					},
 					Groups: {
 						editor: false,
+					},
+					UsersAndRoles: {
+						users: [] as Array<any>,
+						roles: [] as Array<any>,
 					},
 				},
 			};
@@ -124,6 +127,22 @@
 				this.popups.addingNewGameGroup = false;
 				// this.clans.sort((a, b) => (a.full_name - b.full_name));
 			},
+			getUsers: function () {
+				fetch('/api/users/read/getAll')
+					.then((res) => res.json())
+					.then((dt) => {
+						console.log('All users', dt);
+						this.tabData.UsersAndRoles.users = dt;
+					});
+			},
+			getRoles: function () {
+				fetch('/api/roles/read/getAll')
+					.then((res) => res.json())
+					.then((dt) => {
+						console.log('All roles', dt);
+						this.tabData.UsersAndRoles.roles = dt;
+					});
+			},
 			getClans: function () {
 				fetch('/api/clans/getAllClans')
 					.then((res) => res.json())
@@ -180,6 +199,14 @@
 					});
 				});
 			},
+			removeUser: function (e: any) {
+				this.confirmEvt('Delete User?', 'Do you really want to delete ' + e.username + '?', () => {
+					e.callback(() => {
+						this.popups.confirm = false;
+						this.tabData.UsersAndRoles.users = this.tabData.UsersAndRoles.users.filter((r) => r._id != e._id);
+					});
+				});
+			},
 			updateJson: function (config: any, emptyConfFile: any) {
 				for (let k in emptyConfFile) {
 					const objType = Object.prototype.toString.call(emptyConfFile[k]);
@@ -224,27 +251,19 @@
 </script>
 
 <template>
-	<title>
-		{{ currentTab }}
-		|
-		{{ app_title }}
-	</title>
+	<title>{{ currentTab }} | {{ app_title }}</title>
 	<header>
 		<img alt="Squad Whitelister Logo" class="logo" :src="logo_url" />
-		<h1>
-			{{ app_title }}
-		</h1>
+		<h1>{{ app_title }}</h1>
 		<div id="hdBtnContainer">
 			<button v-if="!loginRequired" @click="logout">Logout</button>
 			<button v-if="loginRequired" @click="popups.login = true">Login</button>
 			<button v-if="loginRequired" @click="popups.registration = true">Sign Up</button>
 		</div>
-
 		<tabBrowser :visible="!loginRequired">
 			<tabBrowserBtn v-for="t in tabBtns" @updateTab="setCurrentTab" :title="t" :currentTab="currentTab" />
 		</tabBrowser>
 	</header>
-
 	<main>
 		<blackoutBackground v-show="popups.addingNewClan || popups.addingNewGameGroup || popups.confirm || popups.login || popups.registration || popups.editClan || popups.editGameGroup || popups.editClanUsers || popups.addNewWhitelistUser || popups.importWhitelist">
 			<login
@@ -258,14 +277,13 @@
 			<registration v-if="popups.registration" @cancelBtnClick="popups.registration = false" />
 			<AddNewClan v-if="popups.addingNewClan" @cancelBtnClick="popups.addingNewClan = false" @new_clan="appendNewClan" />
 			<AddNewGameGroup v-if="popups.addingNewGameGroup" @cancelBtnClick="popups.addingNewGameGroup = false" @new_game_group="appendNewGroup" />
-			<confirmPopup :ref="(el: any) => {pointers.confirmPopup = el;}" v-show="popups.confirm" @cancelBtnClick="popups.confirm = false" />
+			<confirmPopup :ref="(el: any) => { pointers.confirmPopup = el; }" v-show="popups.confirm" @cancelBtnClick="popups.confirm = false" />
 			<edit-clan v-if="popups.editClan" @cancelBtnClick="popups.editClan = false" :clan_data="clans[inEditingClan]" @clan_edited="clans[inEditingClan] = $event" />
 			<editGameGroup v-if="popups.editGameGroup" @cancelBtnClick="popups.editGameGroup = false" :group_data="game_groups[inEditingGroup]" @edited="game_groups[inEditingGroup] = $event" />
 			<editClanUsers v-if="popups.editClanUsers" :clan_data="clans[inUserEditingClan]" @cancelBtnClick="popups.editClanUsers = false" />
 			<addNewWhitelistUser v-if="popups.addNewWhitelistUser" @cancelBtnClick="popups.addNewWhitelistUser = false" :add_data="tabData.Whitelist.add_data" />
 			<importWhitelist v-if="popups.importWhitelist" @cancelBtnClick="popups.importWhitelist = false" :add_data="tabData.Whitelist.add_data" />
 		</blackoutBackground>
-
 		<!--<button @click="setLoginRequired(!loginRequired)">Toggle</button>-->
 		<tab v-if="currentTab == 'Home'" :currentTab="currentTab"></tab>
 		<tab v-else-if="currentTab == 'Clans'" :currentTab="currentTab" :horizontal="true" @vnodeMounted="getClans">
@@ -330,6 +348,18 @@
 		<tab v-else-if="currentTab == 'Approvals'" :currentTab="currentTab">
 			<approvalsTab />
 		</tab>
+		<tab
+			v-else-if="currentTab == 'Users and Roles'"
+			:currentTab="currentTab"
+			@vnodeMounted="
+				() => {
+					getUsers();
+					getRoles();
+				}
+			"
+		>
+			<userCard v-for="u in tabData.UsersAndRoles.users" :user_data="u" :roles="tabData.UsersAndRoles.roles" @delete-record="removeUser" />
+		</tab>
 	</main>
 	<footer>
 		<h2>Official Support</h2>
@@ -341,7 +371,7 @@
 			<thanksCard title="Brigata Italiana Ariete" :src="bia_logo" website="https://biaclan.it/" discord="https://discord.gg/dXHVfQZcxJ" />
 			<thanksCard title="Offworld Industries" website="https://www.offworldindustries.com/" src="https://www.offworldindustries.com/wp-content/themes/owitheme/img/logo_white.svg" discord="https://discord.com/invite/kRkqJgXW" />
 		</div>
-		<span class="copyright">&copy; {{ new Date().getFullYear() }} Squad Whitelister, JetDave | Fantino Davide</span>
+		<span class="copyright"> &copy; {{ new Date().getFullYear() }} Squad Whitelister, JetDave | Fantino Davide </span>
 	</footer>
 </template>
 

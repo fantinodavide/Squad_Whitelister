@@ -274,6 +274,10 @@ label {
 .tag.redTrans {
 	opacity: 0.6;
 }
+.tag img{
+    height: 20px;
+    margin-right: 5px;
+}
 
 .overflow {
 	overflow: auto;
@@ -299,4 +303,15 @@ label {
 	transition: all 150ms ease-in-out, left 0ms linear;
 	background: #222;
 	overflow: auto;
+}
+
+button.redBG{
+	background: #c33;
+	color: #eee;
+}
+button.round{
+	height: 35px;
+	width: 35px;
+	padding: 5px;
+	flex-shrink: 0;
 }
