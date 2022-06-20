@@ -1,4 +1,6 @@
 <script setup lang="ts">
+	import levenshtein from 'js-levenshtein';
+
 	import login from './components/login.vue';
 	import registration from './components/registration.vue';
 	import tabBrowser from './components/tabBrowser.vue';
@@ -68,6 +70,7 @@
 					UsersAndRoles: {
 						users: [] as Array<any>,
 						roles: [] as Array<any>,
+						userSearch: '',
 					},
 				},
 			};
@@ -245,6 +248,7 @@
 			this.checkSession();
 			this.getAppPersonalization();
 			this.getTabs();
+			console.log('levenshtein', levenshtein);
 			// this.getClans();
 		},
 	};
@@ -358,7 +362,8 @@
 				}
 			"
 		>
-			<userCard v-for="u in tabData.UsersAndRoles.users" :user_data="u" :roles="tabData.UsersAndRoles.roles" @delete-record="removeUser" />
+			<input type="search" placeholder="Search User" name="usrSearch" id="" v-model="tabData.UsersAndRoles.userSearch" />
+			<userCard v-for="u in tabData.UsersAndRoles.users" v-show="levenshtein(u.username, tabData.UsersAndRoles.userSearch) <= 2 || tabData.UsersAndRoles.userSearch == ''" :user_data="u" :roles="tabData.UsersAndRoles.roles" @delete-record="removeUser" />
 		</tab>
 	</main>
 	<footer>

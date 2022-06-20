@@ -143,7 +143,7 @@ select:disabled {
 	appearance: none;
 }
 
-.tab select {
+.tab select, .tab input {
 	height: 40px;
 	border-radius: 10px;
 	margin: 0;
