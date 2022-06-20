@@ -412,6 +412,9 @@
 		justify-content: end;
 		align-items: center;
 	}
+	#hdBtnContainer > button {
+		white-space: nowrap;
+	}
 
 	.popupsArea {
 		align-self: center;
