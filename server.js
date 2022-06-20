@@ -1,4 +1,4 @@
-const versionN = "0.11";
+const versionN = "0.12";
 
 const fs = require("fs-extra");
 const StreamZip = require('node-stream-zip');
@@ -55,6 +55,7 @@ function start() {
 function main() {
     checkUpdates(config.other.automatic_updates, () => {
         console.log("ARGS:", args)
+        setInterval(() => { checkUpdates(config.other.automatic_updates) }, config.other.update_check_interval_seconds);
         if (enableServer) {
             const privKPath = 'certificates/privatekey.pem';
             const certPath = 'certificates/certificate.pem';
@@ -414,7 +415,7 @@ function main() {
         const parm = req.body;
 
         mongoConn((dbo) => {
-            dbo.collection("users").updateOne({ _id: ObjectID(parm._id) },{$set:{access_level:parm.upd}}, (err, dbRes) => {
+            dbo.collection("users").updateOne({ _id: ObjectID(parm._id) }, { $set: { access_level: parm.upd } }, (err, dbRes) => {
                 if (err) {
                     res.sendStatus(500);
                     console.error(err)
