@@ -54,6 +54,7 @@ function start() {
 
 function main() {
     checkUpdates(config.other.automatic_updates, () => {
+        console.log(" > Starting up");
         console.log("ARGS:", args)
         setInterval(() => { checkUpdates(config.other.automatic_updates) }, config.other.update_check_interval_seconds*1000);
         if (enableServer) {
@@ -1015,7 +1016,7 @@ function main() {
                     // server.close();
                     if (downloadInstallUpdate) downloadLatestUpdate(gitResData);
                 } else {
-                    console.log(" > No updates found. Proceding startup");
+                    console.log(" > No updates found");
                     if (callback) callback();
                 }
             })

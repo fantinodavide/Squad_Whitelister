@@ -412,7 +412,7 @@
 		justify-content: end;
 		align-items: center;
 	}
-	#hdBtnContainer > button {
+	#tabBrowser > button {
 		white-space: nowrap;
 	}
 
@@ -498,5 +498,22 @@
 	button.addHorizontal::before,
 	.addNewGameGroup::before {
 		transform: translate(-50%, -50%) rotate(0deg);
+	}
+
+	.gameGroupCard:hover .hoverMenu,
+	.hoverMenu.vis {
+		bottom: calc(-100% + 20px);
+		/* animation: scrollTopDown 200ms ease-in-out alternate infinite; */
+	}
+	.hoverMenu:hover {
+		bottom: 0px !important;
+	}
+	@keyframes scrollTopDown {
+		0% {
+			bottom: calc(-100% + 18px);
+		}
+		100% {
+			bottom: calc(-100% + 23px);
+		}
 	}
 </style>

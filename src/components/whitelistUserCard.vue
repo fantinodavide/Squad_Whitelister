@@ -94,11 +94,6 @@
 		margin-left: 0px;
 	}
 
-	.gameGroupCard:hover .hoverMenu,
-	.hoverMenu.vis {
-		bottom: 0;
-	}
-
 	.gameGroupCard:hover .hoverMenu {
 		opacity: 1;
 		pointer-events: all;

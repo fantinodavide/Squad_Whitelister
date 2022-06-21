@@ -1,14 +1,20 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+	import levenshtein from 'js-levenshtein';
+</script>
 
 <script lang="ts">
 	import { anyTypeAnnotation } from '@babel/types';
 	import { stringifyStyle } from '@vue/shared';
 	import $ from 'jquery';
+
 	import whitelistUserCard from './whitelistUserCard.vue';
 
 	export default {
 		data() {
 			return {
+				models: {
+					searchPlayer: '',
+				},
 				whitelist_clans: [] as Array<any>,
 				sel_clan: {} as any,
 				sel_clan_obj: {} as any,
@@ -117,9 +123,10 @@
 		<button v-if="editor" @click="$emit('confirm_clearing', { callback: clearAllList })">Clear</button>
 		<span class="playerCounter">{{ wl_players.length }}/ {{ sel_clan_obj.player_limit && sel_clan_obj.player_limit != '' ? sel_clan_obj.player_limit : '&infin;' }}</span>
 	</div>
+	<input type="search" placeholder="Search Player" name="plrSearch" v-model="models.searchPlayer" />
 
 	<button v-if="editor" class="addHorizontal" @click="$emit('addNewWhitelistUser', { sel_clan: sel_clan, callback: appendPlayer })"></button>
-	<whitelistUserCard v-for="w of wl_players" :ref="(r:any)=>{record_refs.push(r)}" :wl_data="w" :hoverMenuVisible="editor" @confirm="$emit('confirm', $event)" @removedPlayer="removePlayer" />
+	<whitelistUserCard v-for="w of wl_players" v-show="levenshtein(w.username.toLowerCase(), models.searchPlayer.toLowerCase()) <= 2 || models.searchPlayer == ''" :ref="(r:any)=>{record_refs.push(r)}" :wl_data="w" :hoverMenuVisible="editor" @confirm="$emit('confirm', $event)" @removedPlayer="removePlayer" />
 </template>
 
 <style scoped>
