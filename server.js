@@ -1,4 +1,5 @@
-const versionN = "0.13";
+const packageJSON = require('./package.json');
+const versionN = packageJSON.version;
 
 const fs = require("fs-extra");
 const StreamZip = require('node-stream-zip');
