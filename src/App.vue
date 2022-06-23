@@ -22,6 +22,7 @@
 	import approvalsTab from './components/approvalsTab.vue';
 	import importWhitelist from './components/importWhitelist.vue';
 	import userCard from './components/userCard.vue';
+	import changepassword from './components/changepassword.vue';
 
 	import bia_logo from './assets/bia_logo.png';
 	import jd_logo from './assets/jd_logo.png';
@@ -50,6 +51,7 @@
 					editClanUsers: false,
 					addNewWhitelistUser: false,
 					importWhitelist: false,
+					changepassword: false,
 				},
 				clans: [] as Array<any>,
 				inEditingClan: -1,
@@ -248,7 +250,7 @@
 			this.checkSession();
 			this.getAppPersonalization();
 			this.getTabs();
-			console.log('levenshtein', levenshtein);
+			console.log('levenshtein', levenshtein, '\ncrypto', crypto);
 			// this.getClans();
 		},
 	};
@@ -260,6 +262,7 @@
 		<img alt="Squad Whitelister Logo" class="logo" :src="logo_url" />
 		<h1>{{ app_title }}</h1>
 		<div id="hdBtnContainer">
+			<button v-if="!loginRequired" @click="popups.changepassword = true">Change Password</button>
 			<button v-if="!loginRequired" @click="logout">Logout</button>
 			<button v-if="loginRequired" @click="popups.login = true">Login</button>
 			<button v-if="loginRequired" @click="popups.registration = true">Sign Up</button>
@@ -269,7 +272,7 @@
 		</tabBrowser>
 	</header>
 	<main>
-		<blackoutBackground v-show="popups.addingNewClan || popups.addingNewGameGroup || popups.confirm || popups.login || popups.registration || popups.editClan || popups.editGameGroup || popups.editClanUsers || popups.addNewWhitelistUser || popups.importWhitelist">
+		<blackoutBackground v-show="popups.addingNewClan || popups.addingNewGameGroup || popups.confirm || popups.login || popups.registration || popups.editClan || popups.editGameGroup || popups.editClanUsers || popups.addNewWhitelistUser || popups.importWhitelist || popups.changepassword">
 			<login
 				v-if="popups.login"
 				@cancelBtnClick="popups.login = false"
@@ -279,6 +282,7 @@
 				"
 			/>
 			<registration v-if="popups.registration" @cancelBtnClick="popups.registration = false" />
+			<changepassword v-if="popups.changepassword" @cancelBtnClick="popups.changepassword = false" />
 			<AddNewClan v-if="popups.addingNewClan" @cancelBtnClick="popups.addingNewClan = false" @new_clan="appendNewClan" />
 			<AddNewGameGroup v-if="popups.addingNewGameGroup" @cancelBtnClick="popups.addingNewGameGroup = false" @new_game_group="appendNewGroup" />
 			<confirmPopup :ref="(el: any) => { pointers.confirmPopup = el; }" v-show="popups.confirm" @cancelBtnClick="popups.confirm = false" />
@@ -363,7 +367,7 @@
 			"
 		>
 			<input type="search" placeholder="Search User" name="usrSearch" id="" v-model="tabData.UsersAndRoles.userSearch" />
-			<userCard v-for="u in tabData.UsersAndRoles.users" v-show="levenshtein(u.username.toLowerCase(), tabData.UsersAndRoles.userSearch.toLowerCase()) <= 2 || tabData.UsersAndRoles.userSearch == ''" :user_data="u" :roles="tabData.UsersAndRoles.roles" @delete-record="removeUser" />
+			<userCard v-for="u in tabData.UsersAndRoles.users" v-show="u.username.toLowerCase().startsWith(tabData.UsersAndRoles.userSearch.toLowerCase()) || levenshtein(u.username.toLowerCase(), tabData.UsersAndRoles.userSearch.toLowerCase()) <= 2 || tabData.UsersAndRoles.userSearch == ''" :user_data="u" :roles="tabData.UsersAndRoles.roles" @delete-record="removeUser" />
 		</tab>
 	</main>
 	<footer>
