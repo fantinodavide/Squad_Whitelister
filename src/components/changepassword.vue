@@ -6,11 +6,18 @@
 
 <script lang="ts">
 	export default {
+		data() {
+			return {
+				refs: {
+					popupLogin: null as any,
+				},
+			};
+		},
 		methods: {
 			confBtnClick(dt: any) {
 				const compPopup: any = this.$refs.popupLogin;
-				if (dt.password == dt.conf_password) {
-					console.log('attempting signup', dt);
+				if (dt.new_password == dt.conf_password) {
+					console.log('attempting to change password', dt);
 					$.ajax({
 						url: '/api/changepassword',
 						type: 'post',
@@ -18,8 +25,10 @@
 						dataType: 'json',
 						success: (dt) => {
 							console.log(dt);
-							this.$emit('password_changed');
-							location.reload();
+							compPopup.blinkAll('#252');
+							setTimeout(() => {
+								this.$emit('cancelBtnClick');
+							}, 500);
 						},
 						error: (err) => {
 							console.error(err);
@@ -28,7 +37,8 @@
 						},
 					});
 				} else {
-					compPopup.blinkName('password');
+					// compPopup.blinkName('new_password');
+					compPopup.blinkName('new_password');
 					compPopup.blinkName('conf_password');
 				}
 			},

@@ -57,7 +57,7 @@ function main() {
     checkUpdates(config.other.automatic_updates, () => {
         console.log(" > Starting up");
         console.log("ARGS:", args)
-        setInterval(() => { checkUpdates(config.other.automatic_updates) }, config.other.update_check_interval_seconds*1000);
+        setInterval(() => { checkUpdates(config.other.automatic_updates) }, config.other.update_check_interval_seconds * 1000);
         if (enableServer) {
             const privKPath = 'certificates/privatekey.pem';
             const certPath = 'certificates/certificate.pem';
@@ -90,8 +90,20 @@ function main() {
     app.use(forceHTTPS);
     app.use('/', getSession);
 
-    app.get('/api/getVersion', (req, res, next) => {
-        res.send(versionN);
+    app.post('/api/changepassword', (req, res, next) => {
+        const parm = req.body;
+
+        mongoConn((dbo) => {
+            const newCryptPwd = crypto.createHash('sha512').update(parm.new_password).digest('hex');
+            const oldCryptPwd = crypto.createHash('sha512').update(parm.old_password).digest('hex');
+            dbo.collection("users").updateOne({ _id: req.userSession.id_user, password: oldCryptPwd }, { $set: { password: newCryptPwd } }, (err, dbRes) => {
+                if (err) serverError(500, err)
+                else {
+                    res.send(dbRes)
+                }
+
+            })
+        })
     })
     app.post('/api/login', (req, res, next) => {
         const parm = req.body;
@@ -215,6 +227,9 @@ function main() {
     })
     app.use('/', logRequests);
 
+    app.get('/api/getVersion', (req, res, next) => {
+        res.send(versionN);
+    })
     app.use('/', express.static(__dirname + '/dist'));
 
     app.use('favicon*', (req, res, next) => {
