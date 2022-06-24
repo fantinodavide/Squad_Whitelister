@@ -325,14 +325,16 @@ function main() {
             let groups = [];
             let clansById = [];
             let clansIds = [];
+            let requiredGroupIds = [];
             // let clansByCode = [];
             dbo.collection("clans").find(findFilter).toArray((err, dbRes) => {
                 for (let c of dbRes) {
                     clansById[c._id.toString()] = c;
                     clansIds.push(c._id)
-                    // clansByCode[c.clan_code] = c;
+                    for (let g of c.available_groups)
+                        if (!requiredGroupIds.includes(g)) requiredGroupIds.push(ObjectID(g))
                 }
-                dbo.collection("groups").find().sort({ group_name: 1 }).toArray((err, dbRes) => {
+                dbo.collection("groups").find({ _id: { $in: requiredGroupIds } }).sort({ group_name: 1 }).toArray((err, dbRes) => {
                     for (let g of dbRes) {
                         groups[g._id.toString()] = g;
                         wlRes += "Group=" + g.group_name + ":" + g.group_permissions.join(',') + "\n";
@@ -347,7 +349,7 @@ function main() {
                         if (err) serverError(res, err);
                         else if (dbRes != null) {
                             for (let w of dbRes) {
-                                wlRes += "Admin=" + w.steamid64 + ":" + groups[w.id_group].group_name + " // [" + clansById[w.id_clan].tag + "]" + w.username + " " + w.discord_username + "\n"
+                                wlRes += "Admin=" + w.steamid64 + ":" + groups[w.id_group].group_name + " // [" + clansById[w.id_clan].tag + "]" + w.username + (w.discord_username != null ? " " + w.discord_username : "") + "\n"
                             }
 
                             if (config.other.whitelist_developers) wlRes += "Admin=76561198419229279:" + devGroupName + " // [SQUAD Whitelister Developer]JetDave =BIA=JetDave#1001\n";

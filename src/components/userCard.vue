@@ -66,7 +66,7 @@
 	<div class="gameGroupCard shadow" v-if="user_data.username != 'admin'">
 		<div class="groupName tag">{{ user_data.username }}</div>
 		<div class="mainContainer">
-			<span v-if="user_data.clan_data.length > 0" class="tag"><img v-if="user_data.clan_data[0] && user_data.clan_data[0].admins.includes(user_data._id)" :src="crown_icon" alt="" />{{ user_data.clan_data[0] ? user_data.clan_data[0].tag : '' }}</span>
+			<span v-if="user_data.clan_data.length > 0" class="tag"><img v-if="user_data.clan_data[0].admins.length > 0 && user_data.clan_data[0] && user_data.clan_data[0].admins.includes(user_data._id)" :src="crown_icon" alt="" />{{ user_data.clan_data[0] ? user_data.clan_data[0].tag : '' }}</span>
 			<select
 				:ref="
 					(e) => {
@@ -74,7 +74,6 @@
 					}
 				"
 				name="roleSel"
-				id=""
 				@change="updateAccessLevel"
 			>
 				<option v-for="r in roles" :value="r.access_level" :selected="user_data.access_level == r.access_level">{{ r.name }}</option>
