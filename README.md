@@ -1,4 +1,5 @@
-# Squad Whitelister
+# Whitelister
+## Squad | Post Scriptum | Beyond the Wire
 [**Join the official Discord server!**](https://discord.com/invite/5hfcjNYdCP)
 
 ## Installation
