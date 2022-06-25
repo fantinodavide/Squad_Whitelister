@@ -1,5 +1,6 @@
 <script setup lang="ts">
 	import levenshtein from 'js-levenshtein';
+	import MobileDetect from 'mobile-detect';
 
 	import login from './components/login.vue';
 	import registration from './components/registration.vue';
@@ -29,9 +30,11 @@
 </script>
 
 <script lang="ts">
+	var md = new MobileDetect(window.navigator.userAgent);
 	export default {
 		data() {
 			return {
+				mainRef: null as any,
 				loginRequired: true,
 				app_title: 'Squad Whitelister',
 				accent_color: '#ffc40b',
@@ -250,7 +253,10 @@
 			this.checkSession();
 			this.getAppPersonalization();
 			this.getTabs();
-			console.log('levenshtein', levenshtein, '\ncrypto', crypto);
+			console.log('levenshtein', levenshtein, 'mobile', md.mobile());
+			if (md.mobile() != null) {
+				document.body.classList.add('mobile');
+			}
 			// this.getClans();
 		},
 	};
@@ -373,7 +379,7 @@
 	<footer>
 		<h2>Official Support</h2>
 		<div style="display: flex; flex-wrap: wrap; justify-content: center">
-			<thanksCard title="JetDave Development | Fantino Davide" :src="jd_logo" discord="https://discord.com/invite/5hfcjNYdCP" />
+			<thanksCard title="JetDave Development | Fantino Davide" :src="jd_logo" discord="https://discord.com/invite/5hfcjNYdCP" github="https://github.com/fantinodavide/Squad_Whitelister" />
 		</div>
 		<h2>Special Thanks</h2>
 		<div style="display: flex; flex-wrap: wrap; justify-content: center">
@@ -506,7 +512,12 @@
 
 	.gameGroupCard:hover .hoverMenu,
 	.hoverMenu.vis {
-		bottom: calc(-100% + 20px);
+		bottom: calc(-100% + 25px);
+		/* animation: scrollTopDown 200ms ease-in-out alternate infinite; */
+	}
+	body.mobile .gameGroupCard:hover .hoverMenu,
+	body.mobile .hoverMenu.vis {
+		bottom: 0px !important;
 		/* animation: scrollTopDown 200ms ease-in-out alternate infinite; */
 	}
 	.hoverMenu:hover {

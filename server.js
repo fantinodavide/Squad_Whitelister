@@ -1164,11 +1164,11 @@ function initConfigFile() {
             mongo: {
                 host: "127.0.0.1",
                 port: 27017,
-                database: "Squad_Whitelister"
+                database: "Whitelister"
             }
         },
         app_personalization: {
-            name: "Squad Whitelister",
+            name: "Whitelister",
             favicon: "",
             accent_color: "#ffc40b",
             logo_url: "https://joinsquad.com/wp-content/themes/squad/img/logo.png"
