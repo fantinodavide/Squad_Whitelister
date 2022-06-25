@@ -52,6 +52,21 @@ start();
 
 function start() {
     if (!initConfigFile()) {
+        fs.watchFile("conf.json", (curr, prev) => {
+            console.log("Reloading configuration");
+            let upd_conf, error = false;
+            try {
+                upd_conf = JSON.parse(fs.readFileSync("conf.json", "utf-8").toString());
+            } catch (err) {
+                console.log("Error found in conf.json file. Couldn't reload configuration.")
+                error = true;
+            }
+
+            if(!error){
+                config = upd_conf;
+                console.log("Reloaded configuration.",config)
+            }
+        });
         config = JSON.parse(fs.readFileSync("conf.json", "utf-8").toString());
         console.log(config);
         isDbPopulated(main)
