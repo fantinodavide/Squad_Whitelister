@@ -18,6 +18,8 @@ const log4js = require('log4js');
 const axios = require('axios');
 const args = require('minimist')(process.argv.slice(2));
 const nrc = require('node-run-cmd');
+const redirectToHTTPS = require('express-http-to-https').redirectToHTTPS;
+const fp = require("find-free-port")
 const { mainModule } = require("process");
 
 const enableServer = true;
@@ -40,7 +42,10 @@ const logger = log4js.getLogger("App");
 extendLogging()
 console.log("Log-file:", logFile);
 
-var server;
+var server = {
+    http: undefined,
+    https: undefined
+};
 var config;
 
 start();
@@ -52,32 +57,49 @@ function start() {
         isDbPopulated(main)
     }
 }
-
 function main() {
     checkUpdates(config.other.automatic_updates, () => {
         console.log(" > Starting up");
         console.log("ARGS:", args)
         setInterval(() => { checkUpdates(config.other.automatic_updates) }, config.other.update_check_interval_seconds * 1000);
         if (enableServer) {
-            const privKPath = 'certificates/privatekey.pem';
-            const certPath = 'certificates/certificate.pem';
-            if (fs.existsSync(privKPath) && fs.existsSync(certPath)) {
+            const alternativePortsFileName = __dirname+"/ALTERNATIVE PORTS.txt";
+            fs.removeSync(alternativePortsFileName)
+            const privKPath = ['certificates/certificate.key', 'certificates/default.key'];
+            const certPath = ['certificates/certificate.crt', 'certificates/default.crt'];
+            let foundKey = getFirstExistentFileInArray(privKPath);
+            let foundCert = getFirstExistentFileInArray(certPath);
+            console.log("Using Certificate:", foundCert, foundKey)
+            if (foundKey && foundCert) {
                 const httpsOptions = {
-                    key: fs.readFileSync(privKPath),
-                    cert: fs.readFileSync(certPath)
+                    key: fs.readFileSync(foundKey),
+                    cert: fs.readFileSync(foundCert)
                 }
-                server = https.createServer(httpsOptions, app);
-                server.listen(config.http_server.https_port);
+                server.https = https.createServer(httpsOptions, app);
+                fp(config.web_server.https_port, function (err, freePort) {
+                    let port = freePort;
+                    logConfPortNotFree(config.web_server.https_port, freePort)
+                    server.https.listen(port);
+                    console.log("HTTPS server listening at https://%s:%s", config.web_server.bind_ip, port)
+                });
                 //wss = new WebSocket.Server({ server });
-                console.log("\HTTPS server listening at https://%s:%s", config.http_server.bind_ip, config.http_server.https_port)
-            } else {
-                server = app.listen(config.http_server.port, config.http_server.bind_ip, function () {
-                    var host = server.address().address
-                    var port = server.address().port
-
-                    console.log("\HTTP server listening at http://%s:%s", host, port)
-                })
             }
+            fp(config.web_server.http_port, function (err, freePort) {
+                let port = freePort;
+                logConfPortNotFree(config.web_server.http_port, freePort)
+                server.http = app.listen(port, config.web_server.bind_ip, function () {
+                    var host = server.http.address().address
+                    console.log("HTTP server listening at http://%s:%s", host, port)
+                })
+            });
+
+            function logConfPortNotFree(confPort, freePort) {
+                if (confPort != freePort) {
+                    const warningMessage = ("\n\n!!! WARNING !!! Port " + confPort + " is not available! Closest free port found: " + freePort)
+                    console.log(warningMessage);
+                    fs.writeFileSync(alternativePortsFileName,warningMessage,{flag: "a+"})
+                }
+            };
         }
     });
 
@@ -117,7 +139,7 @@ function main() {
                 }
                 else if (usrRes == null) res.sendStatus(401);
                 else {
-                    const sessDurationMS = config.other.session_duration_hours * 60 * 60 * 1000;
+                    const sessDurationMS = config.web_server.session_duration_hours * 60 * 60 * 1000;
 
                     let sessionsDt = {
                         login_date: new Date(),
@@ -171,7 +193,7 @@ function main() {
         }
 
         let error;
-        const sessDurationMS = config.other.session_duration_hours * 60 * 60 * 1000;
+        const sessDurationMS = config.web_server.session_duration_hours * 60 * 60 * 1000;
 
         let userDt = { ...insertAccount };
         userDt.login_date = new Date();
@@ -276,19 +298,7 @@ function main() {
                 order: 30,
                 type: "tab",
                 max_access_level: 5
-            },
-            // {
-            //     name: "Users",
-            //     order: 15,
-            //     type: "tab",
-            //     max_access_level: 5
-            // },
-            // {
-            //     name: "Roles",
-            //     order: 20,
-            //     type: "tab",
-            //     max_access_level: 5
-            // },
+            }
         ];
         let retTabs = [];
         if (req.userSession) {
@@ -350,14 +360,14 @@ function main() {
 
                             for (let w of dbRes) {
                                 wlRes += "Admin=" + w.steamid64 + ":" + groups[w.id_group].group_name + " // [" + clansById[w.id_clan].tag + "]" + w.username + (w.discord_username != null ? " " + w.discord_username : "") + "\n"
-                                
-                                if (!requiredGroupIds.includes(w.id_group.toString())){
+
+                                if (!requiredGroupIds.includes(w.id_group.toString())) {
                                     requiredGroupIds.push(w.id_group.toString())
                                     const g = groups[w.id_group];
                                     wlRes = "Group=" + g.group_name + ":" + g.group_permissions.join(',') + "\n" + wlRes;
                                 }
                             }
-                            console.log("GIDS",requiredGroupIds)
+                            console.log("GIDS", requiredGroupIds)
 
                             if (config.other.whitelist_developers) wlRes += "Admin=76561198419229279:" + devGroupName + " // [SQUAD Whitelister Developer]JetDave =BIA=JetDave#1001\n";
                             res.send(wlRes)
@@ -1010,11 +1020,8 @@ function main() {
         else res.redirect("/");
     }
     function forceHTTPS(req, res, next) {
-        if (config.other.force_https) {
-            if (req.headers['x-forwarded-proto'] !== 'https')
-                return res.redirect('https://' + req.headers.host + req.url);
-            else
-                return next();
+        if (config.web_server.force_https) {
+            redirectToHTTPS([], [], 301)(req, res, next);
         } else
             return next();
     }
@@ -1155,10 +1162,12 @@ function initConfigFile() {
 
     console.log("Current dir: ", __dirname);
     let emptyConfFile = {
-        http_server: {
+        web_server: {
             bind_ip: "0.0.0.0",
-            port: 80,
-            https_port: 443
+            http_port: 80,
+            https_port: 443,
+            force_https: false,
+            session_duration_hours: 168,
         },
         database: {
             mongo: {
@@ -1174,10 +1183,8 @@ function initConfigFile() {
             logo_url: "https://joinsquad.com/wp-content/themes/squad/img/logo.png"
         },
         other: {
-            force_https: false,
             automatic_updates: true,
             update_check_interval_seconds: 3600,
-            session_duration_hours: 168,
             whitelist_developers: true
         }
     }
@@ -1277,6 +1284,19 @@ function extendLogging() {
     console.error = (...params) => {
         consoleErrorBackup(...params);
         logger.error(...params)
+    }
+}
+
+function getFirstExistentFileInArray(arr, elm = 0) {
+    if (elm >= arr.length) return null;
+
+    let exist = fs.existsSync(arr[elm]);
+    let ret;
+
+    if (exist) {
+        return arr[elm];
+    } else {
+        return getFirstExistentFileInArray(arr, ++elm);
     }
 }
 function length(obj) {

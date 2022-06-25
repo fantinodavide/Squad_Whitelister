@@ -7,7 +7,6 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-
 node_modules
 .DS_Store
 dist
@@ -32,3 +31,5 @@ release.zip
 release
 
 conf.json
+yarn.lock
+*.bak
