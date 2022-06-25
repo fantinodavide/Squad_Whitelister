@@ -15,6 +15,10 @@
 4. Configure as needed the application from **conf.js** file
 5. `node server` *To start the server*
 
+#### Using a custom SSL Certificate
+- Insert `certificate.key` in the **certificates** folder
+- Insert `certificate.crt` in the **certificates** folder
+
 #### Using process managers *(ex. PM2)*
 To avoid issues with process managers add run argument `--using-pm`
 - PM2: `pm2 start server.js -- --using-pm`
