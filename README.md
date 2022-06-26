@@ -7,21 +7,20 @@
 - NodeJS
 - npm
 - MongoDB
+- *PM2 (Optional)*
 
 #### Setup
 1. Download and unpack the latest [Release (release.zip)](https://github.com/fantinodavide/Squad_Whitelister/releases "Releases")
-2. `node server` *To start the server. The application will automatically stop to create the configuration file*
+2. `node server` *To start the server for the first time. The application will automatically stop to create the configuration file*
 3. Configure as needed the application from **conf.js** file
-4. `node server` *To start the server*
+4. `pm2 start server.js` or `node server --self-pm` *To start the server forever*
 
 #### Using a custom SSL Certificate
 - Insert `certificate.key` in the **certificates** folder
 - Insert `certificate.crt` in the **certificates** folder
 
-#### Using process managers *(ex. PM2)*
-To avoid issues with process managers add run argument `--using-pm`
-- PM2: `pm2 start server.js -- --using-pm`
-- Forever: `forever start server.js --using-pm`
+#### If you are NOT using a Process Managers *(ex. PM2)*
+Add run argument `--self-pm` to automatically restart after an update
 
 #### Linking to the *RemoteAdminListHosts.cfg*
 - Full output is found at path **/wl** (*ex. https://example.ex/wl*)
