@@ -9,7 +9,7 @@
 - MongoDB
 
 #### Setup
-1. Download and unpack the latest [ Release](https://github.com/fantinodavide/Squad_Whitelister/releases "Releases")
+1. Download and unpack the latest [Release (release.zip)](https://github.com/fantinodavide/Squad_Whitelister/releases "Releases")
 2. `node server` *To start the server. The application will automatically stop to create the configuration file*
 3. Configure as needed the application from **conf.js** file
 4. `node server` *To start the server*
