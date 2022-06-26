@@ -19,7 +19,7 @@
 - Insert `certificate.key` in the **certificates** folder
 - Insert `certificate.crt` in the **certificates** folder
 
-#### If you are NOT using a Process Managers *(ex. PM2)*
+#### If you are NOT using a Process Manager *(ex. PM2)*
 Add run argument `--self-pm` to automatically restart after an update
 
 #### Linking to the *RemoteAdminListHosts.cfg*
