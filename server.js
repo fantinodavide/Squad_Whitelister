@@ -4,7 +4,7 @@ const irequire = async module => {
     try {
         require.resolve(module)
     } catch (e) {
-        if(!installingDependencies){
+        if (!installingDependencies) {
             installingDependencies = true
             console.log(`INSTALLING DEPENDENCIES...\nTHIS PROCESS MAY TAKE SOME TIME. PLEASE WAIT`)
         }
@@ -42,7 +42,7 @@ async function init() {
     const axios = await irequire('axios');
     const args = (await irequire('minimist'))(process.argv.slice(2));
     const nrc = await irequire('node-run-cmd');
-    const redirectToHTTPS = await irequire('express-http-to-https').redirectToHTTPS;
+    const forceSSL = await irequire('express-force-ssl');
     const fp = await irequire("find-free-port")
     const { mainModule } = await irequire("process");
 
@@ -118,6 +118,9 @@ async function init() {
                     server.https = https.createServer(httpsOptions, app);
                     fp(config.web_server.https_port, function (err, freePort) {
                         let port = freePort;
+                        app.set('forceSSLOptions', {
+                            httpsPort: port
+                        });
                         logConfPortNotFree(config.web_server.https_port, freePort)
                         server.https.listen(port);
                         console.log("HTTPS server listening at https://%s:%s", config.web_server.bind_ip, port)
@@ -426,6 +429,11 @@ async function init() {
         })
 
         app.use('/', requireLogin);
+        
+        app.use('/api/restart', (req, res, next) => {
+            res.send({status: "restarting"});
+            restartProcess(0,0);
+        })
 
         app.use('/api/logout', (req, res, next) => {
             res.clearCookie("stok")
@@ -1065,7 +1073,7 @@ async function init() {
         }
         function forceHTTPS(req, res, next) {
             if (config.web_server.force_https) {
-                redirectToHTTPS([], [], 301)(req, res, next);
+                forceSSL(req, res, next);
             } else
                 return next();
         }
@@ -1160,7 +1168,7 @@ async function init() {
     }
 
     function restartProcess(delay = 5000, code = 0) {
-        if (args["using-pm"] && args["using-pm"] == true) {
+        if (!(args["self-pm"] && args["self-pm"] == true)/*args["using-pm"] && args["using-pm"] == true*/) {
             console.log("Terminating execution. Process manager will restart me.")
             process.exit(code)
         } else {
@@ -1314,7 +1322,7 @@ async function init() {
     }
     process.on('uncaughtException', function (err) {
         console.error("Uncaught Exception", err.message, err.stack)
-        if (++errorCount >= (args["using-pm"] ? 0 : 5)) {
+        if (++errorCount >= (args["self-pm"] ? 5 : 0)) {
             console.error("Too many errors occurred during the current run. Terminating execution...");
             restartProcess(0, 1);
         }

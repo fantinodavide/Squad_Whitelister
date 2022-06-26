@@ -1,6 +1,6 @@
 {
   "name": "squad-whitelister",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
@@ -17,7 +17,7 @@
     "cookie-parser": "^1.4.6",
     "crypto": "^1.0.1",
     "express": "^4.17.3",
-    "express-http-to-https": "^1.1.4",
+    "express-force-ssl": "^0.3.2",
     "find-free-port": "^2.0.0",
     "fs": "^0.0.1-security",
     "https": "^1.0.0",
