@@ -369,6 +369,7 @@ async function init() {
             }
             res.send(ret);
         })
+        app.use('/wl/*',removeExpiredPlayers);
         app.get('/wl/:clan_code?', (req, res, next) => {
             res.type('text/plain');
 
@@ -429,10 +430,10 @@ async function init() {
         })
 
         app.use('/', requireLogin);
-        
+
         app.use('/api/restart', (req, res, next) => {
-            res.send({status: "restarting"});
-            restartProcess(0,0);
+            res.send({ status: "restarting" });
+            restartProcess(0, 0);
         })
 
         app.use('/api/logout', (req, res, next) => {
@@ -527,6 +528,7 @@ async function init() {
             }
             res.send(roles)
         })
+        app.use('/api/whitelist/*',removeExpiredPlayers);
         app.use('/api/whitelist/read/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
         app.get('/api/whitelist/read/getAllClans', (req, res, next) => {
             const parm = req.query;
@@ -725,6 +727,7 @@ async function init() {
                                 id_group: ObjectID(parm.group),
                                 discord_username: parm.discordUsername,
                                 inserted_by: ObjectID(req.userSession.id_user),
+                                expiration: (parm.durationHours && parm.durationHours != "") ? new Date(Date.now() + (parseFloat(parm.durationHours) * 60 * 60 * 1000)) : false,
                                 insert_date: new Date(),
                                 approved: false,
                             }
@@ -1003,6 +1006,15 @@ async function init() {
         app.use((req, res, next) => {
             res.redirect("/");
         });
+
+        function removeExpiredPlayers(req, res, next) {
+            mongoConn((dbo) => {
+                dbo.collection("whitelists").deleteOne({ expiration: { $lte: new Date() } }, (err, dbRes) => {
+                    if (err) console.error(err)
+                    next();
+                })
+            })
+        }
 
         function getSession(req, res, callback = null) {
             const parm = req.cookies;

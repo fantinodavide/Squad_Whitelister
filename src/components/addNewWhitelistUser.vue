@@ -70,6 +70,7 @@
 			<option hidden selected value>Select a group</option>
 			<option v-for="g of game_groups" :value="g._id">{{ g.group_name }}</option>
 		</select>
+		<label>Duration (hours)<input name="durationHours" type="number" placeholder="Unlimited" style="width: 100px" optional /></label>
 		<input name="discordUsername" type="text" placeholder="Discord Username" optional regex="^.{3,32}#[0-9]{4}$" />
 	</popup>
 </template>
