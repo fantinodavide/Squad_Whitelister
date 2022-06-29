@@ -425,7 +425,7 @@ async function init() {
         })
 
         app.get('/api/checkSession', (req, res, next) => {
-            if (req.userSession) res.send({ status: "session_valid" })
+            if (req.userSession) res.send({ status: "session_valid", userSession: req.userSession })
             else res.send({ status: "login_required" }).status(401);
         })
 

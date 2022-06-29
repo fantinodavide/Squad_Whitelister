@@ -35,6 +35,7 @@
 		data() {
 			return {
 				mainRef: null as any,
+				user_session: null as any,
 				loginRequired: true,
 				app_title: 'Squad Whitelister',
 				accent_color: '#ffc40b',
@@ -94,6 +95,7 @@
 				fetch('/api/checkSession')
 					.then((res) => res.json())
 					.then((dt) => {
+						this.user_session = dt.userSession;
 						this.setLoginRequired(dt.status == 'login_required');
 					});
 			},

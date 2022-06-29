@@ -21,6 +21,7 @@
 				wl_players: [] as Array<any>,
 				editor: false,
 				record_refs: [] as Array<any>,
+				user_session: null as any,
 			};
 		},
 		methods: {
@@ -30,14 +31,25 @@
 					.then((res) => res.json())
 					.then((dt) => {
 						this.whitelist_clans = dt;
-						this.sel_clan = this.whitelist_clans[0]._id;
-						this.getClanWhitelist();
+						console.log('All clans:', dt);
+
+						fetch('/api/checkSession')
+							.then((res) => res.json())
+							.then((dt) => {
+								this.user_session = dt.userSession;
+								console.log(dt);
+								this.sel_clan = this.whitelist_clans.filter((c) => c.clan_code == dt.userSession.clan_code)[0]._id;
+								this.getClanWhitelist();
+							});
 					});
 			},
-			selectClanChanged: function (e: any) {
+			selectClanChanged: function (e: any, not_event = false) {
 				this.record_refs = [];
-				this.sel_clan = e.target.value;
+				this.sel_clan = not_event ? e : e.target.value;
 				this.getClanWhitelist();
+			},
+			getElmByName(name: string) {
+				return this.$el.querySelector('input[name="' + name + '"]');
 			},
 			getClanWhitelist() {
 				this.sel_clan_obj = this.whitelist_clans.filter((a: any) => a._id == this.sel_clan)[0];
@@ -116,8 +128,8 @@
 
 <template>
 	<div class="selectorContainer">
-		<select name="clan_selector" ref="clan_selector" :disabled="whitelist_clans.length == 1" @change="selectClanChanged">
-			<option v-for="c of whitelist_clans" :value="c._id">{{ c.full_name }}</option>
+		<select name="clan_selector" :disabled="whitelist_clans.length == 1" @change="selectClanChanged">
+			<option v-for="c of whitelist_clans" :value="c._id" :selected="user_session && user_session.clan_code && user_session.clan_code == c.clan_code">{{ c.full_name }}</option>
 		</select>
 		<button v-if="editor" @click="$emit('import_whitelist', { sel_clan: sel_clan, callback: appendPlayer })">Import</button>
 		<button v-if="editor" @click="$emit('confirm_clearing', { callback: clearAllList })">Clear</button>
