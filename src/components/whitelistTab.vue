@@ -38,7 +38,7 @@
 							.then((dt) => {
 								this.user_session = dt.userSession;
 								console.log(dt);
-								this.sel_clan = this.whitelist_clans.filter((c) => c.clan_code == dt.userSession.clan_code)[0]._id;
+								this.sel_clan = dt.userSession.clan_code ? this.whitelist_clans.filter((c) => c.clan_code == dt.userSession.clan_code)[0]._id : this.whitelist_clans[0]._id;
 								this.getClanWhitelist();
 							});
 					});
