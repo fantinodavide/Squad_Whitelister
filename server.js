@@ -1010,6 +1010,7 @@ async function init() {
         });
 
         function removeExpiredPlayers(req, res, next) {
+            console.log("Removing expired players");
             mongoConn((dbo) => {
                 dbo.collection("whitelists").deleteOne({ expiration: { $lte: new Date() } }, (err, dbRes) => {
                     if (err) console.error(err)
