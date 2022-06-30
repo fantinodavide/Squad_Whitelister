@@ -143,6 +143,8 @@ async function init() {
                         fs.writeFileSync(alternativePortsFileName, warningMessage, { flag: "a+" })
                     }
                 };
+
+                setInterval(removeExpiredPlayers,60*1000)
             }
         });
 
@@ -369,7 +371,7 @@ async function init() {
             }
             res.send(ret);
         })
-        app.use('/wl/*',removeExpiredPlayers);
+        app.use('/wl/*', removeExpiredPlayers);
         app.get('/wl/:clan_code?', (req, res, next) => {
             res.type('text/plain');
 
@@ -528,7 +530,7 @@ async function init() {
             }
             res.send(roles)
         })
-        app.use('/api/whitelist/*',removeExpiredPlayers);
+        // app.use('/api/whitelist/*', removeExpiredPlayers);
         app.use('/api/whitelist/read/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
         app.get('/api/whitelist/read/getAllClans', (req, res, next) => {
             const parm = req.query;
@@ -1011,7 +1013,7 @@ async function init() {
             mongoConn((dbo) => {
                 dbo.collection("whitelists").deleteOne({ expiration: { $lte: new Date() } }, (err, dbRes) => {
                     if (err) console.error(err)
-                    next();
+                    if (next) next();
                 })
             })
         }
