@@ -45,6 +45,7 @@ async function init() {
     const forceSSL = await irequire('express-force-ssl');
     const fp = await irequire("find-free-port")
     const { mainModule } = await irequire("process");
+    // const Discord = await irequire("discord.js");
 
     const enableServer = true;
     var errorCount = 0;
@@ -1010,7 +1011,7 @@ async function init() {
         });
 
         function removeExpiredPlayers(req, res, next) {
-            console.log("Removing expired players");
+            // console.log("Removing expired players");
             mongoConn((dbo) => {
                 dbo.collection("whitelists").deleteOne({ expiration: { $lte: new Date() } }, (err, dbRes) => {
                     if (err) console.error(err)
