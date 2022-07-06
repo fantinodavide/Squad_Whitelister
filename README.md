@@ -10,7 +10,7 @@
 - *PM2 (Optional)*
 
 #### Setup
-1. Download and unpack the latest [Release (release.zip)](https://github.com/fantinodavide/Squad_Whitelister/releases "Releases")
+1. Download and unpack the [Latest Release (release.zip)](https://github.com/fantinodavide/Squad_Whitelister/releases/latest "Releases")
 2. `node server` *To start the server for the first time. The application will automatically stop to create the configuration file*
 3. Configure as needed the application from **conf.js** file
 4. `pm2 start server.js` or `node server --self-pm` *To start the server forever*
