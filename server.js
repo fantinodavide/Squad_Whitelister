@@ -1,4 +1,5 @@
 const cp = require('child_process')
+cp.execSync(`npm install`)
 var installingDependencies = false;
 const irequire = async module => {
     try {
@@ -17,7 +18,8 @@ const irequire = async module => {
         return require(module)
     } catch (e) {
         console.log(`Could not include "${module}". Restart the script`)
-        process.exit(1)
+        terminateAndSpawnChildProcess(1)
+        //process.exit(1)
     }
 }
 
@@ -1177,11 +1179,8 @@ async function init() {
         }
     }
 
-    function restartProcess(delay = 5000, code = 0) {
-        if (!(args["self-pm"] && args["self-pm"] == true)/*args["using-pm"] && args["using-pm"] == true*/) {
-            console.log("Terminating execution. Process manager will restart me.")
-            process.exit(code)
-        } else {
+    function restartProcess(delay = 5000, code = 0, forceRestart = false) {
+        if ((args["self-pm"] && args["self-pm"] == true) || forceRestart/*args["using-pm"] && args["using-pm"] == true*/) {
             process.on("exit", function () {
                 console.log("Process terminated\nStarting new process");
                 require("child_process").spawn(process.argv.shift(), process.argv, {
@@ -1193,6 +1192,9 @@ async function init() {
             setTimeout(() => {
                 process.exit(code);
             }, delay)
+        } else {
+            console.log("Terminating execution. Process manager will restart me.")
+            process.exit(code)
         }
     }
 
@@ -1386,3 +1388,17 @@ async function init() {
 }
 
 init();
+
+function terminateAndSpawnChildProcess(code = 0, delay = 0) {
+    process.on("exit", function () {
+        console.log("Process terminated\nStarting new process");
+        require("child_process").spawn(process.argv.shift(), process.argv, {
+            cwd: process.cwd(),
+            detached: true,
+            stdio: "inherit"
+        });
+    });
+    setTimeout(() => {
+        process.exit(code);
+    }, delay)
+}
