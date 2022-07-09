@@ -1110,7 +1110,7 @@ async function init() {
                     })*/
                     const checkV = gitResData.tag_name.toUpperCase().replace("V", "").split(".");
                     const versionSplit = versionN.toString().split(".");
-                    if (((config.other.install_beta_versions && gitResData.prerelease) || !gitResData.prerelease) && (parseInt(versionSplit[0]) < parseInt(checkV[0]) || parseInt(versionSplit[1]) < parseInt(checkV[1]))) {
+                    if (((config.other.install_beta_versions && gitResData.prerelease) || !gitResData.prerelease) && (parseInt(versionSplit[0]) < parseInt(checkV[0]) || parseInt(versionSplit[1]) < parseInt(checkV[1]) || parseInt(versionSplit[2]) < parseInt(checkV[2]))) {
                         console.log(" > Update found: " + gitResData.tag_name, gitResData.name);
                         //if (updateFoundCallback) updateFoundCallback();
                         // server.close();
