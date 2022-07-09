@@ -1102,12 +1102,6 @@ async function init() {
                 .get(releasesUrl)
                 .then(res => {
                     const gitResData = res.data[0];
-                    /*mongoConn((dbo) => {
-                        dbo.collection("releases").findOne(res.data[0], (err, dbRes) => {
-                            if (!dbRes) {
-                            }
-                        })
-                    })*/
                     const checkV = gitResData.tag_name.toUpperCase().replace("V", "").split(".");
                     const versionSplit = versionN.toString().split(".");
                     if (((config.other.install_beta_versions && gitResData.prerelease) || !gitResData.prerelease) && (parseInt(versionSplit[0]) < parseInt(checkV[0]) || parseInt(versionSplit[1]) < parseInt(checkV[1]) || parseInt(versionSplit[2]) < parseInt(checkV[2]))) {
