@@ -1,5 +1,4 @@
 const cp = require('child_process')
-cp.execSync(`npm install`)
 var installingDependencies = false;
 const irequire = async module => {
     try {
@@ -9,9 +8,11 @@ const irequire = async module => {
             installingDependencies = true
             console.log(`INSTALLING DEPENDENCIES...\nTHIS PROCESS MAY TAKE SOME TIME. PLEASE WAIT`)
         }
-        cp.execSync(`npm install ${module}`)
+        // cp.execSync(`npm install ${module}`)
+        cp.execSync(`npm install`)
         await setImmediate(() => { })
-        console.log(`"${module}" has been installed`)
+        // console.log(`"${module}" has been installed`)
+        console.log(`DEPENDECIES INSTALLED`)
     }
     console.log(`Requiring "${module}"`)
     try {
