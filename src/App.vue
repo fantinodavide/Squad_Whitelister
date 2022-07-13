@@ -27,7 +27,7 @@
 
 	import bia_logo from './assets/bia_logo.png';
 	import jd_logo from './assets/jd_logo.png';
-	import oasis_logo from './assets/oasishostinglogo.svg';
+	// import oasis_logo from './assets/oasishostinglogo.svg';
 </script>
 
 <script lang="ts">
