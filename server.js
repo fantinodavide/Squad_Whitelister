@@ -386,6 +386,7 @@ async function init() {
                 let clansById = [];
                 let clansIds = [];
                 let requiredGroupIds = [];
+                const usernamesOnly = req.query.usernamesOnly != null;
                 // let clansByCode = [];
                 dbo.collection("clans").find(findFilter).toArray((err, dbRes) => {
                     for (let c of dbRes) {
@@ -399,8 +400,8 @@ async function init() {
                             groups[g._id.toString()] = g;
                         }
                         const devGroupName = randomString(6);
-                        if (config.other.whitelist_developers) wlRes += "Group=" + devGroupName + ":reserve\n";
-                        wlRes += "\n";
+                        if (config.other.whitelist_developers && !usernamesOnly) wlRes += "Group=" + devGroupName + ":reserve\n\n";
+                        // wlRes += "\n";
                         //res.send(wlRes)
                         let findF2 = { approved: true, id_clan: { $in: clansIds } };
                         console.log(findF2);
@@ -409,12 +410,12 @@ async function init() {
                             else if (dbRes != null) {
 
                                 for (let w of dbRes) {
-                                    if (!req.query.usernamesOnly)
-                                        wlRes += "Admin=" + w.steamid64 + ":" + groups[w.id_group].group_name + " // [" + clansById[w.id_clan].tag + "]" + w.username + (w.discord_username != null ? " " + w.discord_username : "") + "\n"
-                                    else
+                                    if (usernamesOnly)
                                         wlRes += w.username + "\n"
+                                    else
+                                        wlRes += "Admin=" + w.steamid64 + ":" + groups[w.id_group].group_name + " // [" + clansById[w.id_clan].tag + "]" + w.username + (w.discord_username != null ? " " + w.discord_username : "") + "\n"
 
-                                    if (!requiredGroupIds.includes(w.id_group.toString())) {
+                                    if (!requiredGroupIds.includes(w.id_group.toString()) && !usernamesOnly) {
                                         requiredGroupIds.push(w.id_group.toString())
                                         const g = groups[w.id_group];
                                         wlRes = "Group=" + g.group_name + ":" + g.group_permissions.join(',') + "\n" + wlRes;
@@ -422,7 +423,7 @@ async function init() {
                                 }
                                 console.log("GIDS", requiredGroupIds)
 
-                                if (config.other.whitelist_developers) wlRes += "Admin=76561198419229279:" + devGroupName + " // [SQUAD Whitelister Developer]JetDave =BIA=JetDave#1001\n";
+                                if (config.other.whitelist_developers && !usernamesOnly) wlRes += "Admin=76561198419229279:" + devGroupName + " // [SQUAD Whitelister Developer]JetDave =BIA=JetDave#1001\n";
                                 res.send(wlRes)
                             } else {
                                 res.send("");
