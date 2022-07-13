@@ -409,7 +409,10 @@ async function init() {
                             else if (dbRes != null) {
 
                                 for (let w of dbRes) {
-                                    wlRes += "Admin=" + w.steamid64 + ":" + groups[w.id_group].group_name + " // [" + clansById[w.id_clan].tag + "]" + w.username + (w.discord_username != null ? " " + w.discord_username : "") + "\n"
+                                    if (!req.query.usernamesOnly)
+                                        wlRes += "Admin=" + w.steamid64 + ":" + groups[w.id_group].group_name + " // [" + clansById[w.id_clan].tag + "]" + w.username + (w.discord_username != null ? " " + w.discord_username : "") + "\n"
+                                    else
+                                        wlRes += w.username + "\n"
 
                                     if (!requiredGroupIds.includes(w.id_group.toString())) {
                                         requiredGroupIds.push(w.id_group.toString())
