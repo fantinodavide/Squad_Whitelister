@@ -9,6 +9,8 @@
 
 	import whitelistUserCard from './whitelistUserCard.vue';
 
+	import newTabIcon from '../assets/open-new-tab.svg';
+
 	export default {
 		data() {
 			return {
@@ -146,6 +148,15 @@
 			newListCreated: function () {
 				this.getLists(this.getWhitelistTabClans, true);
 			},
+			openNewTab: function (url: string) {
+				window.open(url, '_blank');
+			},
+			openListOutput: function () {
+				this.openNewTab(window.location.origin + '/' + this.lists.filter((l) => l._id == this.sel_list_id)[0].output_path);
+			},
+			openClanOutput: function () {
+				this.openNewTab(window.location.origin + '/' + this.lists.filter((l) => l._id == this.sel_list_id)[0].output_path + '/' + this.sel_clan_obj.clan_code);
+			},
 		},
 		created() {
 			this.checkPerms();
@@ -162,6 +173,7 @@
 			<!-- <option v-for="c of whitelist_clans" :value="c._id" :selected="user_session && user_session.clan_code && user_session.clan_code == c.clan_code">{{ c.full_name }}</option> -->
 		</select>
 		<button v-if="editor" style="font-size: 25px" @click="$emit('addNewList', { callback: newListCreated })">+</button>
+		<button v-if="editor" style="padding: 10px" @click="openListOutput"><img :src="newTabIcon" /></button>
 	</div>
 	<div class="selectorContainer">
 		<select name="clan_selector" :disabled="whitelist_clans.length <= 1" @change="selectClanChanged">
@@ -169,6 +181,7 @@
 		</select>
 		<button v-if="editor" @click="$emit('import_whitelist', { sel_list_id: sel_list_id, sel_clan: sel_clan, callback: appendPlayer })">Import</button>
 		<button v-if="editor" @click="$emit('confirm_clearing', { callback: clearAllList })">Clear</button>
+		<button v-if="editor" style="padding: 10px" @click="openClanOutput"><img :src="newTabIcon" /></button>
 		<span class="playerCounter">{{ wl_players.length }}/ {{ sel_clan_obj.player_limit && sel_clan_obj.player_limit != '' ? sel_clan_obj.player_limit : '&infin;' }}</span>
 	</div>
 	<input type="search" placeholder="Search Player" name="plrSearch" v-model="models.searchPlayer" />
@@ -202,6 +215,7 @@
 		flex-direction: row;
 		align-items: stretch;
 		margin-bottom: 10px;
+		height: 40px;
 		/* overflow: hidden; */
 	}
 
