@@ -128,6 +128,13 @@
 
 <template>
 	<div class="selectorContainer">
+		<select name="list_selector">
+			<option value="wl">Main</option>
+			<!-- <option v-for="c of whitelist_clans" :value="c._id" :selected="user_session && user_session.clan_code && user_session.clan_code == c.clan_code">{{ c.full_name }}</option> -->
+		</select>
+		<button v-if="editor" style="font-size: 25px">+</button>
+	</div>
+	<div class="selectorContainer">
 		<select name="clan_selector" :disabled="whitelist_clans.length == 1" @change="selectClanChanged">
 			<option v-for="c of whitelist_clans" :value="c._id" :selected="user_session && user_session.clan_code && user_session.clan_code == c.clan_code">{{ c.full_name }}</option>
 		</select>
@@ -166,6 +173,7 @@
 		flex-direction: row;
 		align-items: stretch;
 		margin-bottom: 10px;
+		/* overflow: hidden; */
 	}
 
 	.selectorContainer > * {
@@ -192,10 +200,12 @@
 		flex-direction: row;
 		align-items: center;
 		border: 0px;
-		border-top-right-radius: 10px;
-		border-bottom-right-radius: 10px;
 		background: #333;
 		padding: 5px 10px;
 		white-space: nowrap;
+	}
+	.selectorContainer > *:last-child {
+		border-top-right-radius: 10px;
+		border-bottom-right-radius: 10px;
 	}
 </style>

@@ -375,63 +375,69 @@ async function init() {
             }
             res.send(ret);
         })
-        app.use('/wl/*', removeExpiredPlayers);
-        app.get('/wl/:clan_code?', (req, res, next) => {
-            res.type('text/plain');
+        // app.use('/wl/*', removeExpiredPlayers);
+        app.get('/:basePath/:clan_code?', (req, res, next) => {
+            // console.log("\n\n\n\n",req.params,"\n\n\n\n")
+            
+            if (["wl"].includes(req.params.basePath)) {
+                removeExpiredPlayers();
+                res.type('text/plain');
 
-            mongoConn((dbo) => {
-                let findFilter = req.params.clan_code ? { clan_code: req.params.clan_code } : {};
-                let wlRes = "";
-                let groups = [];
-                let clansById = [];
-                let clansIds = [];
-                let requiredGroupIds = [];
-                const usernamesOnly = req.query.usernamesOnly != null;
-                // let clansByCode = [];
-                dbo.collection("clans").find(findFilter).toArray((err, dbRes) => {
-                    for (let c of dbRes) {
-                        clansById[c._id.toString()] = c;
-                        clansIds.push(c._id)
-                        /*for (let g of c.available_groups)
-                            if (!requiredGroupIds.includes(g)) requiredGroupIds.push(ObjectID(g))*/
-                    }
-                    dbo.collection("groups").find(/*{ _id: { $in: requiredGroupIds } }*/).sort({ group_name: 1 }).toArray((err, dbGroups) => {
-                        for (let g of dbGroups) {
-                            groups[g._id.toString()] = g;
+                mongoConn((dbo) => {
+                    let findFilter = req.params.clan_code ? { clan_code: req.params.clan_code } : {};
+                    let wlRes = "";
+                    let groups = [];
+                    let clansById = [];
+                    let clansIds = [];
+                    let requiredGroupIds = [];
+                    const usernamesOnly = req.query.usernamesOnly != null;
+                    // let clansByCode = [];
+                    dbo.collection("clans").find(findFilter).toArray((err, dbRes) => {
+                        for (let c of dbRes) {
+                            clansById[c._id.toString()] = c;
+                            clansIds.push(c._id)
+                            /*for (let g of c.available_groups)
+                                if (!requiredGroupIds.includes(g)) requiredGroupIds.push(ObjectID(g))*/
                         }
-                        const devGroupName = randomString(6);
-                        if (config.other.whitelist_developers && !usernamesOnly) wlRes += "Group=" + devGroupName + ":reserve\n\n";
-                        // wlRes += "\n";
-                        //res.send(wlRes)
-                        let findF2 = { approved: true, id_clan: { $in: clansIds } };
-                        console.log(findF2);
-                        dbo.collection("whitelists").find(findF2).sort({ id_clan: 1, id_group: 1 }).toArray((err, dbRes) => {
-                            if (err) serverError(res, err);
-                            else if (dbRes != null) {
-
-                                for (let w of dbRes) {
-                                    if (usernamesOnly)
-                                        wlRes += w.username + "\n"
-                                    else
-                                        wlRes += "Admin=" + w.steamid64 + ":" + groups[w.id_group].group_name + " // [" + clansById[w.id_clan].tag + "]" + w.username + (w.discord_username != null ? " " + w.discord_username : "") + "\n"
-
-                                    if (!requiredGroupIds.includes(w.id_group.toString()) && !usernamesOnly) {
-                                        requiredGroupIds.push(w.id_group.toString())
-                                        const g = groups[w.id_group];
-                                        wlRes = "Group=" + g.group_name + ":" + g.group_permissions.join(',') + "\n" + wlRes;
-                                    }
-                                }
-                                console.log("GIDS", requiredGroupIds)
-
-                                if (config.other.whitelist_developers && !usernamesOnly) wlRes += "Admin=76561198419229279:" + devGroupName + " // [SQUAD Whitelister Developer]JetDave =BIA=JetDave#1001\n";
-                                res.send(wlRes)
-                            } else {
-                                res.send("");
+                        dbo.collection("groups").find(/*{ _id: { $in: requiredGroupIds } }*/).sort({ group_name: 1 }).toArray((err, dbGroups) => {
+                            for (let g of dbGroups) {
+                                groups[g._id.toString()] = g;
                             }
+                            const devGroupName = randomString(6);
+                            if (config.other.whitelist_developers && !usernamesOnly) wlRes += "Group=" + devGroupName + ":reserve\n\n";
+                            // wlRes += "\n";
+                            //res.send(wlRes)
+                            let findF2 = { approved: true, id_clan: { $in: clansIds } };
+                            console.log(findF2);
+                            dbo.collection("whitelists").find(findF2).sort({ id_clan: 1, id_group: 1 }).toArray((err, dbRes) => {
+                                if (err) serverError(res, err);
+                                else if (dbRes != null) {
+
+                                    for (let w of dbRes) {
+                                        if (usernamesOnly)
+                                            wlRes += w.username + "\n"
+                                        else
+                                            wlRes += "Admin=" + w.steamid64 + ":" + groups[w.id_group].group_name + " // [" + clansById[w.id_clan].tag + "]" + w.username + (w.discord_username != null ? " " + w.discord_username : "") + "\n"
+
+                                        if (!requiredGroupIds.includes(w.id_group.toString()) && !usernamesOnly) {
+                                            requiredGroupIds.push(w.id_group.toString())
+                                            const g = groups[w.id_group];
+                                            wlRes = "Group=" + g.group_name + ":" + g.group_permissions.join(',') + "\n" + wlRes;
+                                        }
+                                    }
+                                    console.log("GIDS", requiredGroupIds)
+
+                                    if (config.other.whitelist_developers && !usernamesOnly) wlRes += "Admin=76561198419229279:" + devGroupName + " // [SQUAD Whitelister Developer]JetDave =BIA=JetDave#1001\n";
+                                    res.send(wlRes)
+                                } else {
+                                    res.send("");
+                                }
+                            })
                         })
                     })
                 })
-            })
+            } else
+                next();
         })
 
         app.get('/api/checkSession', (req, res, next) => {
