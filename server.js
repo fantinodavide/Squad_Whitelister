@@ -561,7 +561,7 @@ async function init() {
                 })
             })
         })
-        app.use('/api/lists/write/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
+        app.use('/api/lists/write/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 10) next() })
         app.post('/api/lists/write/addNewList', (req, res, next) => {
             const parm = req.body;
             mongoConn((dbo) => {
@@ -573,6 +573,34 @@ async function init() {
                     if (err) serverError(res, err);
                     else {
                         res.send({ status: "inserted_new_list", ...dbRes })
+                    }
+                })
+            })
+        })
+        app.post('/api/lists/write/deleteList', (req, res, next) => {
+            const parm = req.body;
+            mongoConn((dbo) => {
+                dbo.collection("whitelists").deleteMany({ id_list: ObjectID(parm.sel_list_id) }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        // res.send({ status: "removed_whitelist", ...dbRes })
+                        dbo.collection("lists").deleteMany({ _id: ObjectID(parm.sel_list_id) }, (err, dbRes) => {
+                            if (err) serverError(res, err);
+                            else {
+                                res.send({ status: "removed_list", ...dbRes })
+                            }
+                        })
+                    }
+                })
+            })
+        })
+        app.post('/api/lists/write/editList', (req, res, next) => {
+            const parm = req.body;
+            mongoConn((dbo) => {
+                dbo.collection("lists").updateOne({ _id: ObjectID(parm.sel_list_id) },{$set:{title: parm.title, output_path: parm.output_path}}, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        res.send({ status: "edited_list", ...dbRes })
                     }
                 })
             })

@@ -159,7 +159,7 @@
 			<div v-for="g of importFoundGroups" class="grTranslation">
 				<span class="tag">{{ g }}</span>
 				<select :name="'sel-' + g">
-					<option v-for="allG of game_groups" :value="allG._id">{{ allG.group_name }}</option>
+					<option v-for="allG of game_groups" :value="allG._id" :selected="allG.group_name.toLowerCase() == g.toLowerCase()">{{ allG.group_name }}</option>
 				</select>
 			</div>
 		</div>

@@ -10,6 +10,8 @@
 	import whitelistUserCard from './whitelistUserCard.vue';
 
 	import newTabIcon from '../assets/open-new-tab.svg';
+	import binIcon from '../assets/bin.svg';
+	import penIcon from '../assets/edit_pen.svg';
 
 	export default {
 		data() {
@@ -26,6 +28,7 @@
 				user_session: null as any,
 				lists: [] as Array<any>,
 				sel_list_id: null as any,
+				sel_list_obj: {} as any,
 			};
 		},
 		methods: {
@@ -55,6 +58,7 @@
 			selectListChanged: function (e: any, not_event = false) {
 				this.record_refs = [];
 				this.sel_list_id = e.target.value;
+				this.sel_list_obj = this.lists.filter((l) => l._id == this.sel_list_id)[0];
 				this.getClanWhitelist();
 			},
 			getElmByName(name: string) {
@@ -87,7 +91,8 @@
 						console.log('Lists', dt);
 						this.record_refs = [];
 						this.lists = dt;
-						this.sel_list_id = (selectLast ? dt[dt.length - 1] : dt[0])._id;
+						this.sel_list_obj = selectLast ? dt[dt.length - 1] : dt[0];
+						this.sel_list_id = this.sel_list_obj._id;
 						this.getClanWhitelist();
 
 						if (callback) callback();
@@ -121,7 +126,7 @@
 					}, delay * c++);
 				}
 			},
-			clearAllList: function () {
+			clearAllList: function (cbData: any) {
 				// const delay = 50;
 				// let c = 0;
 				// for (let pr of this.record_refs) {
@@ -131,6 +136,7 @@
 				// 		}, true);
 				// 	}, delay * c++);
 				// }
+				// if (cbData && cbData.closePopup) cbData.closePopup();
 				$.ajax({
 					url: '/api/whitelist/write/clearList',
 					type: 'post',
@@ -139,6 +145,22 @@
 					contentType: 'application/json',
 					success: (dt) => {
 						this.wl_players = [];
+					},
+					error: (err) => {
+						console.error(err);
+					},
+				});
+			},
+			deleteList: function (cbData: any) {
+				$.ajax({
+					url: '/api/lists/write/deleteList',
+					type: 'post',
+					data: JSON.stringify({ sel_list_id: this.sel_list_id }),
+					dataType: 'json',
+					contentType: 'application/json',
+					success: (dt) => {
+						this.getLists(this.getWhitelistTabClans);
+						if (cbData && cbData.closePopup) cbData.closePopup();
 					},
 					error: (err) => {
 						console.error(err);
@@ -157,6 +179,9 @@
 			openClanOutput: function () {
 				this.openNewTab(window.location.origin + '/' + this.lists.filter((l) => l._id == this.sel_list_id)[0].output_path + '/' + this.sel_clan_obj.clan_code);
 			},
+			listEdited: function () {
+				this.getLists(this.getWhitelistTabClans);
+			},
 		},
 		created() {
 			this.checkPerms();
@@ -173,7 +198,9 @@
 			<!-- <option v-for="c of whitelist_clans" :value="c._id" :selected="user_session && user_session.clan_code && user_session.clan_code == c.clan_code">{{ c.full_name }}</option> -->
 		</select>
 		<button v-if="editor" style="font-size: 25px" @click="$emit('addNewList', { callback: newListCreated })">+</button>
+		<button v-if="editor" style="padding: 10px" @click="$emit('editList', { list_obj: sel_list_obj, callback: listEdited })"><img :src="penIcon" /></button>
 		<button v-if="editor" style="padding: 10px" @click="openListOutput"><img :src="newTabIcon" /></button>
+		<button v-if="editor" style="padding: 10px" @click="$emit('confirm_standard', { title: `Confirm list deletion?`, text: `Do you really want to delete list ${sel_list_obj.title}?`, callback: deleteList })"><img :src="binIcon" /></button>
 	</div>
 	<div class="selectorContainer">
 		<select name="clan_selector" :disabled="whitelist_clans.length <= 1" @change="selectClanChanged">
@@ -232,6 +259,10 @@
 		border-radius: 0;
 		background: #444;
 		color: #ddd;
+	}
+	.selectorContainer button img {
+		height: 100%;
+		width: 100%;
 	}
 
 	.selectorContainer button:hover {

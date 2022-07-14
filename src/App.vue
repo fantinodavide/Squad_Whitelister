@@ -25,6 +25,7 @@
 	import userCard from './components/userCard.vue';
 	import changepassword from './components/changepassword.vue';
 	import addNewList from './components/addNewList.vue';
+	import editList from './components/editList.vue';
 
 	import bia_logo from './assets/bia_logo.png';
 	import jd_logo from './assets/jd_logo.png';
@@ -59,6 +60,7 @@
 					importWhitelist: false,
 					changepassword: false,
 					addNewList: false,
+					editList: false,
 				},
 				clans: [] as Array<any>,
 				inEditingClan: -1,
@@ -73,6 +75,7 @@
 					Whitelist: {
 						add_data: {} as any,
 						new_list_data: {} as any,
+						edit_list_data: {} as any,
 					},
 					Groups: {
 						editor: false,
@@ -173,23 +176,33 @@
 						this.game_groups = dt;
 					});
 			},
-			confirmEvt: function (title = '', text = '', callback: any) {
+			confirmEvt: function (e: any) {
+				this.confirmShow(e.title, e.text, e.callback);
+			},
+			confirmShow: function (title = '', text = '', callback: any) {
 				this.popups.confirm = true;
+				const cbData = {
+					closePopup: () => {
+						this.popups.confirm = false;
+					},
+				};
 				if (this.pointers.confirmPopup != null) {
 					this.pointers.confirmPopup.setProps(title, text);
-					this.pointers.confirmPopup.setCallback(callback);
+					this.pointers.confirmPopup.setCallback(() => {
+						callback(cbData);
+					});
 				}
 			},
 			clearAdminList: function (dt: any) {
 				console.log('clearing entire admin list');
 
-				this.confirmEvt('Confirm clearing?', 'Do you really want to delete entire list for this clan?', () => {
+				this.confirmShow('Confirm clearing?', 'Do you really want to delete entire list for this clan?', () => {
 					dt.callback();
 					this.popups.confirm = false;
 				});
 			},
 			removeClan: function (dt: any) {
-				this.confirmEvt('Confirm deletion?', 'Do you really want to delete ' + dt.clan_data.tag + ' clan?', () => {
+				this.confirmShow('Confirm deletion?', 'Do you really want to delete ' + dt.clan_data.tag + ' clan?', () => {
 					dt.callback(() => {
 						this.clans = this.clans.filter((a) => a._id != dt.clan_data._id);
 						this.popups.confirm = false;
@@ -197,7 +210,7 @@
 				});
 			},
 			removeWhitelistPlayer: function (dt: any) {
-				this.confirmEvt('Confirm deletion?', 'Do you really want to delete ' + dt.wl_data.username + '?', () => {
+				this.confirmShow('Confirm deletion?', 'Do you really want to delete ' + dt.wl_data.username + '?', () => {
 					dt.callback(() => {
 						//this.clans = this.clans.filter((a) => a._id != dt.clan_data._id)
 						//dt.callback();
@@ -206,7 +219,7 @@
 				});
 			},
 			removeGroup: function (dt: any) {
-				this.confirmEvt('Confirm deletion?', 'Do you really want to delete ' + dt.group_data.group_name + ' group?', () => {
+				this.confirmShow('Confirm deletion?', 'Do you really want to delete ' + dt.group_data.group_name + ' group?', () => {
 					dt.callback(() => {
 						this.game_groups = this.game_groups.filter((a) => a._id != dt.group_data._id);
 						this.popups.confirm = false;
@@ -214,7 +227,7 @@
 				});
 			},
 			removeUser: function (e: any) {
-				this.confirmEvt('Delete User?', 'Do you really want to delete ' + e.username + '?', () => {
+				this.confirmShow('Delete User?', 'Do you really want to delete ' + e.username + '?', () => {
 					e.callback(() => {
 						this.popups.confirm = false;
 						this.tabData.UsersAndRoles.users = this.tabData.UsersAndRoles.users.filter((r) => r._id != e._id);
@@ -254,6 +267,9 @@
 						callback(dt);
 					});
 			},
+			evtTest: function (e: any) {
+				console.log('evt test: ', e);
+			},
 		},
 		created() {
 			this.checkSession();
@@ -284,7 +300,7 @@
 		</tabBrowser>
 	</header>
 	<main>
-		<blackoutBackground v-show="popups.addingNewClan || popups.addingNewGameGroup || popups.confirm || popups.login || popups.registration || popups.editClan || popups.editGameGroup || popups.editClanUsers || popups.addNewWhitelistUser || popups.importWhitelist || popups.changepassword || popups.addNewList">
+		<blackoutBackground v-show="popups.addingNewClan || popups.addingNewGameGroup || popups.confirm || popups.login || popups.registration || popups.editClan || popups.editGameGroup || popups.editClanUsers || popups.addNewWhitelistUser || popups.importWhitelist || popups.changepassword || popups.addNewList || popups.editList">
 			<login
 				v-if="popups.login"
 				@cancelBtnClick="popups.login = false"
@@ -304,6 +320,7 @@
 			<addNewWhitelistUser v-if="popups.addNewWhitelistUser" @cancelBtnClick="popups.addNewWhitelistUser = false" :add_data="tabData.Whitelist.add_data" />
 			<importWhitelist v-if="popups.importWhitelist" @cancelBtnClick="popups.importWhitelist = false" :add_data="tabData.Whitelist.add_data" />
 			<addNewList v-if="popups.addNewList" @cancelBtnClick="popups.addNewList = false" :add_data="tabData.Whitelist.new_list_data" />
+			<editList v-if="popups.editList" @cancelBtnClick="popups.editList = false" :data="tabData.Whitelist.edit_list_data" />
 		</blackoutBackground>
 		<!--<button @click="setLoginRequired(!loginRequired)">Toggle</button>-->
 		<tab v-if="currentTab == 'Home'" :currentTab="currentTab"></tab>
@@ -367,6 +384,11 @@
 				@addNewList="
 					popups.addNewList = true;
 					tabData.Whitelist.new_list_data = $event;
+				"
+				@confirm_standard="confirmEvt"
+				@editList="
+					popups.editList = true;
+					tabData.Whitelist.edit_list_data = $event;
 				"
 			/>
 		</tab>

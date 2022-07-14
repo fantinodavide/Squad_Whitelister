@@ -11,26 +11,27 @@
 			return {};
 		},
 		props: {
-			add_data: {
+			data: {
 				required: true,
 				type: Object,
 			},
 		},
 		methods: {
 			confirmBtnClick: function (dt: any) {
-				dt.sel_clan_id = this.add_data.sel_clan;
-				dt.sel_list_id = this.add_data.sel_list_id;
+				dt.sel_list_id = this.data.list_obj._id;
+				console.log(dt);
 				const compPopup: any = this.$refs.popupLogin;
 				$.ajax({
-					url: '/api/lists/write/addNewList',
+					url: '/api/lists/write/editList',
 					type: 'post',
 					data: JSON.stringify(dt),
 					dataType: 'json',
 					contentType: 'application/json',
 					timeout: 60000,
 					success: (dt) => {
-						if (dt.status == 'inserted_new_list') {
-							this.add_data.callback();
+						if (dt.status == 'edited_list') {
+							console.log(dt);
+							this.data.callback();
 							this.$emit('cancelBtnClick');
 						} else {
 							console.error(dt);
@@ -45,14 +46,16 @@
 			},
 		},
 		components: { popup },
-		created() {},
+		created() {
+			console.log('Editing list', this.data);
+		},
 	};
 </script>
 
 <template>
-	<popup ref="popupLogin" title="New List" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick">
-		<input name="title" type="text" placeholder="Title" />
-		<input name="output_path" type="text" placeholder="Output Path" regex="^[a-zA-Z\d]{2,}$" />
+	<popup ref="popupLogin" title="Edit List" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick">
+		<input name="title" type="text" placeholder="Title" :value="data.list_obj.title" />
+		<input name="output_path" type="text" placeholder="Output Path" :value="data.list_obj.output_path" regex="^[a-zA-Z\d]{2,}$" />
 	</popup>
 </template>
 
