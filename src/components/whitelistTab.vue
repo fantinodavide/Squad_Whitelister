@@ -76,7 +76,7 @@
 					},
 				});
 			},
-			getLists: function (callback: any = null) {
+			getLists: function (callback: any = null, selectLast = false) {
 				$.ajax({
 					url: '/api/lists/read/getAll',
 					type: 'get',
@@ -85,7 +85,7 @@
 						console.log('Lists', dt);
 						this.record_refs = [];
 						this.lists = dt;
-						this.sel_list_id = dt[0]._id;
+						this.sel_list_id = (selectLast ? dt[dt.length - 1] : dt[0])._id;
 						this.getClanWhitelist();
 
 						if (callback) callback();
@@ -144,7 +144,7 @@
 				});
 			},
 			newListCreated: function () {
-				this.getLists(this.getWhitelistTabClans);
+				this.getLists(this.getWhitelistTabClans, true);
 			},
 		},
 		created() {
@@ -158,7 +158,7 @@
 <template>
 	<div class="selectorContainer">
 		<select name="list_selector" :disabled="lists.length <= 1" @change="selectListChanged">
-			<option v-for="l of lists" :value="l._id">{{ l.title }}</option>
+			<option v-for="l of lists" :value="l._id" :selected="sel_list_id == l._id">{{ l.title }}</option>
 			<!-- <option v-for="c of whitelist_clans" :value="c._id" :selected="user_session && user_session.clan_code && user_session.clan_code == c.clan_code">{{ c.full_name }}</option> -->
 		</select>
 		<button v-if="editor" style="font-size: 25px" @click="$emit('addNewList', { callback: newListCreated })">+</button>

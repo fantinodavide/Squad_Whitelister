@@ -364,7 +364,10 @@
 					tabData.Whitelist.add_data = $event;
 				"
 				@confirm_clearing="clearAdminList"
-				@addNewList="popups.addNewList = true; tabData.Whitelist."
+				@addNewList="
+					popups.addNewList = true;
+					tabData.Whitelist.new_list_data = $event;
+				"
 			/>
 		</tab>
 		<tab v-else-if="currentTab == 'Approvals'" :currentTab="currentTab">

@@ -22,7 +22,7 @@
 				dt.sel_list_id = this.add_data.sel_list_id;
 				const compPopup: any = this.$refs.popupLogin;
 				$.ajax({
-					url: '/api/lists/write/addPlayer',
+					url: '/api/lists/write/addNewList',
 					type: 'post',
 					data: JSON.stringify(dt),
 					dataType: 'json',
@@ -52,7 +52,7 @@
 <template>
 	<popup ref="popupLogin" title="New Clan" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick">
 		<input name="title" type="text" placeholder="Title" />
-		<input name="output_path" type="text" placeholder="Output Path" />
+		<input name="output_path" type="text" placeholder="Output Path" regex="^[a-zA-Z\d]{2,}$" />
 	</popup>
 </template>
 

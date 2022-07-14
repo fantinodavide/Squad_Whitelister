@@ -562,7 +562,7 @@ async function init() {
             })
         })
         app.use('/api/lists/write/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
-        app.post('/api/lists/write/getAll', (req, res, next) => {
+        app.post('/api/lists/write/addNewList', (req, res, next) => {
             const parm = req.body;
             mongoConn((dbo) => {
                 const insData = {
