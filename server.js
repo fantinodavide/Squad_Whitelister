@@ -378,7 +378,7 @@ async function init() {
         // app.use('/wl/*', removeExpiredPlayers);
         app.get('/:basePath/:clan_code?', (req, res, next) => {
             // console.log("\n\n\n\n",req.params,"\n\n\n\n")
-            
+
             if (["wl"].includes(req.params.basePath)) {
                 removeExpiredPlayers();
                 res.type('text/plain');
@@ -1290,8 +1290,9 @@ async function init() {
                     res.sendStatus(500);
                     console.error(err)
                 } else if (dbRes != null) {
-                    if (callback)
-                        callback();
+                    // if (callback)
+                    //     callback();
+                    listCollection();
                 } else {
                     let adminPwd = randomString(12);
                     let defaultAdminAccount = {
@@ -1311,12 +1312,37 @@ async function init() {
 
                             setTimeout(() => {
                                 consoleLogBackup("\n\n\n\n");
-                                callback();
+                                // callback();
+                                listCollection();
                             }, startdelay * 1000);
                         }
                     })
                 }
             })
+
+            function listCollection() {
+                dbo.listCollections({ name: "lists" }).next((err, dbRes) => {
+                    if (dbRes == null) {
+                        const mainListData = {
+                            title: "Main",
+                            output_path: "wl"
+                        }
+                        dbo.collection("lists").insertOne(mainListData, (err, dbResI) => {
+                            if (err) serverError(res, err);
+                            else {
+                                console.log("Collection 'lists' created.\n", dbResI)
+                                dbo.collection("whitelists").updateMany({ id_list: { $exists: false } }, { $set: { id_list: dbResI.insertedId } }, (err, dbResU) => {
+                                    if (err) serverError(res, err);
+                                    else {
+                                        console.log("Updated references");
+                                        callback();
+                                    }
+                                })
+                            }
+                        })
+                    } else callback();
+                })
+            }
         })
     }
     function updateConfig(config, emptyConfFile) {
