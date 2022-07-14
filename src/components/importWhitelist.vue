@@ -75,6 +75,7 @@
 							steamid64: p.steamid,
 							group: this.conv_gameGroups[p.group],
 							sel_clan_id: this.add_data.sel_clan,
+							sel_list_id: this.add_data.sel_list_id,
 						};
 						console.log('Importing whitelist', player);
 

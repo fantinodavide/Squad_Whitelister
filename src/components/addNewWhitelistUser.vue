@@ -20,6 +20,7 @@
 		methods: {
 			confBtnClick: function (dt: any) {
 				dt.sel_clan_id = this.add_data.sel_clan;
+				dt.sel_list_id = this.add_data.sel_list_id;
 				const compPopup: any = this.$refs.popupLogin;
 				$.ajax({
 					url: '/api/whitelist/write/addPlayer',
@@ -55,7 +56,7 @@
 			},
 		},
 		created() {
-			console.log('Adding new whitelist user for', this.add_data.sel_clan, 'clan');
+			console.log('Adding new whitelist user for', this.add_data.sel_clan, 'clan', this.add_data);
 			this.getGameGroups();
 		},
 		components: { popup },

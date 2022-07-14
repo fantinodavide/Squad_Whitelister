@@ -24,6 +24,7 @@
 	import importWhitelist from './components/importWhitelist.vue';
 	import userCard from './components/userCard.vue';
 	import changepassword from './components/changepassword.vue';
+	import addNewList from './components/addNewList.vue';
 
 	import bia_logo from './assets/bia_logo.png';
 	import jd_logo from './assets/jd_logo.png';
@@ -57,6 +58,7 @@
 					addNewWhitelistUser: false,
 					importWhitelist: false,
 					changepassword: false,
+					addNewList: false,
 				},
 				clans: [] as Array<any>,
 				inEditingClan: -1,
@@ -70,6 +72,7 @@
 				tabData: {
 					Whitelist: {
 						add_data: {} as any,
+						new_list_data: {} as any,
 					},
 					Groups: {
 						editor: false,
@@ -281,7 +284,7 @@
 		</tabBrowser>
 	</header>
 	<main>
-		<blackoutBackground v-show="popups.addingNewClan || popups.addingNewGameGroup || popups.confirm || popups.login || popups.registration || popups.editClan || popups.editGameGroup || popups.editClanUsers || popups.addNewWhitelistUser || popups.importWhitelist || popups.changepassword">
+		<blackoutBackground v-show="popups.addingNewClan || popups.addingNewGameGroup || popups.confirm || popups.login || popups.registration || popups.editClan || popups.editGameGroup || popups.editClanUsers || popups.addNewWhitelistUser || popups.importWhitelist || popups.changepassword || popups.addNewList">
 			<login
 				v-if="popups.login"
 				@cancelBtnClick="popups.login = false"
@@ -300,6 +303,7 @@
 			<editClanUsers v-if="popups.editClanUsers" :clan_data="clans[inUserEditingClan]" @cancelBtnClick="popups.editClanUsers = false" />
 			<addNewWhitelistUser v-if="popups.addNewWhitelistUser" @cancelBtnClick="popups.addNewWhitelistUser = false" :add_data="tabData.Whitelist.add_data" />
 			<importWhitelist v-if="popups.importWhitelist" @cancelBtnClick="popups.importWhitelist = false" :add_data="tabData.Whitelist.add_data" />
+			<addNewList v-if="popups.addNewList" @cancelBtnClick="popups.addNewList = false" :add_data="tabData.Whitelist.new_list_data" />
 		</blackoutBackground>
 		<!--<button @click="setLoginRequired(!loginRequired)">Toggle</button>-->
 		<tab v-if="currentTab == 'Home'" :currentTab="currentTab"></tab>
@@ -360,6 +364,7 @@
 					tabData.Whitelist.add_data = $event;
 				"
 				@confirm_clearing="clearAdminList"
+				@addNewList="popups.addNewList = true; tabData.Whitelist."
 			/>
 		</tab>
 		<tab v-else-if="currentTab == 'Approvals'" :currentTab="currentTab">

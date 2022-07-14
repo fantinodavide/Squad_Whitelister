@@ -22,6 +22,8 @@
 				editor: false,
 				record_refs: [] as Array<any>,
 				user_session: null as any,
+				lists: [] as Array<any>,
+				sel_list_id: null as any,
 			};
 		},
 		methods: {
@@ -48,6 +50,11 @@
 				this.sel_clan = not_event ? e : e.target.value;
 				this.getClanWhitelist();
 			},
+			selectListChanged: function (e: any, not_event = false) {
+				this.record_refs = [];
+				this.sel_list_id = e.target.value;
+				this.getClanWhitelist();
+			},
 			getElmByName(name: string) {
 				return this.$el.querySelector('input[name="' + name + '"]');
 			},
@@ -57,12 +64,31 @@
 				$.ajax({
 					url: '/api/whitelist/read/getAll',
 					type: 'get',
-					data: { sel_clan_id: this.sel_clan },
+					data: { sel_list_id: this.sel_list_id, sel_clan_id: this.sel_clan },
 					dataType: 'json',
 					contentType: 'application/json',
 					success: (dt) => {
 						console.log('Whitelist player', dt);
 						this.wl_players = dt;
+					},
+					error: (err) => {
+						console.error(err);
+					},
+				});
+			},
+			getLists: function (callback: any = null) {
+				$.ajax({
+					url: '/api/lists/read/getAll',
+					type: 'get',
+					dataType: 'json',
+					success: (dt) => {
+						console.log('Lists', dt);
+						this.record_refs = [];
+						this.lists = dt;
+						this.sel_list_id = dt[0]._id;
+						this.getClanWhitelist();
+
+						if (callback) callback();
 					},
 					error: (err) => {
 						console.error(err);
@@ -106,7 +132,7 @@
 				$.ajax({
 					url: '/api/whitelist/write/clearList',
 					type: 'post',
-					data: JSON.stringify({ sel_clan_id: this.sel_clan }),
+					data: JSON.stringify({ sel_list_id: this.sel_list_id, sel_clan_id: this.sel_clan }),
 					dataType: 'json',
 					contentType: 'application/json',
 					success: (dt) => {
@@ -117,10 +143,13 @@
 					},
 				});
 			},
+			newListCreated: function () {
+				this.getLists(this.getWhitelistTabClans);
+			},
 		},
 		created() {
 			this.checkPerms();
-			this.getWhitelistTabClans();
+			this.getLists(this.getWhitelistTabClans);
 		},
 		components: { whitelistUserCard },
 	};
@@ -128,23 +157,23 @@
 
 <template>
 	<div class="selectorContainer">
-		<select name="list_selector">
-			<option value="wl">Main</option>
+		<select name="list_selector" :disabled="lists.length <= 1" @change="selectListChanged">
+			<option v-for="l of lists" :value="l._id">{{ l.title }}</option>
 			<!-- <option v-for="c of whitelist_clans" :value="c._id" :selected="user_session && user_session.clan_code && user_session.clan_code == c.clan_code">{{ c.full_name }}</option> -->
 		</select>
-		<button v-if="editor" style="font-size: 25px">+</button>
+		<button v-if="editor" style="font-size: 25px" @click="$emit('addNewList', { callback: newListCreated })">+</button>
 	</div>
 	<div class="selectorContainer">
-		<select name="clan_selector" :disabled="whitelist_clans.length == 1" @change="selectClanChanged">
+		<select name="clan_selector" :disabled="whitelist_clans.length <= 1" @change="selectClanChanged">
 			<option v-for="c of whitelist_clans" :value="c._id" :selected="user_session && user_session.clan_code && user_session.clan_code == c.clan_code">{{ c.full_name }}</option>
 		</select>
-		<button v-if="editor" @click="$emit('import_whitelist', { sel_clan: sel_clan, callback: appendPlayer })">Import</button>
+		<button v-if="editor" @click="$emit('import_whitelist', { sel_list_id: sel_list_id, sel_clan: sel_clan, callback: appendPlayer })">Import</button>
 		<button v-if="editor" @click="$emit('confirm_clearing', { callback: clearAllList })">Clear</button>
 		<span class="playerCounter">{{ wl_players.length }}/ {{ sel_clan_obj.player_limit && sel_clan_obj.player_limit != '' ? sel_clan_obj.player_limit : '&infin;' }}</span>
 	</div>
 	<input type="search" placeholder="Search Player" name="plrSearch" v-model="models.searchPlayer" />
 
-	<button v-if="editor" class="addHorizontal" @click="$emit('addNewWhitelistUser', { sel_clan: sel_clan, callback: appendPlayer })"></button>
+	<button v-if="editor" class="addHorizontal" @click="$emit('addNewWhitelistUser', { sel_list_id: sel_list_id, sel_clan: sel_clan, callback: appendPlayer })"></button>
 	<whitelistUserCard v-for="w of wl_players" v-show="w.username.toLowerCase().startsWith(models.searchPlayer.toLowerCase()) || levenshtein(w.username.toLowerCase(), models.searchPlayer.toLowerCase()) <= 2 || models.searchPlayer == ''" :ref="(r:any)=>{record_refs.push(r)}" :wl_data="w" :hoverMenuVisible="editor" @confirm="$emit('confirm', $event)" @removedPlayer="removePlayer" />
 </template>
 
