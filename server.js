@@ -562,6 +562,9 @@ async function init() {
             })
         })
         app.use('/api/lists/write/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 10) next() })
+        app.use('/api/lists/write/checkPerm', (req, res, next) => {
+            res.send({ status: "permission_granted" });
+        })
         app.post('/api/lists/write/addNewList', (req, res, next) => {
             const parm = req.body;
             mongoConn((dbo) => {
@@ -597,7 +600,7 @@ async function init() {
         app.post('/api/lists/write/editList', (req, res, next) => {
             const parm = req.body;
             mongoConn((dbo) => {
-                dbo.collection("lists").updateOne({ _id: ObjectID(parm.sel_list_id) },{$set:{title: parm.title, output_path: parm.output_path}}, (err, dbRes) => {
+                dbo.collection("lists").updateOne({ _id: ObjectID(parm.sel_list_id) }, { $set: { title: parm.title, output_path: parm.output_path } }, (err, dbRes) => {
                     if (err) serverError(res, err);
                     else {
                         res.send({ status: "edited_list", ...dbRes })
