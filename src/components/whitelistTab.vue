@@ -24,6 +24,7 @@
 				sel_clan_obj: {} as any,
 				wl_players: [] as Array<any>,
 				editor: false,
+				editor_lists: false,
 				record_refs: [] as Array<any>,
 				user_session: null as any,
 				lists: [] as Array<any>,
@@ -102,12 +103,22 @@
 					},
 				});
 			},
-			checkPerms: function () {
+			checkPerms: function (callback: any = null) {
 				fetch('/api/whitelist/write/checkPerm')
 					.then((res) => res.json())
 					.then((dt) => {
 						console.log('editor?', dt);
 						this.editor = true;
+						if (callback) callback();
+					});
+			},
+			checkPermsLists: function (callback: any = null) {
+				fetch('/api/lists/write/checkPerm')
+					.then((res) => res.json())
+					.then((dt) => {
+						console.log('editor lists?', dt);
+						this.editor_lists = true;
+						if (callback) callback();
 					});
 			},
 			removePlayer: function (e: any) {
@@ -184,7 +195,7 @@
 			},
 		},
 		created() {
-			this.checkPerms();
+			this.checkPerms(this.checkPermsLists);
 			this.getLists(this.getWhitelistTabClans);
 		},
 		components: { whitelistUserCard },
@@ -197,10 +208,10 @@
 			<option v-for="l of lists" :value="l._id" :selected="sel_list_id == l._id">{{ l.title }}</option>
 			<!-- <option v-for="c of whitelist_clans" :value="c._id" :selected="user_session && user_session.clan_code && user_session.clan_code == c.clan_code">{{ c.full_name }}</option> -->
 		</select>
-		<button v-if="editor" style="font-size: 25px" @click="$emit('addNewList', { callback: newListCreated })">+</button>
-		<button v-if="editor" style="padding: 10px" @click="$emit('editList', { list_obj: sel_list_obj, callback: listEdited })"><img :src="penIcon" /></button>
-		<button v-if="editor" style="padding: 10px" @click="openListOutput"><img :src="newTabIcon" /></button>
-		<button v-if="editor" style="padding: 10px" @click="$emit('confirm_standard', { title: `Confirm list deletion?`, text: `Do you really want to delete list ${sel_list_obj.title}?`, callback: deleteList })"><img :src="binIcon" /></button>
+		<button v-if="editor_lists" style="font-size: 25px" @click="$emit('addNewList', { callback: newListCreated })">+</button>
+		<button v-if="editor_lists" style="padding: 10px" @click="$emit('editList', { list_obj: sel_list_obj, callback: listEdited })"><img :src="penIcon" /></button>
+		<button v-if="editor_lists" style="padding: 10px" @click="openListOutput"><img :src="newTabIcon" /></button>
+		<button v-if="editor_lists" style="padding: 10px" @click="$emit('confirm_standard', { title: `Confirm list deletion?`, text: `Do you really want to delete list ${sel_list_obj.title}?`, callback: deleteList })"><img :src="binIcon" /></button>
 	</div>
 	<div class="selectorContainer">
 		<select name="clan_selector" :disabled="whitelist_clans.length <= 1" @change="selectClanChanged">
@@ -209,7 +220,7 @@
 		<button v-if="editor" @click="$emit('import_whitelist', { sel_list_id: sel_list_id, sel_clan: sel_clan, callback: appendPlayer })">Import</button>
 		<button v-if="editor" @click="$emit('confirm_clearing', { callback: clearAllList })">Clear</button>
 		<button v-if="editor" style="padding: 10px" @click="openClanOutput"><img :src="newTabIcon" /></button>
-		<span class="playerCounter">{{ wl_players.length }}/ {{ sel_clan_obj.player_limit && sel_clan_obj.player_limit != '' ? sel_clan_obj.player_limit : '&infin;' }}</span>
+		<span class="playerCounter">{{ wl_players.length }}/ {{ sel_clan_obj?.player_limit && sel_clan_obj?.player_limit != '' ? sel_clan_obj.player_limit : '&infin;' }}</span>
 	</div>
 	<input type="search" placeholder="Search Player" name="plrSearch" v-model="models.searchPlayer" />
 

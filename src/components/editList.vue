@@ -56,6 +56,8 @@
 	<popup ref="popupLogin" title="Edit List" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick">
 		<input name="title" type="text" placeholder="Title" :value="data.list_obj.title" />
 		<input name="output_path" type="text" placeholder="Output Path" :value="data.list_obj.output_path" regex="^[a-zA-Z\d]{2,}$" />
+		<label>Hidden to managers<input name="hidden_managers" type="checkbox" :checked="data.list_obj.hidden_managers" placeholder="Hidden to managers" /></label>
+		<label>Require Approval<input name="require_appr" type="checkbox" :checked="data.list_obj.require_appr" placeholder="Require Approval" /></label>
 	</popup>
 </template>
 

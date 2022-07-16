@@ -114,9 +114,12 @@
 						this.tabs = dt.tabs;
 						this.tabs.forEach((e) => this.tabBtns.push(e['name']));
 
-						this.$nextTick(() => {
+						// this.$nextTick(() => {
+						// 	this.setCurrentTab(this.tabs[0]['name']);
+						// });
+						setTimeout(() => {
 							this.setCurrentTab(this.tabs[0]['name']);
-						});
+						}, 50);
 					});
 			},
 			logout: function () {
@@ -275,7 +278,7 @@
 			this.checkSession();
 			this.getAppPersonalization();
 			this.getTabs();
-			console.log('levenshtein', levenshtein, 'mobile', md.mobile());
+			// console.log('levenshtein', levenshtein, 'mobile', md.mobile());
 			if (md.mobile() != null) {
 				document.body.classList.add('mobile');
 			}

@@ -53,6 +53,8 @@
 	<popup ref="popupLogin" title="New List" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick">
 		<input name="title" type="text" placeholder="Title" />
 		<input name="output_path" type="text" placeholder="Output Path" regex="^[a-zA-Z\d]{2,}$" />
+		<label>Hidden to managers<input name="hidden_managers" type="checkbox" placeholder="Hidden to managers" /></label>
+		<label>Require Approval<input name="require_appr" type="checkbox" placeholder="Require Approval" /></label>
 	</popup>
 </template>
 
