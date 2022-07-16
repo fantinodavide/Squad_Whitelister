@@ -668,6 +668,14 @@ async function init() {
                         }
                     },
                     {
+                        $lookup: {
+                            from: "users",
+                            localField: "inserted_by",
+                            foreignField: "_id",
+                            as: "inserted_by"
+                        }
+                    },
+                    {
                         $sort: { id_clan: 1, approved: -1, id_group: 1, username: 1 }
                     },
                 ]
