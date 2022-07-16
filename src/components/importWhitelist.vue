@@ -28,6 +28,13 @@
 				game_groups: [] as Array<any>,
 				conv_gameGroups: {} as any,
 				player_name_conv: {} as any,
+				refs: {
+					textarea: null as any,
+					replace: {
+						from: null as any,
+						with: null as any,
+					},
+				},
 			};
 		},
 		props: {
@@ -143,6 +150,25 @@
 						this.game_groups = dt;
 					});
 			},
+			replaceTextArea: function () {
+				console.log(this.refs);
+				const repFrom = this.refs.replace.from.value.replace(/\[/g, '\\[').replace(/\]/g, '\\]');
+				let reg = RegExp(`${repFrom}`, 'g');
+				this.refs.textarea.value = this.refs.textarea.value.replace(reg, this.refs.replace.with.value);
+			},
+			removeTags: function () {
+				// const r = /^.{0,}((\s\/{2}\s{0,})(?<comment>.{1,}))/gm;
+				// const regRes = this.regexExec(this.refs.textarea.value, r) as any;
+				// let tags = [] as Array<string>;
+				// let repReg = '^';
+				// for (let c of regRes) {
+				// 	const tag = c.groups ? c.groups.comment.match(/^\[.{1,}]/g) : null;
+				// 	if (tag && !tags.includes(tag[0])) tags.push(tag.replace(/\[/g, '\\[').replace(/\]/g, '\\]'));
+				// }
+				// repReg += tags.join('|');
+				this.refs.textarea.value = this.refs.textarea.value.replace(/\[.{1,}\]/g, '');
+				// console.log(regRes, tags, repReg);
+			},
 		},
 		created() {
 			this.getGameGroups();
@@ -154,7 +180,15 @@
 <template>
 	<popup id="popup" :class="{ big: currentStep == 0 }" ref="popupComp" title="Import List" :confirmText="importSteps[currentStep].confBtnText" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick">
 		<h3>{{ importSteps[currentStep].title }}</h3>
-		<textarea ref="txtList" v-show="currentStep == 0" placeholder="Paste here your whitelist"></textarea>
+		<div v-show="currentStep == 0" style="flex-grow: 1; display: flex; flex-direction: column; width: 100%">
+			<textarea :ref="(r) => (refs.textarea = r)" style="flex-grow: 1" ref="txtList" placeholder="Paste here your whitelist"></textarea>
+			<div class="rowBtnContainer">
+				<label>Replace<input :ref="(r) => (refs.replace.from = r)" type="text" placeholder="Replace" optional /></label><label>With<input :ref="(r) => (refs.replace.with = r)" type="text" placeholder="With" optional /><button @click="replaceTextArea">Replace</button></label>
+			</div>
+			<div class="rowBtnContainer">
+				<button @click="removeTags">Remove Tags</button>
+			</div>
+		</div>
 		<div v-if="currentStep == 1">
 			<div v-for="g of importFoundGroups" class="grTranslation">
 				<span class="tag">{{ g }}</span>
@@ -194,5 +228,18 @@
 		flex-direction: row;
 		align-items: center;
 		justify-content: center;
+	}
+
+	.rowBtnContainer {
+		display: flex;
+		margin: auto;
+	}
+	.rowBtnContainer > * {
+		flex-shrink: 1;
+		flex-grow: 0;
+	}
+
+	label {
+		flex-wrap: nowrap !important;
 	}
 </style>

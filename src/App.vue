@@ -119,7 +119,7 @@
 						// });
 						setTimeout(() => {
 							this.setCurrentTab(this.tabs[0]['name']);
-						}, 50);
+						}, 10);
 					});
 			},
 			logout: function () {

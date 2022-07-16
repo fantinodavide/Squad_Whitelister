@@ -91,7 +91,7 @@
 		},
 		created() {
 			this.$nextTick(() => {
-				this.getInputs()[0].focus();
+				this.getInputs()[0]?.focus();
 			});
 		},
 	};
