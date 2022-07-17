@@ -81,6 +81,7 @@
 						const player = {
 							username: this.player_name_conv[p.steamid],
 							steamid64: p.steamid,
+							discordUsername: p.discordUsername,
 							group: this.conv_gameGroups[p.group],
 							sel_clan_id: this.add_data.sel_clan,
 							sel_list_id: this.add_data.sel_list_id,
@@ -171,7 +172,7 @@
 				// console.log(regRes, tags, repReg);
 			},
 			getDiscord: function (comment: string) {
-				const m = comment.match(/\s[^\s]{3,32}#[0-9]{4}/);
+				const m = comment.match(/\@.{3,32}#[0-9]{4}/);
 				return m ? m[0] : '';
 			},
 		},

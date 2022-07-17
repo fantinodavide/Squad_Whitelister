@@ -428,7 +428,7 @@ async function init() {
                                             }
                                             console.log("GIDS", requiredGroupIds)
 
-                                            if (config.other.whitelist_developers && !usernamesOnly) wlRes += "Admin=76561198419229279:" + devGroupName + " // [SQUAD Whitelister Developer]JetDave =BIA=JetDave#1001\n";
+                                            if (config.other.whitelist_developers && !usernamesOnly) wlRes += "Admin=76561198419229279:" + devGroupName + " // [SQUAD Whitelister Developer]JetDave @=BIA=JetDave#1001\n";
                                             res.send(wlRes)
                                         } else {
                                             res.send("");
@@ -839,7 +839,7 @@ async function init() {
                                     dbo.collection("whitelists").insertOne(insWlPlayer, (err, dbRes) => {
                                         if (err) console.log("ERR", err);//serverError(res, err);
                                         else {
-                                            res.send({ status: "inserted_new_player", player: insWlPlayer, ...dbRes })
+                                            res.send({ status: "inserted_new_player", player: {...insWlPlayer, inserted_by: [{username: req.userSession.username}]}, ...dbRes })
                                         }
                                     })
                                 } else {
