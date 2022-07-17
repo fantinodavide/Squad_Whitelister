@@ -205,7 +205,7 @@
 		</div>
 		<div v-if="currentStep == 2" class="overflow">
 			<div v-for="p of parListImport" class="grTranslation">
-				<input :name="p.steamid" type="text" :value="p.comment.replace(/\s[^\s]{3,32}#[0-9]{4}/, '')" />
+				<input :name="p.steamid" type="text" :value="p.comment.replace(/\@.{3,32}#[0-9]{4}/, '')" />
 				<span class="tag">{{ game_groups.filter((g) => g._id == conv_gameGroups[p.group])[0].group_name }}</span>
 				<span class="tag">{{ p.steamid }} </span>
 				<span class="tag" v-if="p.discordUsername != ''">{{ p.discordUsername }} </span>

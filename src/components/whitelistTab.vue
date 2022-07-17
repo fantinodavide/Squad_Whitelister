@@ -270,6 +270,7 @@
 		border-radius: 0;
 		background: #444;
 		color: #ddd;
+		flex-shrink: 0;
 	}
 	.selectorContainer button img {
 		height: 100%;
