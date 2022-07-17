@@ -30,6 +30,11 @@
 				default: false,
 				type: Boolean,
 			},
+			focus: {
+				default: null,
+				required: false,
+				type: Object,
+			},
 		},
 		methods: {
 			checkInputs(evt: any) {
@@ -91,7 +96,8 @@
 		},
 		created() {
 			this.$nextTick(() => {
-				this.getInputs()[0]?.focus();
+				if (this.focus) this.focus.focus();
+				else this.getInputs()[0]?.focus();
 			});
 		},
 	};

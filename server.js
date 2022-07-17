@@ -705,7 +705,7 @@ async function init() {
                                         $expr: { $eq: ["$id_clan", "$$id_clan"] },
                                         approved: false,
                                     }
-                                }
+                                },
                             ],
                             as: "whitelists",
                         }
@@ -738,6 +738,14 @@ async function init() {
                             localField: "id_group",
                             foreignField: "_id",
                             as: "group_full_data"
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "inserted_by",
+                            foreignField: "_id",
+                            as: "inserted_by"
                         }
                     },
                     {

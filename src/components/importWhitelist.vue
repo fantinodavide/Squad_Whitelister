@@ -50,12 +50,13 @@
 						.querySelector('textarea')
 						.value.split('\n')
 						.filter((a: any) => a != '' && a.startsWith('Admin'));
-					const reg = /^Admin=(?<steamid>\d{17}):(?<group>.[a-zA-Z_]{1,})((\s\/{2}\s?)(?<comment>.{1,}))?/gm;
+					const reg = /^Admin=(?<steamid>\d{17}):(?<group>.[a-zA-Z_\d]{1,})((\s\/{2}\s?)(?<comment>.{1,}))?/gm;
 
 					listImport.forEach((elm: any, key: any) => {
 						const r = elm;
 						const regRes = this.regexExec(r, reg) as any;
-						const regResGr = regRes.groups;
+						let regResGr = regRes.groups;
+						regResGr.discordUsername = this.getDiscord(regResGr.comment);
 						this.parListImport.push(regResGr);
 						if (!this.importFoundGroups.includes(regResGr.group)) this.importFoundGroups.push(regResGr.group);
 					});
@@ -169,6 +170,10 @@
 				this.refs.textarea.value = this.refs.textarea.value.replace(/\[.{1,}\]/g, '');
 				// console.log(regRes, tags, repReg);
 			},
+			getDiscord: function (comment: string) {
+				const m = comment.match(/\s[^\s]{3,32}#[0-9]{4}/);
+				return m ? m[0] : '';
+			},
 		},
 		created() {
 			this.getGameGroups();
@@ -178,7 +183,7 @@
 </script>
 
 <template>
-	<popup id="popup" :class="{ big: currentStep == 0 }" ref="popupComp" title="Import List" :confirmText="importSteps[currentStep].confBtnText" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick">
+	<popup id="popup" :focus="refs.textarea" :class="{ big: currentStep == 0 }" ref="popupComp" title="Import List" :confirmText="importSteps[currentStep].confBtnText" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick">
 		<h3>{{ importSteps[currentStep].title }}</h3>
 		<div v-show="currentStep == 0" style="flex-grow: 1; display: flex; flex-direction: column; width: 100%">
 			<textarea :ref="(r) => (refs.textarea = r)" style="flex-grow: 1" ref="txtList" placeholder="Paste here your whitelist"></textarea>
@@ -199,8 +204,11 @@
 		</div>
 		<div v-if="currentStep == 2" class="overflow">
 			<div v-for="p of parListImport" class="grTranslation">
-				<input :name="p.steamid" type="text" :value="p.comment.split(' ')[0]" /><span class="tag">{{ game_groups.filter((g) => g._id == conv_gameGroups[p.group])[0].group_name }}</span
-				><span class="tag">{{ p.steamid }}</span>
+				<input :name="p.steamid" type="text" :value="p.comment.replace(/\s[^\s]{3,32}#[0-9]{4}/, '')" />
+				<span class="tag">{{ game_groups.filter((g) => g._id == conv_gameGroups[p.group])[0].group_name }}</span>
+				<span class="tag">{{ p.steamid }} </span>
+				<span class="tag" v-if="p.discordUsername != ''">{{ p.discordUsername }} </span>
+				<!-- <input name="discordUsername" type="text" placeholder="Discord Username" :value="getDiscord(p.comment)" optional hidden /> -->
 			</div>
 		</div>
 	</popup>
