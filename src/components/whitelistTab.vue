@@ -34,21 +34,13 @@
 		},
 		methods: {
 			log: console.log,
-			getWhitelistTabClans: function () {
+			getWhitelistTabClans: function (callback: any) {
 				fetch('/api/whitelist/read/getAllClans')
 					.then((res) => res.json())
 					.then((dt) => {
 						this.whitelist_clans = dt;
 						console.log('All clans:', dt);
-
-						fetch('/api/checkSession')
-							.then((res) => res.json())
-							.then((dt) => {
-								this.user_session = dt.userSession;
-								console.log(dt);
-								this.sel_clan = dt.userSession.clan_code ? this.whitelist_clans.filter((c) => c.clan_code == dt.userSession.clan_code)[0]._id : this.whitelist_clans[0]._id;
-								this.getClanWhitelist();
-							});
+						if (callback) callback();
 					});
 			},
 			selectClanChanged: function (e: any, not_event = false) {
@@ -90,11 +82,14 @@
 					dataType: 'json',
 					success: (dt) => {
 						console.log('Lists', dt);
-						this.record_refs = [];
 						this.lists = dt;
+						this.record_refs = [];
 						this.sel_list_obj = selectLast ? dt[dt.length - 1] : dt[0];
 						this.sel_list_id = this.sel_list_obj._id;
-						this.getClanWhitelist();
+						const clan_id = this.user_session.clan_code ? this.whitelist_clans.filter((c) => c.clan_code == this.user_session.clan_code)[0]._id : this.whitelist_clans[0]._id;
+
+						this.selectClanChanged(clan_id, true);
+						// this.getClanWhitelist();
 
 						if (callback) callback();
 					},
@@ -193,10 +188,23 @@
 			listEdited: function () {
 				this.getLists(this.getWhitelistTabClans);
 			},
+			getSession: function (callback: any) {
+				fetch('/api/checkSession')
+					.then((res) => res.json())
+					.then((dt) => {
+						this.user_session = dt.userSession;
+						console.log(dt);
+						if (callback) callback();
+						// this.getClanWhitelist();
+						// this.selectClanChanged(clan_id, true);
+					});
+			},
 		},
 		created() {
-			this.checkPerms(this.checkPermsLists);
-			this.getLists(this.getWhitelistTabClans);
+			this.getSession(() => {
+				this.checkPerms(this.checkPermsLists);
+				this.getWhitelistTabClans(this.getLists);
+			});
 		},
 		components: { whitelistUserCard },
 	};
