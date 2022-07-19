@@ -76,6 +76,9 @@ async function init() {
     };
     var config;
 
+    const mongodb_global_connection = true;
+    var mongodb_conn;
+
     start();
 
 
@@ -98,8 +101,22 @@ async function init() {
             });
             config = JSON.parse(fs.readFileSync("conf.json", "utf-8").toString());
             console.log(config);
-            isDbPopulated(main)
+
+            initDBConnection(() => {
+                isDbPopulated(main)
+            })
+
         })
+    }
+    function initDBConnection(callback = null) {
+        // console.log("Connecting to MongoDB...")
+        if (mongodb_global_connection) {
+            mongoConn((dbo) => {
+                mongodb_conn = dbo;
+                console.log("MongoDB successfully connected");
+                if (callback) callback();
+            }, true)
+        }
     }
     function main() {
         checkUpdates(config.other.automatic_updates, () => {
@@ -765,7 +782,7 @@ async function init() {
         app.use('/api/whitelist/write/*', (req, res, next) => {
             if (req.userSession && req.userSession.access_level < 30) next()
             else {
-                mongoConn((dbo) => {
+                mongoConn((dbo, client) => {
                     let findFilter = req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code, admins: req.userSession.id_user.toString() } : {};
 
                     dbo.collection("clans").findOne(findFilter, (err, dbRes) => {
@@ -839,7 +856,7 @@ async function init() {
                                     dbo.collection("whitelists").insertOne(insWlPlayer, (err, dbRes) => {
                                         if (err) console.log("ERR", err);//serverError(res, err);
                                         else {
-                                            res.send({ status: "inserted_new_player", player: {...insWlPlayer, inserted_by: [{username: req.userSession.username}]}, ...dbRes })
+                                            res.send({ status: "inserted_new_player", player: { ...insWlPlayer, inserted_by: [{ username: req.userSession.username }] }, ...dbRes })
                                         }
                                     })
                                 } else {
@@ -1291,14 +1308,18 @@ async function init() {
         }
     }
 
-    function mongoConn(connCallback) {
-        let url = "mongodb://" + config.database.mongo.host + ":" + config.database.mongo.port;
-        let dbName = config.database.mongo.database;
-        let client = MongoClient.connect(url, function (err, db) {
-            if (err) serverError(res, err);
-            var dbo = db.db(dbName);
-            connCallback(dbo);
-        });
+    function mongoConn(connCallback, override = false) {
+        if (!mongodb_global_connection || override) {
+            let url = "mongodb://" + config.database.mongo.host + ":" + config.database.mongo.port;
+            let dbName = config.database.mongo.database;
+            let client = MongoClient.connect(url, function (err, db) {
+                if (err) serverError(res, err);
+                var dbo = db.db(dbName);
+                connCallback(dbo);
+            });
+        } else {
+            connCallback(mongodb_conn)
+        }
     }
 
     function getDateFromEpoch(ep) {

@@ -207,7 +207,8 @@
 			// },
 		},
 		created() {
-			this.checkPerms(this.checkPermsLists);
+			this.checkPerms();
+			this.checkPermsLists();
 			this.getWhitelistTabClans(this.getLists);
 			// this.getSession(() => {
 			// });
