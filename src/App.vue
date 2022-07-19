@@ -41,6 +41,7 @@
 				user_session: null as any,
 				loginRequired: true,
 				app_title: 'Squad Whitelister',
+				header_title_hidden: false,
 				accent_color: '#ffc40b',
 				currentTab: 'Home',
 				logo_url: './assets/logo.svg',
@@ -96,6 +97,7 @@
 						this.app_title = dt.name;
 						this.accent_color = dt.accent_color;
 						this.logo_url = dt.logo_url;
+						this.header_title_hidden = dt.title_hidden_in_header;
 					});
 			},
 			checkSession: function () {
@@ -292,7 +294,7 @@
 	<title>{{ currentTab }} | {{ app_title }}</title>
 	<header>
 		<img alt="Squad Whitelister Logo" class="logo" :src="logo_url" />
-		<h1>{{ app_title }}</h1>
+		<h1 v-if="!header_title_hidden">{{ app_title }}</h1>
 		<div id="hdBtnContainer">
 			<button v-if="!loginRequired" @click="popups.changepassword = true">Change Password</button>
 			<button v-if="!loginRequired" @click="logout">Logout</button>
