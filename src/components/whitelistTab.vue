@@ -26,11 +26,17 @@
 				editor: false,
 				editor_lists: false,
 				record_refs: [] as Array<any>,
-				user_session: null as any,
+				// user_session: null as any,
 				lists: [] as Array<any>,
 				sel_list_id: null as any,
 				sel_list_obj: {} as any,
 			};
+		},
+		props: {
+			user_session: {
+				required: true,
+				default: {} as any,
+			},
 		},
 		methods: {
 			log: console.log,
@@ -188,23 +194,23 @@
 			listEdited: function () {
 				this.getLists(this.getWhitelistTabClans);
 			},
-			getSession: function (callback: any) {
-				fetch('/api/checkSession')
-					.then((res) => res.json())
-					.then((dt) => {
-						this.user_session = dt.userSession;
-						console.log(dt);
-						if (callback) callback();
-						// this.getClanWhitelist();
-						// this.selectClanChanged(clan_id, true);
-					});
-			},
+			// getSession: function (callback: any) {
+			// 	fetch('/api/checkSession')
+			// 		.then((res) => res.json())
+			// 		.then((dt) => {
+			// 			this.user_session = dt.userSession;
+			// 			console.log(dt);
+			// 			if (callback) callback();
+			// 			// this.getClanWhitelist();
+			// 			// this.selectClanChanged(clan_id, true);
+			// 		});
+			// },
 		},
 		created() {
-			this.getSession(() => {
-				this.checkPerms(this.checkPermsLists);
-				this.getWhitelistTabClans(this.getLists);
-			});
+			this.checkPerms(this.checkPermsLists);
+			this.getWhitelistTabClans(this.getLists);
+			// this.getSession(() => {
+			// });
 		},
 		components: { whitelistUserCard },
 	};

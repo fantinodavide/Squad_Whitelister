@@ -104,6 +104,7 @@
 					.then((dt) => {
 						this.user_session = dt.userSession;
 						this.setLoginRequired(dt.status == 'login_required');
+						console.log('User session', this.user_session);
 					});
 			},
 			getTabs: function () {
@@ -374,6 +375,7 @@
 		</tab>
 		<tab v-else-if="currentTab == 'Whitelist'" :currentTab="currentTab">
 			<whitelistTab
+				:user_session="user_session"
 				@addNewWhitelistUser="
 					popups.addNewWhitelistUser = true;
 					tabData.Whitelist.add_data = $event;
