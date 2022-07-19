@@ -578,8 +578,8 @@ async function init() {
                 })
             })
         })
-        app.use('/api/lists/write/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 10) next() })
-        app.use('/api/lists/write/checkPerm', (req, res, next) => {
+        app.use('/api/lists/write/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 10) next(); else res.sendStatus(401); })
+        app.use('/api/lists/write/checkPerm', async (req, res, next) => {
             res.send({ status: "permission_granted" });
         })
         app.post('/api/lists/write/addNewList', (req, res, next) => {
@@ -792,12 +792,13 @@ async function init() {
                             next();
                         } else {
                             console.log("blocking", dbRes)
+                            res.sendStatus(401)
                         }
                     })
                 })
             }
         })
-        app.use('/api/whitelist/write/checkPerm', (req, res, next) => {
+        app.use('/api/whitelist/write/checkPerm', async (req, res, next) => {
             res.send({ status: "permission_granted" });
         })
         app.post('/api/whitelist/write/addPlayer', (req, res, next) => {
@@ -919,8 +920,8 @@ async function init() {
             })
         })
 
-        app.use('/api/gameGroups/write/*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next() })
-        app.use('/api/gameGroups/write/checkPerm', (req, res, next) => {
+        app.use('/api/gameGroups/write/*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next(); else res.sendStatus(401); })
+        app.use('/api/gameGroups/write/checkPerm', async (req, res, next) => {
             res.send({ status: "permission_granted" })
         })
         app.post('/api/gameGroups/write/newGroup', (req, res, next) => {
