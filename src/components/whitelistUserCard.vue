@@ -11,6 +11,7 @@
 			return {
 				onHover: false,
 				hoverMenuLeft: 0,
+				expirationTime: '',
 			};
 		},
 		props: {
@@ -42,6 +43,37 @@
 			updateHoverMenuLeft: function (e: any) {
 				this.hoverMenuLeft = e.target.scrollLeft;
 			},
+			getHoursLeft: function (precision: number = 5) {
+				let oHours = '00',
+					oMin = '00',
+					oSec = '00';
+				const y: any = new Date(this.wl_data.expiration);
+				const x: any = new Date();
+				if (y - x > 0) {
+					const hours = Math.floor((y - x) / 1000 / 60 / 60);
+					const minutes = Math.floor((y - x) / 1000 / 60 - hours);
+					const secs = Math.floor((y - x) / 1000) - hours * (minutes < 1 ? 1 : minutes) * 60;
+
+					oHours = (hours < 10 ? '0' : '') + hours;
+					oMin = (minutes < 10 ? '0' : '') + minutes;
+					oSec = (secs < 10 ? '0' : '') + secs;
+					if (hours < 0) oHours = '00';
+					if (minutes < 0) oMin = '00';
+					if (secs < 0) oSec = '00';
+					console.log('Expiration', this.wl_data.username, this.wl_data.expiration, hours, minutes, secs, oHours, oMin, oSec);
+				}
+
+				return oHours + ':' + oMin + ':' + oSec;
+			},
+			startIntervalExpirTimeouts: function (precision: number = 5) {
+				this.expirationTime = this.getHoursLeft(precision);
+				setInterval(() => {
+					this.expirationTime = this.getHoursLeft(precision);
+				}, precision * 1000);
+			},
+		},
+		created: function () {
+			this.startIntervalExpirTimeouts(1);
 		},
 	};
 </script>
@@ -57,6 +89,7 @@
 			<span class="tag noBg redTrans">{{ wl_data.steamid64 }}</span>
 			<span class="tag noBg redTrans" v-if="wl_data.discord_username">{{ wl_data.discord_username }}</span>
 			<span class="tag"><img :src="managerIcon" />{{ wl_data.inserted_by[0].username }}</span>
+			<span class="tag" v-if="wl_data.expiration">{{ expirationTime }}</span>
 			<!-- <span class="steamid64">{{ wl_data.steamid64 }}</span> -->
 			<div v-if="hoverMenuVisible" class="hoverMenu" :class="{ vis: onHover }">
 				<button @click="$emit('confirm', { wl_data: wl_data, callback: deleteRecord })">Delete</button>
