@@ -26,6 +26,8 @@ Add run argument `--self-pm` to automatically restart after an update
 - Full output is found at path **/wl** (*ex. https://example.ex/wl*)
 - If you need the output for a specific clan the path is **/wl/*{clan_code}*** (ex. https://example.ex/wl/1a2b3c4d)
 
+#### [**Screenshots**](/screenshots) ####
+
 #### conf.json Example
 ```json
 {
