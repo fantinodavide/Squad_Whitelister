@@ -537,7 +537,7 @@ async function init() {
             const parm = req.body;
 
             mongoConn((dbo) => {
-                dbo.collection("users").updateOne({ _id: ObjectID(parm._id) }, { $set: { access_level: parm.upd } }, (err, dbRes) => {
+                dbo.collection("users").updateOne({ _id: ObjectID(parm._id) }, { $set: { access_level: parseInt(parm.upd) } }, (err, dbRes) => {
                     if (err) {
                         res.sendStatus(500);
                         console.error(err)
@@ -570,7 +570,8 @@ async function init() {
         app.use('/api/lists/read/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
         app.get('/api/lists/read/getAll', (req, res, next) => {
             mongoConn((dbo) => {
-                dbo.collection("lists").find({}).toArray((err, dbRes) => {
+                let findFilter = req.userSession.access_level < 100 ? {} : { hidden_managers: false };
+                dbo.collection("lists").find(findFilter).toArray((err, dbRes) => {
                     if (err) serverError(res, err);
                     else {
                         res.send(dbRes)
@@ -587,7 +588,9 @@ async function init() {
             mongoConn((dbo) => {
                 const insData = {
                     title: parm.title,
-                    output_path: parm.output_path
+                    output_path: parm.output_path,
+                    hidden_managers: parm.hidden_managers,
+                    require_appr: parm.require_appr
                 }
                 dbo.collection("lists").insertOne(insData, (err, dbRes) => {
                     if (err) serverError(res, err);
@@ -617,7 +620,7 @@ async function init() {
         app.post('/api/lists/write/editList', (req, res, next) => {
             const parm = req.body;
             mongoConn((dbo) => {
-                dbo.collection("lists").updateOne({ _id: ObjectID(parm.sel_list_id) }, { $set: { title: parm.title, output_path: parm.output_path } }, (err, dbRes) => {
+                dbo.collection("lists").updateOne({ _id: ObjectID(parm.sel_list_id) }, { $set: { title: parm.title, output_path: parm.output_path, hidden_managers: parm.hidden_managers, require_appr: parm.require_appr } }, (err, dbRes) => {
                     if (err) serverError(res, err);
                     else {
                         res.send({ status: "edited_list", ...dbRes })
@@ -847,21 +850,29 @@ async function init() {
                                 approved: false,
                                 id_list: ObjectID(parm.sel_list_id),
                             }
-                            dbo.collection("groups").findOne(insWlPlayer.id_group, (err, dbRes) => {
-                                if (err) console.log("error", err)
-                                else if (dbRes != null) {
-                                    insWlPlayer.approved = !(dbRes.require_appr || dbResC.confirmation_ovrd) || req.userSession.access_level <= 30;
-                                    //console.log("\n\n\n\nNew Whitelist", insWlPlayer, dbRes);
+                            dbo.collection("lists").findOne({ _id: insWlPlayer.id_list }, (err, dbResList) => {
+                                if (err) serverError(res, err);
+                                else if(req.userSession.access_level<100 || !dbResList.hidden_managers){
+                                    dbo.collection("groups").findOne(insWlPlayer.id_group, (err, dbRes) => {
+                                        if (err) console.log("error", err)
+                                        else if (dbRes != null) {
+
+                                            insWlPlayer.approved = !(dbRes.require_appr || dbResC.confirmation_ovrd || dbResList.require_appr) || req.userSession.access_level <= 30;
+                                            //console.log("\n\n\n\nNew Whitelist", insWlPlayer, dbRes);
 
 
-                                    dbo.collection("whitelists").insertOne(insWlPlayer, (err, dbRes) => {
-                                        if (err) console.log("ERR", err);//serverError(res, err);
-                                        else {
-                                            res.send({ status: "inserted_new_player", player: { ...insWlPlayer, inserted_by: [{ username: req.userSession.username }] }, ...dbRes })
+                                            dbo.collection("whitelists").insertOne(insWlPlayer, (err, dbRes) => {
+                                                if (err) console.log("ERR", err);//serverError(res, err);
+                                                else {
+                                                    res.send({ status: "inserted_new_player", player: { ...insWlPlayer, inserted_by: [{ username: req.userSession.username }] }, ...dbRes })
+                                                }
+                                            })
+                                        } else {
+                                            res.send({ status: "not_inserted", reason: "could find corresponding id" });
                                         }
                                     })
-                                } else {
-                                    res.send({ status: "not_inserted", reason: "could find corresponding id" });
+                                }else{
+                                    res.sendStatus(402);
                                 }
                             })
                         } else {
