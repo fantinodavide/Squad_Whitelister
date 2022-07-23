@@ -749,35 +749,52 @@ async function init() {
         app.get('/api/whitelist/read/getPendingApproval', (req, res, next) => {
             const parm = req.query;
             mongoConn((dbo) => {
-                let findFilter = parm.sel_clan_id ? { id_clan: ObjectID(parm.sel_clan_id), approved: false } : { approved: false };
+                // let findFilter = parm.sel_clan_id ? { id_clan: ObjectID(parm.sel_clan_id), approved: false } : { approved: false };
                 const pipeline = [
-                    { $match: findFilter },
                     {
                         $lookup: {
-                            from: "groups",
-                            localField: "id_group",
-                            foreignField: "_id",
-                            as: "group_full_data"
+                            from: "whitelists",
+                            let: { id_list: "$_id" },
+                            pipeline: [
+                                {
+                                    $match: {
+                                        $expr: { $eq: ["$id_list", "$$id_list"] },
+                                        approved: false,
+                                        id_clan: ObjectID(parm.sel_clan_id)
+                                    }
+                                },
+                                {
+                                    $lookup: {
+                                        from: "groups",
+                                        localField: "id_group",
+                                        foreignField: "_id",
+                                        as: "group_full_data"
+                                    }
+                                },
+                                {
+                                    $lookup: {
+                                        from: "users",
+                                        localField: "inserted_by",
+                                        foreignField: "_id",
+                                        as: "inserted_by"
+                                    }
+                                },
+                                {
+                                    $sort: { id_clan: 1, approved: -1, id_group: 1, username: 1 }
+                                },
+                            ],
+                            as: "wl_data",
                         }
                     },
-                    {
-                        $lookup: {
-                            from: "users",
-                            localField: "inserted_by",
-                            foreignField: "_id",
-                            as: "inserted_by"
-                        }
-                    },
-                    {
-                        $sort: { id_clan: 1, approved: -1, id_group: 1, username: 1 }
-                    },
+                    { $match: { wl_data: { $exists: true, $ne: [] } } }
                 ]
-                dbo.collection("whitelists").aggregate(pipeline).toArray((err, dbRes) => {
+                dbo.collection("lists").aggregate(pipeline).toArray((err, dbRes) => {
                     if (err) {
                         res.sendStatus(500);
                         console.error(err)
                     } else {
                         res.send(dbRes);
+                        console.log("\n\n\n", dbRes, "\n\n\n");
                     }
                 })
             })
@@ -852,7 +869,7 @@ async function init() {
                             }
                             dbo.collection("lists").findOne({ _id: insWlPlayer.id_list }, (err, dbResList) => {
                                 if (err) serverError(res, err);
-                                else if(req.userSession.access_level<100 || !dbResList.hidden_managers){
+                                else if (req.userSession.access_level < 100 || !dbResList.hidden_managers) {
                                     dbo.collection("groups").findOne(insWlPlayer.id_group, (err, dbRes) => {
                                         if (err) console.log("error", err)
                                         else if (dbRes != null) {
@@ -871,7 +888,7 @@ async function init() {
                                             res.send({ status: "not_inserted", reason: "could find corresponding id" });
                                         }
                                     })
-                                }else{
+                                } else {
                                     res.sendStatus(402);
                                 }
                             })

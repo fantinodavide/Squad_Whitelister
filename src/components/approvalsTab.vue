@@ -11,7 +11,7 @@
 			return {
 				whitelist_clans: [] as Array<any>,
 				sel_clan: {} as any,
-				wl_players: [] as Array<any>,
+				wl_approvals: [] as Array<any>,
 				editor: false,
 			};
 		},
@@ -40,7 +40,7 @@
 					contentType: 'application/json',
 					success: (dt) => {
 						//console.log('Pending approval clans:', dt);
-						this.wl_players = dt;
+						this.wl_approvals = dt;
 					},
 					error: (err) => {
 						console.error(err);
@@ -56,11 +56,12 @@
 					});
 			},
 			removePlayer: function (e: any) {
-				console.log('removing player', e, this.wl_players);
-				this.wl_players = this.wl_players.filter((p) => p._id != e._id);
+				console.log('removing player', e, this.wl_approvals);
+				for (let w of this.wl_approvals) w.wl_data = w.wl_data.filter((p: any) => p._id != e._id);
+				this.wl_approvals = this.wl_approvals.filter((w) => w.wl_data.length > 0);
 			},
 			appendPlayer: function (e: any) {
-				this.wl_players.push(e);
+				this.wl_approvals.push(e);
 			},
 		},
 		created() {
@@ -75,7 +76,10 @@
 	<select name="clan_selector" ref="clan_selector" :disabled="whitelist_clans.length <= 1" @change="selectClanChanged">
 		<option v-for="c of whitelist_clans" :value="c._id">{{ c.full_name }}</option>
 	</select>
-	<approveUserCard v-for="w of wl_players" :wl_data="w" :hoverMenuVisible="editor" @confirm="$emit('confirm', $event)" @removedPlayer="removePlayer" />
+	<div v-for="list_wl of wl_approvals" class="shadow">
+		<h3>{{ list_wl.title }}</h3>
+		<approveUserCard v-for="w of list_wl.wl_data" :wl_data="w" :hoverMenuVisible="editor" @confirm="$emit('confirm', $event)" @removedPlayer="removePlayer" />
+	</div>
 </template>
 
 <style scoped>
@@ -96,5 +100,14 @@
 	.tab.Clans {
 		justify-content: center;
 		align-content: baseline;
+	}
+	div {
+		padding: 5px;
+		border-radius: 20px;
+		background: #2c2c2c;
+		margin: 10px;
+	}
+	h3 {
+		margin-left: 10px;
 	}
 </style>
