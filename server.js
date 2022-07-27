@@ -173,7 +173,7 @@ async function init() {
                     }
                     //wss = new WebSocket.Server({ server });
                 }
-                
+
                 try {
                     fp(config.web_server.http_port, http_start);
                     // fp(config.web_server.http_port, function (err, freePort) {
@@ -1474,6 +1474,13 @@ async function init() {
         }
     }
     function isDbPopulated(callback) {
+        const mainListData = {
+            title: "Main",
+            output_path: "wl",
+            hidden_managers: false,
+            require_appr: false
+        }
+
         mongoConn((dbo) => {
             dbo.collection("users").findOne({ username: "admin" }, (err, dbRes) => {
                 if (err) {
@@ -1482,7 +1489,7 @@ async function init() {
                 } else if (dbRes != null) {
                     // if (callback)
                     //     callback();
-                    listCollection();
+                    listCollection(() => { repairListFormat(callback) });
                 } else {
                     let adminPwd = randomString(12);
                     let defaultAdminAccount = {
@@ -1503,20 +1510,16 @@ async function init() {
                             setTimeout(() => {
                                 consoleLogBackup("\n\n\n\n");
                                 // callback();
-                                listCollection();
+                                listCollection(callback);
                             }, startdelay * 1000);
                         }
                     })
                 }
             })
 
-            function listCollection() {
+            function listCollection(cb) {
                 dbo.listCollections({ name: "lists" }).next((err, dbRes) => {
                     if (dbRes == null) {
-                        const mainListData = {
-                            title: "Main",
-                            output_path: "wl"
-                        }
                         dbo.collection("lists").insertOne(mainListData, (err, dbResI) => {
                             if (err) serverError(res, err);
                             else {
@@ -1525,13 +1528,36 @@ async function init() {
                                     if (err) serverError(res, err);
                                     else {
                                         console.log("Updated references");
-                                        callback();
+                                        cb();
                                     }
                                 })
                             }
                         })
-                    } else callback();
+                    } else cb();
                 })
+            }
+
+            async function repairListFormat(cb) {
+                let logSent = false;
+                const keysToCheck = Object.keys(mainListData);
+                repair(0)
+
+                function repair(ki) {
+                    const k = keysToCheck[ki]
+                    dbo.collection("lists").updateMany({ [k]: { $exists: false } }, { $set: { [k]: mainListData[k] } }, async (err, dbRes) => {
+                        if (err) console.error(err);
+                        else {
+                            if (dbRes.modifiedCount > 0) {
+                                if (!logSent) {
+                                    logSent = true;
+                                    console.log("Repairing Lists format");
+                                }
+                            }
+                            if(ki<keysToCheck.length-1)repair(ki+1);
+                            else cb();
+                        }
+                    })
+                }
             }
         })
     }
