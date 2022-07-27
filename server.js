@@ -124,6 +124,8 @@ async function init() {
             console.log("ARGS:", args)
             setInterval(() => { checkUpdates(config.other.automatic_updates) }, config.other.update_check_interval_seconds * 1000);
             if (enableServer) {
+                const max_port_tries = 3;
+
                 const alternativePortsFileName = __dirname + "/ALTERNATIVE PORTS.txt";
                 fs.removeSync(alternativePortsFileName)
                 const privKPath = ['certificates/certificate.key', 'certificates/privkey.pem', 'certificates/default.key'];
@@ -137,25 +139,80 @@ async function init() {
                         cert: fs.readFileSync(foundCert)
                     }
                     server.https = https.createServer(httpsOptions, app);
-                    fp(config.web_server.https_port, function (err, freePort) {
+                    let https_tries = 0;
+                    let https_checked_ports = [];
+                    try {
+                        fp(config.web_server.https_port, https_start);
+                    } catch (error) { }
+
+                    function https_start(err, freePort) {
+                        https_checked_ports.push(freePort)
+                        let error = false;
                         let port = freePort;
                         app.set('forceSSLOptions', {
                             httpsPort: port
                         });
-                        logConfPortNotFree(config.web_server.https_port, freePort)
-                        server.https.listen(port);
-                        console.log("HTTPS server listening at https://%s:%s", config.web_server.bind_ip, port)
-                    });
+                        if (https_tries == 0) logConfPortNotFree(config.web_server.https_port, freePort)
+                        try {
+                            server.https.listen(port);
+                        } catch (err) {
+                            error = true;
+                            let new_try_port = 4433 + (https_tries * 100);
+                            console.error(err, "\nTrying again with port ", new_try_port)
+                            if (++https_tries < max_port_tries)
+                                try {
+                                    fp(new_try_port, https_start);
+                                } catch (error) { }
+                            else
+                                console.error("Couldn't start HTTPS server\n > Failed start on ports:", https_checked_ports.join(', '))
+                        }
+
+                        if (!error) {
+                            console.log("HTTPS server listening at https://%s:%s", config.web_server.bind_ip, port)
+                        }
+                    }
                     //wss = new WebSocket.Server({ server });
                 }
-                fp(config.web_server.http_port, function (err, freePort) {
+                
+                try {
+                    fp(config.web_server.http_port, http_start);
+                    // fp(config.web_server.http_port, function (err, freePort) {
+                    //     let port = freePort;
+                    //     server.http = app.listen(port, config.web_server.bind_ip, function () {
+                    //         var host = server.http.address().address
+                    //         console.log("HTTP server listening at http://%s:%s", host, port)
+                    //     })
+                    // });
+                } catch (error) { }
+
+                let http_tries = 0;
+                let http_checked_ports = [];
+                function http_start(err, freePort) {
+                    http_checked_ports.push(freePort)
+                    let error = false;
                     let port = freePort;
-                    logConfPortNotFree(config.web_server.http_port, freePort)
-                    server.http = app.listen(port, config.web_server.bind_ip, function () {
-                        var host = server.http.address().address
-                        console.log("HTTP server listening at http://%s:%s", host, port)
-                    })
-                });
+                    if (http_tries == 0) logConfPortNotFree(config.web_server.http_port, freePort)
+                    try {
+                        server.http = app.listen(port, config.web_server.bind_ip, function () {
+                            var host = server.http.address().address
+                            console.log("HTTP server listening at http://%s:%s", host, port)
+                        })
+                    } catch (err) {
+                        error = true;
+                        let new_try_port = 8080 + (http_tries * 100);
+                        console.error(err, "\nTrying again with port ", new_try_port)
+                        if (++http_tries < max_port_tries)
+                            try {
+                                fp(new_try_port, http_start);
+                            } catch (error) { }
+                        else
+                            console.error("Couldn't start HTTP server\n > Failed start on ports:", http_checked_ports.join(', '))
+                    }
+
+                    // if (!error) {
+                    //     console.log("HTTPS server listening at https://%s:%s", config.web_server.bind_ip, port)
+                    // }
+                }
 
                 function logConfPortNotFree(confPort, freePort) {
                     if (confPort != freePort) {
