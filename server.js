@@ -340,27 +340,6 @@ async function init() {
                                     error = false;
                                     userDt.token = randomString(128);
                                     res.redirect(307, "/api/login");
-                                    // dbo.collection("sessions").findOne({ token: userDt.token }, (err, dbRes) => {
-                                    //     if (err) {
-                                    //         res.sendStatus(500);
-                                    //         console.error(err)
-                                    //     }
-                                    //     else if (dbRes == null) {
-                                    //         dbo.collection("sessions").insertOne(userDt, (err, dbRes) => {
-                                    //             if (err) {
-                                    //                 res.sendStatus(500);
-                                    //                 console.error(err)
-                                    //             }
-                                    //             else {
-                                    //                 res.cookie("stok", userDt.token, { expires: userDt.session_expiration })
-                                    //                 res.cookie("uid", userDt.user_id, { expires: userDt.session_expiration })
-                                    //                 res.send({ status: "login_ok", userDt: userDt });
-                                    //             }
-                                    //         })
-                                    //     } else {
-                                    //         error = true;
-                                    //     }
-                                    // })
                                 } while (error);
                             }
                         })
