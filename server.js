@@ -139,6 +139,7 @@ async function init() {
                             server.http = app.listen(free_http_port, config.web_server.bind_ip, function () {
                                 var host = server.http.address().address
                                 console.log("HTTP server listening at http://%s:%s", host, free_http_port)
+                                logConfPortNotFree(config.web_server.http_port, free_http_port)
                             })
                         } else {
                             console.error("Couldn't start HTTP server");
@@ -157,6 +158,7 @@ async function init() {
                                 });
                                 server.https.listen(free_https_port);
                                 console.log("HTTPS server listening at https://%s:%s", config.web_server.bind_ip, free_https_port)
+                                logConfPortNotFree(config.web_server.https_port, free_https_port)
                             } else {
                                 console.error("Couldn't start HTTPS server");
                             }
@@ -166,7 +168,7 @@ async function init() {
 
                 function logConfPortNotFree(confPort, freePort) {
                     if (confPort != freePort) {
-                        const warningMessage = ("\n\n!!! WARNING !!! Port " + confPort + " is not available! Closest free port found: " + freePort)
+                        const warningMessage = ("!!! WARNING !!! Port " + confPort + " is not available! Closest free port found: " + freePort + "\n")
                         console.log(warningMessage);
                         fs.writeFileSync(alternativePortsFileName, warningMessage, { flag: "a+" })
                     }
@@ -1590,7 +1592,7 @@ async function init() {
                     try {
                         fp(new_try_port, _tryStart);
                     } catch (error) { }
-                }else{
+                } else {
                     console.error(" > Couldn't find a free port.\n > Terminating process...");
                     process.exit(1);
                 }
