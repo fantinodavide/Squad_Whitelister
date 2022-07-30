@@ -31,6 +31,7 @@ async function init() {
     const fs = await irequire("fs-extra");
     const StreamZip = await irequire('node-stream-zip');
     const https = await irequire('https');
+    const http = await irequire('http');
     const express = await irequire('express');
     const app = express();
     const path = await irequire('path')
@@ -132,87 +133,36 @@ async function init() {
                 const certPath = ['certificates/certificate.crt', 'certificates/fullchain.pem', 'certificates/default.crt'];
                 let foundKey = getFirstExistentFileInArray(privKPath);
                 let foundCert = getFirstExistentFileInArray(certPath);
-                console.log("Using Certificate:", foundCert, foundKey)
-                if (foundKey && foundCert) {
-                    const httpsOptions = {
-                        key: fs.readFileSync(foundKey),
-                        cert: fs.readFileSync(foundCert)
-                    }
-                    server.https = https.createServer(httpsOptions, app);
-                    let https_tries = 0;
-                    let https_checked_ports = [];
-                    try {
-                        fp(config.web_server.https_port, https_start);
-                    } catch (error) { }
-
-                    function https_start(err, freePort) {
-                        https_checked_ports.push(freePort)
-                        let error = false;
-                        let port = freePort;
-                        app.set('forceSSLOptions', {
-                            httpsPort: port
-                        });
-                        if (https_tries == 0) logConfPortNotFree(config.web_server.https_port, freePort)
-                        try {
-                            server.https.listen(port);
-                        } catch (err) {
-                            error = true;
-                            let new_try_port = 4433 + (https_tries * 100);
-                            console.error(err, "\nTrying again with port ", new_try_port)
-                            if (++https_tries < max_port_tries)
-                                try {
-                                    fp(new_try_port, https_start);
-                                } catch (error) { }
-                            else
-                                console.error("Couldn't start HTTPS server\n > Failed start on ports:", https_checked_ports.join(', '))
+                get_free_port(config.web_server.http_port, (free_http_port) => {
+                    get_free_port(config.web_server.https_port, (free_https_port) => {
+                        if (free_http_port) {
+                            server.http = app.listen(free_http_port, config.web_server.bind_ip, function () {
+                                var host = server.http.address().address
+                                console.log("HTTP server listening at http://%s:%s", host, free_http_port)
+                            })
+                        } else {
+                            console.error("Couldn't start HTTP server");
                         }
 
-                        if (!error) {
-                            console.log("HTTPS server listening at https://%s:%s", config.web_server.bind_ip, port)
+                        if (foundKey && foundCert) {
+                            console.log("Using Certificate:", foundCert, foundKey)
+                            const httpsOptions = {
+                                key: fs.readFileSync(foundKey),
+                                cert: fs.readFileSync(foundCert)
+                            }
+                            server.https = https.createServer(httpsOptions, app);
+                            if (free_https_port) {
+                                app.set('forceSSLOptions', {
+                                    httpsPort: free_https_port
+                                });
+                                server.https.listen(free_https_port);
+                                console.log("HTTPS server listening at https://%s:%s", config.web_server.bind_ip, free_https_port)
+                            } else {
+                                console.error("Couldn't start HTTPS server");
+                            }
                         }
-                    }
-                    //wss = new WebSocket.Server({ server });
-                }
-
-                try {
-                    fp(config.web_server.http_port, http_start);
-                    // fp(config.web_server.http_port, function (err, freePort) {
-                    //     let port = freePort;
-                    //     server.http = app.listen(port, config.web_server.bind_ip, function () {
-                    //         var host = server.http.address().address
-                    //         console.log("HTTP server listening at http://%s:%s", host, port)
-                    //     })
-                    // });
-                } catch (error) { }
-
-                let http_tries = 0;
-                let http_checked_ports = [];
-                function http_start(err, freePort) {
-                    http_checked_ports.push(freePort)
-                    let error = false;
-                    let port = freePort;
-                    if (http_tries == 0) logConfPortNotFree(config.web_server.http_port, freePort)
-                    try {
-                        server.http = app.listen(port, config.web_server.bind_ip, function () {
-                            var host = server.http.address().address
-                            console.log("HTTP server listening at http://%s:%s", host, port)
-                        })
-                    } catch (err) {
-                        error = true;
-                        let new_try_port = 8080 + (http_tries * 100);
-                        console.error(err, "\nTrying again with port ", new_try_port)
-                        if (++http_tries < max_port_tries)
-                            try {
-                                fp(new_try_port, http_start);
-                            } catch (error) { }
-                        else
-                            console.error("Couldn't start HTTP server\n > Failed start on ports:", http_checked_ports.join(', '))
-                    }
-
-                    // if (!error) {
-                    //     console.log("HTTPS server listening at https://%s:%s", config.web_server.bind_ip, port)
-                    // }
-                }
+                    })
+                })
 
                 function logConfPortNotFree(confPort, freePort) {
                     if (confPort != freePort) {
@@ -1435,10 +1385,10 @@ async function init() {
         }
 
         if (!fs.existsSync("conf.json")) {
-            fp(emptyConfFile.web_server.http_port, function (err, freePort) {
-                emptyConfFile.web_server.http_port = freePort;
-                fp(emptyConfFile.web_server.https_port, function (err, freePort) {
-                    emptyConfFile.web_server.https_port = freePort;
+            get_free_port(emptyConfFile.web_server.http_port, function (http_port) {
+                emptyConfFile.web_server.http_port = http_port;
+                get_free_port(emptyConfFile.web_server.https_port, function (https_port) {
+                    emptyConfFile.web_server.https_port = https_port;
                     console.log("Configuration file created, set your parameters and run again \"node server\".\nTerminating execution...");
                     fs.writeFileSync("conf.json", JSON.stringify(emptyConfFile, null, "\t"));
                     process.exit(0)
@@ -1617,6 +1567,42 @@ async function init() {
             }
         });
     }
+    function get_free_port(checkPort, callback = () => { }, max_port_tries = 15) {
+        console.log("Looking for free port close to " + checkPort);
+        try {
+            fp(checkPort, _tryStart)
+        } catch (err) { }
+
+        let tries = 0;
+        let checked_ports = [];
+        async function _tryStart(err, freePort) {
+            checked_ports.push(freePort)
+            let port = freePort;
+            let tmpSrv = http.createServer();
+            let error = false;
+
+            await tmpSrv.listen(port).on("error", (e) => {
+                console.error(" > Failed", e.port);
+                error = true;
+                let new_try_port = (checkPort == 443 ? 4443 : 8080) + (tries * 100);
+
+                if (++tries < max_port_tries) {
+                    try {
+                        fp(new_try_port, _tryStart);
+                    } catch (error) { }
+                }else{
+                    console.error(" > Couldn't find a free port.\n > Terminating process...");
+                    process.exit(1);
+                }
+            })
+            tmpSrv.close();
+            if (!error) {
+                console.log(" > Found free port: " + port)
+                callback(port)
+            }
+
+        }
+    }
 }
 
 init();
@@ -1633,32 +1619,4 @@ function terminateAndSpawnChildProcess(code = 0, delay = 0) {
     setTimeout(() => {
         process.exit(code);
     }, delay)
-}
-
-function get_free_port(checkPort, max_tries = 3, callback = () => { }) {
-    let checkedPorts = [];
-    let tries = 0;
-    checkedPorts.push(checkPort)
-
-    let error = false;
-    let port = checkPort;
-    fp(checkPort, function (err, freePort) {
-        emptyConfFile.web_server.https_port = freePort;
-        try {
-            server.http = app.listen(port, config.web_server.bind_ip, function () {
-                var host = server.http.address().address
-                console.log("HTTP server listening at http://%s:%s", host, port)
-            })
-        } catch (err) {
-            error = true;
-            let new_try_port = 8080 + (tries * 100);
-            console.error(err, "\nTrying again with port ", new_try_port)
-            if (++tries < max_tries)
-                try {
-                    fp(new_try_port, port);
-                } catch (error) { }
-            else
-                console.error("Couldn't start HTTP server\n > Failed start on ports:", checkedPorts.join(', '))
-        }
-    });
 }
