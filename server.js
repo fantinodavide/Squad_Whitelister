@@ -1532,7 +1532,7 @@ async function init() {
                                     console.log("Repairing Lists format");
                                 }
                             }
-                            if(ki<keysToCheck.length-1)repair(ki+1);
+                            if (ki < keysToCheck.length - 1) repair(ki + 1);
                             else cb();
                         }
                     })
@@ -1633,4 +1633,32 @@ function terminateAndSpawnChildProcess(code = 0, delay = 0) {
     setTimeout(() => {
         process.exit(code);
     }, delay)
+}
+
+function get_free_port(checkPort, max_tries = 3, callback = () => { }) {
+    let checkedPorts = [];
+    let tries = 0;
+    checkedPorts.push(checkPort)
+
+    let error = false;
+    let port = checkPort;
+    fp(checkPort, function (err, freePort) {
+        emptyConfFile.web_server.https_port = freePort;
+        try {
+            server.http = app.listen(port, config.web_server.bind_ip, function () {
+                var host = server.http.address().address
+                console.log("HTTP server listening at http://%s:%s", host, port)
+            })
+        } catch (err) {
+            error = true;
+            let new_try_port = 8080 + (tries * 100);
+            console.error(err, "\nTrying again with port ", new_try_port)
+            if (++tries < max_tries)
+                try {
+                    fp(new_try_port, port);
+                } catch (error) { }
+            else
+                console.error("Couldn't start HTTP server\n > Failed start on ports:", checkedPorts.join(', '))
+        }
+    });
 }
