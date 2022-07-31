@@ -1245,6 +1245,7 @@ async function init() {
                         //if (updateFoundCallback) updateFoundCallback();
                         // server.close();
                         if (downloadInstallUpdate) downloadLatestUpdate(gitResData);
+                        else if(callback) callback();
                     } else {
                         console.log(" > No updates found");
                         if (callback) callback();
