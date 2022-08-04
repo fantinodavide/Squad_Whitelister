@@ -73,8 +73,9 @@
 </script>
 
 <template>
-	<select name="clan_selector" ref="clan_selector" :disabled="whitelist_clans.length <= 1" @change="selectClanChanged">
+	<select name="clan_selector" ref="clan_selector" :disabled="whitelist_clans.length <= 1" :class="{ grayout: whitelist_clans.length == 0 }" @change="selectClanChanged">
 		<option v-for="c of whitelist_clans" :value="c._id">{{ c.full_name }}</option>
+		<option v-if="whitelist_clans.length == 0">Nothing to do here</option>
 	</select>
 	<div v-for="list_wl of wl_approvals" class="shadow">
 		<h3>{{ list_wl.title }}</h3>
