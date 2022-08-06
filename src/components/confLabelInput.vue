@@ -3,21 +3,29 @@
 <script lang="ts">
 	import { anyTypeAnnotation } from '@babel/types';
 	import { stringifyStyle } from '@vue/shared';
-	import $ from 'jquery';
-	import { type } from 'os';
-	import SideMenu from './sideMenu.vue';
-	import tab from './tab.vue';
-	import confLabelInput from './confLabelInput.vue';
 
 	export default {
 		data() {
 			return {
-				currentConfigMenu: {} as any,
-				config_tr: {} as any,
+				content: this.value,
+				config_tr: {
+					web_server: 'Web Server',
+					app_personalization: 'Personalization',
+				} as any,
 			};
 		},
+		name: 'confLabelInput',
+		props: {
+			value: null as any,
+			confKey: {
+				required: true,
+				type: String,
+			},
+		},
 		methods: {
-			log: console.log,
+			handleInput: function (e: any) {
+				this.$emit('input', this.content);
+			},
 			getInputType: function (o: any) {
 				const tmpType = {
 					string: 'text',
@@ -25,12 +33,6 @@
 					boolean: 'checkbox',
 				} as any;
 				return o.toString().startsWith('#') ? 'color' : tmpType[typeof o];
-			},
-			configMenuChanged: function (e: any) {
-				let cpe = { ...e };
-				delete cpe.selected;
-
-				this.currentConfigMenu = cpe;
 			},
 			getTranslation: function (t: string) {
 				const trC = this.config_tr[t];
@@ -45,21 +47,18 @@
 				} else return hex;
 			},
 		},
-		created() {},
-		components: { SideMenu, tab, confLabelInput },
+		created() {
+			console.log('conf data', this.confKey, this.value);
+		},
 	};
 </script>
 
 <template>
-	<SideMenu @menuChanged="configMenuChanged" />
-	<tab>
-		<!-- {{ JSON.stringify(currentConfigMenu, null, '\t') }} -->
-		{{ JSON.stringify(currentConfigMenu) }}
-		<div class="ct">
-			<!-- <label v-for="k of Object.keys(currentConfigMenu)">{{ getTranslation(k) }}<input :type="getInputType(currentConfigMenu[k])" v-model="currentConfigMenu[k]" /></label> -->
-			<confLabelInput v-for="k of Object.keys(currentConfigMenu)" :key="k" :confKey="k" :value="currentConfigMenu[k]" @input="(e:any) => (currentConfigMenu[k] = e.target.value)" />
-		</div>
-	</tab>
+	<div v-if="typeof content == 'object'">
+		<h3>{{ toUpperFirstChar(confKey) }}</h3>
+		<confLabelInput v-for="k of Object.keys(content)" :key="k" :confKey="k" :value="content[k]" @input="(e:any) => (content[k] = e.target.value)" />
+	</div>
+	<label v-else>{{ getTranslation(confKey) }}<input :type="getInputType(content)" v-model="content" @input="handleInput" /></label>
 </template>
 
 <style scoped>
@@ -72,5 +71,10 @@
 	}
 	div.ct {
 		margin: 0 auto;
+	}
+	h2,
+	h3 {
+		margin-bottom: 20px;
+		border-bottom: 2px solid;
 	}
 </style>

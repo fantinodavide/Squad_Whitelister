@@ -27,7 +27,7 @@
 						this.selectMenu(this.config[Object.keys(this.config)[0]]);
 					});
 			},
-			getTranslation: function (t: string) {
+			getTranslation: function (t: any) {
 				const trC = this.config_tr[t];
 				return trC ? trC : this.toUpperFirstChar(t.replace(/\_/g, ' '));
 			},
