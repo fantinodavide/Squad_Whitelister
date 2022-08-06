@@ -1396,6 +1396,9 @@ async function init() {
                 logo_url: "https://joinsquad.com/wp-content/themes/squad/img/logo.png",
                 title_hidden_in_header: false,
             },
+            discord_bot:{
+                token: "",
+            },
             other: {
                 automatic_updates: true,
                 update_check_interval_seconds: 3600,

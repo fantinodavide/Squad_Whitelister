@@ -76,8 +76,10 @@
 	label {
 		flex-wrap: nowrap;
 		white-space: nowrap;
+		margin-bottom: 10px;
 	}
 	label > input {
+		margin: 0;
 		margin-left: 10px;
 	}
 	div.ct {
