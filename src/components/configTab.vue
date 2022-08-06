@@ -23,11 +23,12 @@
 					number: 'number',
 					boolean: 'checkbox',
 				} as any;
-				return tmpType[typeof o];
+				return o.toString().startsWith('#') ? 'color' : tmpType[typeof o];
 			},
 			configMenuChanged: function (e: any) {
 				let cpe = { ...e };
 				delete cpe.selected;
+
 				this.currentConfigMenu = cpe;
 			},
 			getTranslation: function (t: string) {
@@ -36,6 +37,11 @@
 			},
 			toUpperFirstChar: function (string: string) {
 				return string.charAt(0).toUpperCase() + string.slice(1);
+			},
+			convHex6digs: function (hex: any) {
+				if (hex.toString().startsWith('#')) {
+					return '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
+				} else return hex;
 			},
 		},
 		created() {},
