@@ -7,7 +7,7 @@
 	export default {
 		data() {
 			return {
-				content: this.value,
+				content: this.modelValue,
 				config_tr: {
 					web_server: 'Web Server',
 					app_personalization: 'Personalization',
@@ -16,13 +16,14 @@
 		},
 		name: 'confLabelInput',
 		props: {
-			value: null as any,
+			modelValue: null as any,
 			confKey: {
 				required: true,
 				type: String,
 			},
 		},
 		methods: {
+			log: console.log,
 			handleInput: function (e: any) {
 				this.$emit('input', this.content);
 			},
@@ -48,7 +49,7 @@
 			},
 		},
 		created() {
-			console.log('conf data', this.confKey, this.value);
+			console.log('conf_data:', this.confKey, this.modelValue);
 		},
 	};
 </script>
@@ -56,9 +57,19 @@
 <template>
 	<div v-if="typeof content == 'object'">
 		<h3>{{ toUpperFirstChar(confKey) }}</h3>
-		<confLabelInput v-for="k of Object.keys(content)" :key="k" :confKey="k" :value="content[k]" @input="(e:any) => (content[k] = e.target.value)" />
+		<confLabelInput v-for="k of Object.keys(content)" :key="k" :confKey="k" :modelValue="content[k]" @update:modelValue="(nv) => (content[k] = nv)" />
 	</div>
-	<label v-else>{{ getTranslation(confKey) }}<input :type="getInputType(content)" v-model="content" @input="handleInput" /></label>
+	<label v-else
+		>{{ getTranslation(confKey)
+		}}<input
+			:type="getInputType(content)"
+			:value="modelValue"
+			@input="
+				(e:any) => {
+					$emit('update:modelValue', e.target.value);
+				}
+			"
+	/></label>
 </template>
 
 <style scoped>
