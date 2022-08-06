@@ -26,6 +26,7 @@
 	import changepassword from './components/changepassword.vue';
 	import addNewList from './components/addNewList.vue';
 	import editList from './components/editList.vue';
+	import ConfigTab from './components/configTab.vue';
 
 	import bia_logo from './assets/bia_logo.png';
 	import jd_logo from './assets/jd_logo.png';
@@ -119,7 +120,7 @@
 
 						// this.$nextTick(() => {
 						// 	this.setCurrentTab(this.tabs[0]['name']);
-						// });
+						// });1
 						setTimeout(() => {
 							this.setCurrentTab(this.tabs[0]['name']);
 						}, 10);
@@ -415,7 +416,11 @@
 			<input type="search" placeholder="Search User" name="usrSearch" id="" v-model="tabData.UsersAndRoles.userSearch" />
 			<userCard v-for="u in tabData.UsersAndRoles.users" v-show="u.username.toLowerCase().startsWith(tabData.UsersAndRoles.userSearch.toLowerCase()) || levenshtein(u.username.toLowerCase(), tabData.UsersAndRoles.userSearch.toLowerCase()) <= 2 || tabData.UsersAndRoles.userSearch == ''" :user_data="u" :roles="tabData.UsersAndRoles.roles" @delete-record="removeUser" />
 		</tab>
+		<tab v-else-if="currentTab == 'Configuration'" :currentTab="currentTab" complex>
+			<ConfigTab />
+		</tab>
 	</main>
+
 	<footer>
 		<h2>Official Support</h2>
 		<div style="display: flex; flex-wrap: wrap; justify-content: center">

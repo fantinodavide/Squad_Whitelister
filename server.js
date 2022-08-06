@@ -352,6 +352,12 @@ async function init() {
                     order: 30,
                     type: "tab",
                     max_access_level: 5
+                },
+                {
+                    name: "Configuration",
+                    order: 35,
+                    type: "tab",
+                    max_access_level: 5
                 }
             ];
             let retTabs = [];
@@ -554,6 +560,10 @@ async function init() {
             res.send(roles)
         })
         // app.use('/api/whitelist/*', removeExpiredPlayers);
+        app.use('/api/config/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
+        app.get('/api/config/read/getFull', async (req, res, next) => {
+            res.send(config);
+        })
 
         app.use('/api/lists/read/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
         app.get('/api/lists/read/getAll', (req, res, next) => {
@@ -1245,7 +1255,7 @@ async function init() {
                         //if (updateFoundCallback) updateFoundCallback();
                         // server.close();
                         if (downloadInstallUpdate) downloadLatestUpdate(gitResData);
-                        else if(callback) callback();
+                        else if (callback) callback();
                     } else {
                         console.log(" > No updates found");
                         if (callback) callback();
