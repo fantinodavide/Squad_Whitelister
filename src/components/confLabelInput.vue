@@ -25,7 +25,9 @@
 		methods: {
 			log: console.log,
 			handleInput: function (e: any) {
-				this.$emit('input', this.content);
+				let ret = e.target.value;
+				if (e.target.type == 'checkbox') ret = e.target.checked;
+				this.$emit('update:modelValue', ret);
 			},
 			getInputType: function (o: any) {
 				const tmpType = {
@@ -49,7 +51,7 @@
 			},
 		},
 		created() {
-			console.log('conf_data:', this.confKey, this.modelValue);
+			// console.log('conf_data:', this.confKey, this.modelValue);
 		},
 	};
 </script>
@@ -59,17 +61,7 @@
 		<h3>{{ toUpperFirstChar(confKey) }}</h3>
 		<confLabelInput v-for="k of Object.keys(content)" :key="k" :confKey="k" :modelValue="content[k]" @update:modelValue="(nv) => (content[k] = nv)" />
 	</div>
-	<label v-else
-		>{{ getTranslation(confKey)
-		}}<input
-			:type="getInputType(content)"
-			:value="modelValue"
-			@input="
-				(e:any) => {
-					$emit('update:modelValue', e.target.value);
-				}
-			"
-	/></label>
+	<label v-else>{{ getTranslation(confKey) }}<input :type="getInputType(content)" :value="modelValue" :checked="modelValue" @input="handleInput" /></label>
 </template>
 
 <style scoped>

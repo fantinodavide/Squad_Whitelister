@@ -417,7 +417,7 @@
 			<userCard v-for="u in tabData.UsersAndRoles.users" v-show="u.username.toLowerCase().startsWith(tabData.UsersAndRoles.userSearch.toLowerCase()) || levenshtein(u.username.toLowerCase(), tabData.UsersAndRoles.userSearch.toLowerCase()) <= 2 || tabData.UsersAndRoles.userSearch == ''" :user_data="u" :roles="tabData.UsersAndRoles.roles" @delete-record="removeUser" />
 		</tab>
 		<tab v-else-if="currentTab == 'Configuration'" :currentTab="currentTab" complex>
-			<ConfigTab />
+			<ConfigTab @confirm="confirmEvt" />
 		</tab>
 	</main>
 

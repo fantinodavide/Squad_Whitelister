@@ -564,6 +564,9 @@ async function init() {
         app.get('/api/config/read/getFull', async (req, res, next) => {
             res.send(config);
         })
+        app.post('/api/config/write/update', async (req, res, next) => {
+            const parm = req.body;
+        })
 
         app.use('/api/lists/read/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
         app.get('/api/lists/read/getAll', (req, res, next) => {

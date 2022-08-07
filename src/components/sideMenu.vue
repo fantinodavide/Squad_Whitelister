@@ -24,7 +24,7 @@
 					.then((dt) => {
 						this.config = dt;
 						console.log('config', this.config);
-						this.selectMenu(this.config[Object.keys(this.config)[0]]);
+						this.selectMenu(this.config[Object.keys(this.config)[0]], Object.keys(this.config)[0]);
 					});
 			},
 			getTranslation: function (t: any) {
@@ -34,10 +34,10 @@
 			toUpperFirstChar: function (string: string) {
 				return string.charAt(0).toUpperCase() + string.slice(1);
 			},
-			selectMenu: function (o: any) {
+			selectMenu: function (o: any, key: string) {
 				for (let c in this.config) this.config[c].selected = false;
 				o.selected = true;
-				this.$emit('menuChanged', o);
+				this.$emit('menuChanged', { menu: key, config: o });
 			},
 		},
 		created() {
@@ -48,7 +48,9 @@
 
 <template>
 	<div>
-		<button v-for="k of Object.keys(config)" :value="k" @click="selectMenu(config[k])" :class="{ active: config[k].selected }">{{ getTranslation(k) }}</button>
+		<button v-for="k of Object.keys(config)" :value="k" @click="selectMenu(config[k], k)" :class="{ active: config[k].selected }">
+			{{ getTranslation(k) }}
+		</button>
 	</div>
 </template>
 
