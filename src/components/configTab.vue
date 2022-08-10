@@ -47,7 +47,26 @@
 				} else return hex;
 			},
 			sendConfigToServer: function () {
+				const dt = { category: this.selectedMenu, config: this.currentConfigMenu };
 				console.log('Saving_config:', this.selectedMenu, this.currentConfigMenu);
+				$.ajax({
+					url: '/api/config/write/update',
+					type: 'post',
+					data: JSON.stringify(dt),
+					dataType: 'json',
+					contentType: 'application/json',
+					timeout: 60000,
+					success: (dt) => {
+						if (dt.status == 'config_updated') {
+							if (dt.action == 'reload') location.reload();
+						} else {
+							console.error(dt);
+						}
+					},
+					error: (err) => {
+						console.error(err);
+					},
+				});
 			},
 		},
 		created() {},

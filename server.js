@@ -1,4 +1,5 @@
-const cp = require('child_process')
+const cp = require('child_process');
+const { fdatasync } = require('fs');
 var installingDependencies = false;
 const irequire = async module => {
     try {
@@ -112,9 +113,10 @@ async function init() {
     function initDBConnection(callback = null) {
         // console.log("Connecting to MongoDB...")
         if (mongodb_global_connection) {
+            console.log("MongoDB connection");
             mongoConn((dbo) => {
                 mongodb_conn = dbo;
-                console.log("MongoDB successfully connected");
+                console.log(" > Successfully connected");
                 if (callback) callback();
             }, true)
         }
@@ -566,6 +568,13 @@ async function init() {
         })
         app.post('/api/config/write/update', async (req, res, next) => {
             const parm = req.body;
+            config[parm.category] = parm.config;
+            fs.writeFileSync("conf.json.bak",fs.readFileSync('conf.json'));
+            fs.writeFileSync("conf.json", JSON.stringify(config, null, "\t"));
+            let resData = {status: "config_updated"}
+            if(['app_personalization'].includes(parm.category)) resData.action = 'reload';
+            res.send(resData);
+            if(['web_server','database',].includes(parm.category)) restartProcess(0,0); 
         })
 
         app.use('/api/lists/read/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
@@ -1423,7 +1432,7 @@ async function init() {
         } else {
             const config = JSON.parse(fs.readFileSync("conf.json", "utf-8").toString());
             var config2 = { ...config }
-            updateConfig(config2, emptyConfFile);
+            upgradeConfig(config2, emptyConfFile);
             fs.writeFileSync("conf.json", JSON.stringify(config2, null, "\t"));
             callback();
         }
@@ -1516,7 +1525,7 @@ async function init() {
             }
         })
     }
-    function updateConfig(config, emptyConfFile) {
+    function upgradeConfig(config, emptyConfFile) {
         for (let k in emptyConfFile) {
             const objType = Object.prototype.toString.call(emptyConfFile[k]);
             const parentObjType = Object.prototype.toString.call(emptyConfFile);
@@ -1537,9 +1546,12 @@ async function init() {
                 }
             }
             if (typeof (emptyConfFile[k]) === "object") {
-                updateConfig(config[k], emptyConfFile[k])
+                upgradeConfig(config[k], emptyConfFile[k])
             }
         }
+    }
+    function updateConfig(){
+        
     }
     process.on('uncaughtException', function (err) {
         console.error("Uncaught Exception", err.message, err.stack)
@@ -1562,6 +1574,7 @@ async function init() {
             consoleErrorBackup(...params);
             logger.error(...params)
         }
+        
     }
 
     function getFirstExistentFileInArray(arr, elm = 0) {
