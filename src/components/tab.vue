@@ -40,6 +40,7 @@
 		display: flex;
 		flex-direction: column;
 		flex-wrap: wrap;
+		margin: 20px;
 	}
 
 	.tab.horizontal {
@@ -58,6 +59,11 @@
 		padding: 0px;
 		display: flex;
 		flex-direction: row;
-		flex-wrap: nowrap;
+		flex-wrap: wrap;
+		margin: 10px;
+	}
+	.tab.complex > .tab {
+		margin: 10px;
+		flex-grow: 99999999;
 	}
 </style>

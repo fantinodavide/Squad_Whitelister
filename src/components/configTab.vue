@@ -78,12 +78,12 @@
 <template>
 	<SideMenu @menuChanged="configMenuChanged" />
 	<tab>
-		<!-- {{ JSON.stringify(currentConfigMenu) }} -->
 		<div class="ct">
 			<!-- <label v-for="k of Object.keys(currentConfigMenu)">{{ getTranslation(k) }}<input :type="getInputType(currentConfigMenu[k])" v-model="currentConfigMenu[k]" /></label> -->
 			<confLabelInput v-for="k of Object.keys(currentConfigMenu)" :key="k" :confKey="k" :modelValue="currentConfigMenu[k]" @update:modelValue="(nv) => (currentConfigMenu[k] = nv)" />
 			<button style="float: right; width: 100px" @click="$emit('confirm', { title: 'Save server configuration?', text: 'Are you sure you want to change the server configuration? Bad configuration may result into multiple failures or temporary data loss.', callback: sendConfigToServer })">Save</button>
 		</div>
+		<!-- {{ JSON.stringify(currentConfigMenu) }} -->
 	</tab>
 </template>
 

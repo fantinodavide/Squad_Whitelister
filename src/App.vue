@@ -459,7 +459,7 @@
 		justify-content: center;
 		flex-direction: column;
 		align-items: center;
-		padding: 20px;
+		/* padding: 20px; */
 		display: flex;
 		flex-direction: column;
 		align-items: stretch;

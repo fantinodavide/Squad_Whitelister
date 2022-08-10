@@ -59,10 +59,12 @@
 		display: flex;
 		flex-direction: column;
 		width: 200px;
-		margin-right: 20px;
+		/* margin-right: 20px; */
 		padding: 10px;
 		background: var(--color-background-soft);
 		border-radius: 10px;
+		flex-grow: 1;
+		margin: 10px;
 	}
 	div button {
 		border-radius: 5px;
