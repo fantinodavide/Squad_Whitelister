@@ -46,7 +46,7 @@
 					return '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
 				} else return hex;
 			},
-			sendConfigToServer: function () {
+			sendConfigToServer: function (popup: any) {
 				const dt = { category: this.selectedMenu, config: this.currentConfigMenu };
 				console.log('Saving_config:', this.selectedMenu, this.currentConfigMenu);
 				$.ajax({
@@ -59,6 +59,7 @@
 					success: (dt) => {
 						if (dt.status == 'config_updated') {
 							if (dt.action == 'reload') location.reload();
+							popup.closePopup();
 						} else {
 							console.error(dt);
 						}

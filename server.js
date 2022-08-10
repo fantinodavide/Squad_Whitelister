@@ -66,7 +66,7 @@ async function init() {
 
     log4js.configure({
         appenders: { App: { type: "file", filename: logFile } },
-        categories: { default: { appenders: ["App"], level: "all" } }
+        categories: { default: { appenders: [ "App" ], level: "all" } }
     });
     const logger = log4js.getLogger("App");
     extendLogging()
@@ -131,8 +131,8 @@ async function init() {
 
                 const alternativePortsFileName = __dirname + "/ALTERNATIVE PORTS.txt";
                 fs.removeSync(alternativePortsFileName)
-                const privKPath = ['certificates/certificate.key', 'certificates/privkey.pem', 'certificates/default.key'];
-                const certPath = ['certificates/certificate.crt', 'certificates/fullchain.pem', 'certificates/default.crt'];
+                const privKPath = [ 'certificates/certificate.key', 'certificates/privkey.pem', 'certificates/default.key' ];
+                const certPath = [ 'certificates/certificate.crt', 'certificates/fullchain.pem', 'certificates/default.crt' ];
                 let foundKey = getFirstExistentFileInArray(privKPath);
                 let foundCert = getFirstExistentFileInArray(certPath);
                 get_free_port(config.web_server.http_port, (free_http_port) => {
@@ -209,7 +209,7 @@ async function init() {
 
             mongoConn((dbo) => {
                 let cryptPwd = crypto.createHash('sha512').update(parm.password).digest('hex');
-                dbo.collection("users").findOne({ $or: [{ username_lower: parm.username.toLowerCase() }, { username: parm.username }], password: cryptPwd }, (err, usrRes) => {
+                dbo.collection("users").findOne({ $or: [ { username_lower: parm.username.toLowerCase() }, { username: parm.username } ], password: cryptPwd }, (err, usrRes) => {
                     if (err) {
                         res.sendStatus(500);
                         console.error(err)
@@ -278,7 +278,7 @@ async function init() {
 
             mongoConn((dbo) => {
 
-                dbo.collection("users").findOne({ $or: [{ username_lower: parm.username.toLowerCase() }, { username: parm.username }] }, (err, dbRes) => {
+                dbo.collection("users").findOne({ $or: [ { username_lower: parm.username.toLowerCase() }, { username: parm.username } ] }, (err, dbRes) => {
                     if (err) {
                         res.sendStatus(500);
                         console.error(err)
@@ -408,14 +408,14 @@ async function init() {
                             // let clansByCode = [];
                             dbo.collection("clans").find(findFilter).toArray((err, dbRes) => {
                                 for (let c of dbRes) {
-                                    clansById[c._id.toString()] = c;
+                                    clansById[ c._id.toString() ] = c;
                                     clansIds.push(c._id)
                                     /*for (let g of c.available_groups)
                                         if (!requiredGroupIds.includes(g)) requiredGroupIds.push(ObjectID(g))*/
                                 }
                                 dbo.collection("groups").find(/*{ _id: { $in: requiredGroupIds } }*/).sort({ group_name: 1 }).toArray((err, dbGroups) => {
                                     for (let g of dbGroups) {
-                                        groups[g._id.toString()] = g;
+                                        groups[ g._id.toString() ] = g;
                                     }
                                     const devGroupName = randomString(6);
                                     if (config.other.whitelist_developers && !usernamesOnly) wlRes += "Group=" + devGroupName + ":reserve\n\n";
@@ -431,11 +431,11 @@ async function init() {
                                                 if (usernamesOnly)
                                                     wlRes += w.username + "\n"
                                                 else
-                                                    wlRes += "Admin=" + w.steamid64 + ":" + groups[w.id_group].group_name + " // [" + clansById[w.id_clan].tag + "]" + w.username + (w.discord_username != null ? " " + w.discord_username : "") + "\n"
+                                                    wlRes += "Admin=" + w.steamid64 + ":" + groups[ w.id_group ].group_name + " // [" + clansById[ w.id_clan ].tag + "]" + w.username + (w.discord_username != null ? " " + w.discord_username : "") + "\n"
 
                                                 if (!requiredGroupIds.includes(w.id_group.toString()) && !usernamesOnly) {
                                                     requiredGroupIds.push(w.id_group.toString())
-                                                    const g = groups[w.id_group];
+                                                    const g = groups[ w.id_group ];
                                                     wlRes = "Group=" + g.group_name + ":" + g.group_permissions.join(',') + "\n" + wlRes;
                                                 }
                                             }
@@ -568,13 +568,15 @@ async function init() {
         })
         app.post('/api/config/write/update', async (req, res, next) => {
             const parm = req.body;
-            config[parm.category] = parm.config;
-            fs.writeFileSync("conf.json.bak",fs.readFileSync('conf.json'));
+            config[ parm.category ] = parm.config;
+            fs.writeFileSync("conf.json.bak", fs.readFileSync('conf.json'));
             fs.writeFileSync("conf.json", JSON.stringify(config, null, "\t"));
-            let resData = {status: "config_updated"}
-            if(['app_personalization'].includes(parm.category)) resData.action = 'reload';
+            let resData = { status: "config_updated" }
+            if ([ 'app_personalization' ].includes(parm.category)) resData.action = 'reload';
+
             res.send(resData);
-            if(['web_server','database',].includes(parm.category)) restartProcess(0,0); 
+
+            if ([ 'web_server', 'database', ].includes(parm.category)) restartProcess(1, 0);
         })
 
         app.use('/api/lists/read/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
@@ -732,7 +734,7 @@ async function init() {
                             pipeline: [
                                 {
                                     $match: {
-                                        $expr: { $eq: ["$id_clan", "$$id_clan"] },
+                                        $expr: { $eq: [ "$id_clan", "$$id_clan" ] },
                                         approved: false,
                                     }
                                 },
@@ -768,7 +770,7 @@ async function init() {
                             pipeline: [
                                 {
                                     $match: {
-                                        $expr: { $eq: ["$id_list", "$$id_list"] },
+                                        $expr: { $eq: [ "$id_list", "$$id_list" ] },
                                         approved: false,
                                         id_clan: ObjectID(parm.sel_clan_id)
                                     }
@@ -859,7 +861,7 @@ async function init() {
                 //dbo.collection("clans").findOne(findFilter, (err, dbResC) => {
                 dbo.collection("clans").aggregate(pipeline).toArray((err, aDbResC) => {
                     console.log("====>", aDbResC)
-                    let dbResC = aDbResC[0];
+                    let dbResC = aDbResC[ 0 ];
 
                     if (err) console.log("error", err)//serverError(res, err);
                     else if (dbResC != null) {
@@ -891,7 +893,7 @@ async function init() {
                                             dbo.collection("whitelists").insertOne(insWlPlayer, (err, dbRes) => {
                                                 if (err) console.log("ERR", err);//serverError(res, err);
                                                 else {
-                                                    res.send({ status: "inserted_new_player", player: { ...insWlPlayer, inserted_by: [{ username: req.userSession.username }] }, ...dbRes })
+                                                    res.send({ status: "inserted_new_player", player: { ...insWlPlayer, inserted_by: [ { username: req.userSession.username } ] }, ...dbRes })
                                                 }
                                             })
                                         } else {
@@ -1252,14 +1254,14 @@ async function init() {
             axios
                 .get(releasesUrl)
                 .then(res => {
-                    const gitResData = res.data[0];
+                    const gitResData = res.data[ 0 ];
                     const checkV = gitResData.tag_name.toUpperCase().replace("V", "").split(".");
                     const versionSplit = versionN.toString().split(".");
 
                     const config_authorized_update = ((config.other.install_beta_versions && gitResData.prerelease) || !gitResData.prerelease);
-                    const major_version_update = (parseInt(versionSplit[0]) < parseInt(checkV[0]));
-                    const minor_version_update = (parseInt(versionSplit[0]) <= parseInt(checkV[0]) && parseInt(versionSplit[1]) < parseInt(checkV[1]));
-                    const patch_version_update = (parseInt(versionSplit[0]) <= parseInt(checkV[0]) && parseInt(versionSplit[1]) <= parseInt(checkV[1]) && parseInt(versionSplit[2]) < parseInt(checkV[2]));
+                    const major_version_update = (parseInt(versionSplit[ 0 ]) < parseInt(checkV[ 0 ]));
+                    const minor_version_update = (parseInt(versionSplit[ 0 ]) <= parseInt(checkV[ 0 ]) && parseInt(versionSplit[ 1 ]) < parseInt(checkV[ 1 ]));
+                    const patch_version_update = (parseInt(versionSplit[ 0 ]) <= parseInt(checkV[ 0 ]) && parseInt(versionSplit[ 1 ]) <= parseInt(checkV[ 1 ]) && parseInt(versionSplit[ 2 ]) < parseInt(checkV[ 2 ]));
 
 
                     if (config_authorized_update && (major_version_update || minor_version_update || patch_version_update)) {
@@ -1281,7 +1283,7 @@ async function init() {
 
         function downloadLatestUpdate(gitResData) {
             // const url = gitResData.zipball_url;
-            const url = gitResData.assets.filter((a) => a.name == "release.zip")[0].browser_download_url;
+            const url = gitResData.assets.filter((a) => a.name == "release.zip")[ 0 ].browser_download_url;
             console.log(" > Downloading update: " + gitResData.tag_name, gitResData.name, url);
             const dwnDir = path.resolve(__dirname, 'tmp_update');//, 'gitupd.zip')
             const dwnFullPath = path.resolve(dwnDir, 'gitupd.zip')
@@ -1337,7 +1339,7 @@ async function init() {
     }
 
     function restartProcess(delay = 5000, code = 0, forceRestart = false) {
-        if ((args["self-pm"] && args["self-pm"] == true) || forceRestart/*args["using-pm"] && args["using-pm"] == true*/) {
+        if ((args[ "self-pm" ] && args[ "self-pm" ] == true) || forceRestart/*args["using-pm"] && args["using-pm"] == true*/) {
             process.on("exit", function () {
                 console.log("Process terminated\nStarting new process");
                 require("child_process").spawn(process.argv.shift(), process.argv, {
@@ -1408,7 +1410,7 @@ async function init() {
                 logo_url: "https://joinsquad.com/wp-content/themes/squad/img/logo.png",
                 title_hidden_in_header: false,
             },
-            discord_bot:{
+            discord_bot: {
                 token: "",
             },
             other: {
@@ -1416,6 +1418,7 @@ async function init() {
                 update_check_interval_seconds: 3600,
                 whitelist_developers: true,
                 install_beta_versions: false,
+                logs_max_file_count: 10
             }
         }
 
@@ -1507,8 +1510,8 @@ async function init() {
                 repair(0)
 
                 function repair(ki) {
-                    const k = keysToCheck[ki]
-                    dbo.collection("lists").updateMany({ [k]: { $exists: false } }, { $set: { [k]: mainListData[k] } }, async (err, dbRes) => {
+                    const k = keysToCheck[ ki ]
+                    dbo.collection("lists").updateMany({ [ k ]: { $exists: false } }, { $set: { [ k ]: mainListData[ k ] } }, async (err, dbRes) => {
                         if (err) console.error(err);
                         else {
                             if (dbRes.modifiedCount > 0) {
@@ -1527,35 +1530,35 @@ async function init() {
     }
     function upgradeConfig(config, emptyConfFile) {
         for (let k in emptyConfFile) {
-            const objType = Object.prototype.toString.call(emptyConfFile[k]);
+            const objType = Object.prototype.toString.call(emptyConfFile[ k ]);
             const parentObjType = Object.prototype.toString.call(emptyConfFile);
-            if (config[k] == undefined || (config[k] && (parentObjType == "[object Array]" && !config[k].includes(emptyConfFile[k])))) {
+            if (config[ k ] == undefined || (config[ k ] && (parentObjType == "[object Array]" && !config[ k ].includes(emptyConfFile[ k ])))) {
                 switch (objType) {
                     case "[object Object]":
-                        config[k] = {}
+                        config[ k ] = {}
                         break;
                     case "[object Array]":
-                        config[k] = []
+                        config[ k ] = []
                         break;
 
                     default:
                         //console.log("CONFIG:", config, "\nKEY:", k, "\nCONFIG_K:", config[k], "\nEMPTY_CONFIG_K:", emptyConfFile[k], "\nPARENT_TYPE:",parentObjType,"\n");
-                        if (parentObjType == "[object Array]") config.push(emptyConfFile[k])
-                        else config[k] = emptyConfFile[k]
+                        if (parentObjType == "[object Array]") config.push(emptyConfFile[ k ])
+                        else config[ k ] = emptyConfFile[ k ]
                         break;
                 }
             }
-            if (typeof (emptyConfFile[k]) === "object") {
-                upgradeConfig(config[k], emptyConfFile[k])
+            if (typeof (emptyConfFile[ k ]) === "object") {
+                upgradeConfig(config[ k ], emptyConfFile[ k ])
             }
         }
     }
-    function updateConfig(){
-        
+    function updateConfig() {
+
     }
     process.on('uncaughtException', function (err) {
         console.error("Uncaught Exception", err.message, err.stack)
-        if (++errorCount >= (args["self-pm"] ? 5 : 0)) {
+        if (++errorCount >= (args[ "self-pm" ] ? 5 : 0)) {
             console.error("Too many errors occurred during the current run. Terminating execution...");
             restartProcess(0, 1);
         }
@@ -1574,17 +1577,24 @@ async function init() {
             consoleErrorBackup(...params);
             logger.error(...params)
         }
-        
+        fs.readdir(path.join(__dirname, "logs"), { withFileTypes: true }, (err, files) => {
+            if (files.length > config.other.logs_max_file_count) {
+                files = files.slice(0, files.length - config.other.logs_max_file_count)
+                files.forEach(f => {
+                    fs.remove(path.join(__dirname, "logs", f.name))
+                })
+            }
+        })
     }
 
     function getFirstExistentFileInArray(arr, elm = 0) {
         if (elm >= arr.length) return null;
 
-        let exist = fs.existsSync(arr[elm]);
+        let exist = fs.existsSync(arr[ elm ]);
         let ret;
 
         if (exist) {
-            return arr[elm];
+            return arr[ elm ];
         } else {
             return getFirstExistentFileInArray(arr, ++elm);
         }
