@@ -46,6 +46,7 @@
 				accent_color: '#ffc40b',
 				currentTab: 'Home',
 				logo_url: './assets/logo.svg',
+				logo_border_radius: 10,
 				version: '',
 				tabs: [],
 				tabBtns: [],
@@ -100,6 +101,7 @@
 						this.accent_color = dt.accent_color;
 						this.logo_url = dt.logo_url;
 						this.header_title_hidden = dt.title_hidden_in_header;
+						this.logo_border_radius = dt.logo_border_radius;
 					});
 			},
 			checkSession: function () {
@@ -303,7 +305,7 @@
 <template>
 	<title>{{ currentTab }} | {{ app_title }}</title>
 	<header>
-		<img alt="Squad Whitelister Logo" class="logo" :src="logo_url" />
+		<img alt="Squad Whitelister Logo" class="logo" :src="logo_url" :style="{ 'border-radius': logo_border_radius + 'px' }" />
 		<h1 v-if="!header_title_hidden">{{ app_title }}</h1>
 		<div id="hdBtnContainer">
 			<button v-if="!loginRequired" @click="popups.changepassword = true">Change Password</button>

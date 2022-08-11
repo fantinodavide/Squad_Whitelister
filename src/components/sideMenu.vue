@@ -12,6 +12,7 @@
 					web_server: 'Web Server',
 					app_personalization: 'Personalization',
 				} as any,
+				keys: [] as Array<string>,
 			};
 		},
 		props: {
@@ -24,7 +25,9 @@
 					.then((dt) => {
 						this.config = dt;
 						console.log('config', this.config);
-						this.selectMenu(this.config[Object.keys(this.config)[0]], Object.keys(this.config)[0]);
+						const cK = Object.keys(this.config);
+						this.keys = cK.includes('app_personalization') ? ['app_personalization', ...cK.filter((x) => x != 'app_personalization')] : cK;
+						this.selectMenu(this.config[this.keys[0]], this.keys[0]);
 					});
 			},
 			getTranslation: function (t: any) {
@@ -48,7 +51,7 @@
 
 <template>
 	<div>
-		<button v-for="k of Object.keys(config)" :value="k" @click="selectMenu(config[k], k)" :class="{ active: config[k].selected }">
+		<button v-for="k of keys" :value="k" @click="selectMenu(config[k], k)" :class="{ active: config[k].selected }">
 			{{ getTranslation(k) }}
 		</button>
 	</div>
