@@ -1579,7 +1579,7 @@ async function init() {
             logger.error(...params)
         }
         fs.readdir(path.join(__dirname, "logs"), { withFileTypes: true }, (err, files) => {
-            if (files.length > config.other.logs_max_file_count) {
+            if ((config && config.other && files.length > config.other.logs_max_file_count) || (files.length > 10)) {
                 files = files.slice(0, files.length - config.other.logs_max_file_count)
                 files.forEach(f => {
                     fs.remove(path.join(__dirname, "logs", f.name))
