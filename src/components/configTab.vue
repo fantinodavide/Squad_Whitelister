@@ -59,12 +59,13 @@
 					success: (dt) => {
 						if (dt.status == 'config_updated') {
 							if (dt.action == 'reload') location.reload();
-							popup.closePopup();
 						} else {
 							console.error(dt);
 						}
+						popup.closePopup();
 					},
 					error: (err) => {
+						popup.closePopup();
 						console.error(err);
 					},
 				});

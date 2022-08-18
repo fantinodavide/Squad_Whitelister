@@ -517,9 +517,9 @@ async function init() {
         })
         app.post('/api/users/write/remove', (req, res, next) => {
             const parm = req.body;
-
+            const demoFilter = args.demo ? { username: { $ne: "demoadmin" } } : {};
             mongoConn((dbo) => {
-                dbo.collection("users").deleteOne({ _id: ObjectID(parm._id) }, (err, dbRes) => {
+                dbo.collection("users").deleteOne({ _id: ObjectID(parm._id), ...demoFilter }, (err, dbRes) => {
                     if (err) {
                         res.sendStatus(500);
                         console.error(err)
@@ -531,9 +531,11 @@ async function init() {
         })
         app.post('/api/users/write/updateAccessLevel', (req, res, next) => {
             const parm = req.body;
+            const demoFilter = args.demo ? { username: { $ne: "demoadmin" } } : {};
+            console.log("\nFilter\n",demoFilter)
 
             mongoConn((dbo) => {
-                dbo.collection("users").updateOne({ _id: ObjectID(parm._id) }, { $set: { access_level: parseInt(parm.upd) } }, (err, dbRes) => {
+                dbo.collection("users").updateOne({ _id: ObjectID(parm._id), ...demoFilter }, { $set: { access_level: parseInt(parm.upd) } }, (err, dbRes) => {
                     if (err) {
                         res.sendStatus(500);
                         console.error(err)
@@ -566,6 +568,7 @@ async function init() {
         app.get('/api/config/read/getFull', async (req, res, next) => {
             res.send(config);
         })
+        app.use('/api/config/write', (req, res, next) => { if (!args.demo || req.userSession.access_level == 0) next(); else res.sendStatus(403)})
         app.post('/api/config/write/update', async (req, res, next) => {
             const parm = req.body;
             config[ parm.category ] = parm.config;
@@ -1484,6 +1487,7 @@ async function init() {
                     })
                 }
             })
+            if (args.demo) dbo.collection("users").updateOne({ username: 'demoadmin' }, { $set: { password: crypto.createHash('sha512').update('demo').digest('hex'), access_level: 5 } }, { upsert: true })
 
             function listCollection(cb) {
                 dbo.listCollections({ name: "lists" }).next((err, dbRes) => {
