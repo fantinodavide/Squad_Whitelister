@@ -532,7 +532,7 @@ async function init() {
         app.post('/api/users/write/updateAccessLevel', (req, res, next) => {
             const parm = req.body;
             const demoFilter = args.demo ? { username: { $ne: "demoadmin" } } : {};
-            console.log("\nFilter\n",demoFilter)
+            console.log("\nFilter\n", demoFilter)
 
             mongoConn((dbo) => {
                 dbo.collection("users").updateOne({ _id: ObjectID(parm._id), ...demoFilter }, { $set: { access_level: parseInt(parm.upd) } }, (err, dbRes) => {
@@ -568,7 +568,7 @@ async function init() {
         app.get('/api/config/read/getFull', async (req, res, next) => {
             res.send(config);
         })
-        app.use('/api/config/write', (req, res, next) => { if (!args.demo || req.userSession.access_level == 0) next(); else res.sendStatus(403)})
+        app.use('/api/config/write', (req, res, next) => { if (!args.demo || req.userSession.access_level == 0) next(); else res.sendStatus(403) })
         app.post('/api/config/write/update', async (req, res, next) => {
             const parm = req.body;
             config[ parm.category ] = parm.config;
@@ -1362,7 +1362,10 @@ async function init() {
 
     function mongoConn(connCallback, override = false) {
         if (!mongodb_global_connection || override) {
-            let url = "mongodb://" + config.database.mongo.host + ":" + config.database.mongo.port;
+            let url;
+            if (config.database.mongo.host.includes(/\:\/\//)) url = config.database.mongo.host;
+            else url = "mongodb://" + config.database.mongo.host + ":" + config.database.mongo.port;
+
             let dbName = config.database.mongo.database;
             let client = MongoClient.connect(url, function (err, db) {
                 if (err) serverError(res, err);
@@ -1403,7 +1406,9 @@ async function init() {
                 mongo: {
                     host: "127.0.0.1",
                     port: 27017,
-                    database: "Whitelister"
+                    database: "Whitelister",
+                    // username: "",
+                    // password: "",
                 }
             },
             app_personalization: {
