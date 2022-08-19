@@ -1389,7 +1389,7 @@ async function init() {
     }
 
     function serverError(res, err) {
-        res.sendStatus(500);
+        if(res) res.sendStatus(500);
         console.error(err);
     }
 
