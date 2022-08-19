@@ -114,9 +114,14 @@ async function init() {
         // console.log("Connecting to MongoDB...")
         if (mongodb_global_connection) {
             console.log("MongoDB connection");
+            const tm = setTimeout(() => {
+                console.error(" > Connection failed. Check your Database configuration.");
+                restartProcess(0, 1);
+            }, 10000)
             mongoConn((dbo) => {
                 mongodb_conn = dbo;
                 console.log(" > Successfully connected");
+                clearTimeout(tm);
                 if (callback) callback();
             }, true)
         }
