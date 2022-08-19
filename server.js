@@ -1363,7 +1363,7 @@ async function init() {
     function mongoConn(connCallback, override = false) {
         if (!mongodb_global_connection || override) {
             let url;
-            if (config.database.mongo.host.includes(/\:\/\//)) url = config.database.mongo.host;
+            if (config.database.mongo.host.includes("://")) url = config.database.mongo.host;
             else url = "mongodb://" + config.database.mongo.host + ":" + config.database.mongo.port;
 
             let dbName = config.database.mongo.database;
