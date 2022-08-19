@@ -1465,7 +1465,7 @@ async function init() {
         mongoConn((dbo) => {
             dbo.collection("users").findOne({ username: "admin" }, (err, dbRes) => {
                 if (err) {
-                    res.sendStatus(500);
+                    if(res) res.sendStatus(500);
                     console.error(err)
                 } else if (dbRes != null) {
                     // if (callback)
