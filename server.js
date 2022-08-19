@@ -1373,7 +1373,7 @@ async function init() {
 
             let dbName = config.database.mongo.database;
             let client = MongoClient.connect(url, function (err, db) {
-                if (err) serverError(res, err);
+                if (err) console.error(err)
                 var dbo = db.db(dbName);
                 connCallback(dbo);
             });
