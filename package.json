@@ -9,7 +9,7 @@
     "app": "vue-tsc --noEmit && vite build && node server",
     "releasezipold": "npm run build && powershell Compress-Archive dist release.zip -Force && powershell Compress-Archive server.js release.zip -Update && powershell Compress-Archive package-lock.json release.zip -Update && powershell Compress-Archive package.json release.zip -Update",
     "releasezip": "npm run build && npm run release && powershell Compress-Archive release release.zip -Force",
-    "release": "rmdir /S /Q release && xcopy /E /I /Y dist release\\dist && terser --compress --mangle -o release/server.js -- server.js && xcopy /I /Y package.json release && xcopy /I /Y certificates release\\certificates"
+    "release": "rmdir /S /Q release && xcopy /E /I /Y dist release\\dist && terser --compress --mangle -o release/server.js -- server.js && xcopy /I /Y certificates release\\certificates && node packageInfoFilter.js"
   },
   "dependencies": {
     "axios": "^0.26.1",
@@ -20,6 +20,7 @@
     "express-force-ssl": "^0.3.2",
     "find-free-port": "^2.0.0",
     "fs": "^0.0.1-security",
+    "fs-extra": "^10.1.0",
     "https": "^1.0.0",
     "jquery": "^3.6.0",
     "js-levenshtein": "^1.1.6",
