@@ -50,7 +50,7 @@ async function init() {
     const forceSSL = await irequire('express-force-ssl');
     const fp = await irequire("find-free-port")
     const { mainModule } = await irequire("process");
-    // const Discord = await irequire("discord.js");
+    const Discord = await irequire("discord.js");
 
     const enableServer = true;
     var errorCount = 0;
@@ -81,6 +81,8 @@ async function init() {
     const mongodb_global_connection = true;
     var mongodb_conn;
 
+    var discordBot;
+
     start();
 
 
@@ -107,7 +109,6 @@ async function init() {
             initDBConnection(() => {
                 isDbPopulated(main)
             })
-
         })
     }
     function initDBConnection(callback = null) {
@@ -131,58 +132,60 @@ async function init() {
             console.log(" > Starting up");
             console.log("ARGS:", args)
             setInterval(() => { checkUpdates(config.other.automatic_updates) }, config.other.update_check_interval_seconds * 1000);
-            if (enableServer) {
-                const max_port_tries = 3;
+            discordBot(() => {
+                if (enableServer) {
+                    const max_port_tries = 3;
 
-                const alternativePortsFileName = __dirname + "/ALTERNATIVE PORTS.txt";
-                fs.removeSync(alternativePortsFileName)
-                const privKPath = [ 'certificates/certificate.key', 'certificates/privkey.pem', 'certificates/default.key' ];
-                const certPath = [ 'certificates/certificate.crt', 'certificates/fullchain.pem', 'certificates/default.crt' ];
-                let foundKey = getFirstExistentFileInArray(privKPath);
-                let foundCert = getFirstExistentFileInArray(certPath);
-                get_free_port(config.web_server.http_port, (free_http_port) => {
-                    get_free_port(config.web_server.https_port, (free_https_port) => {
-                        if (free_http_port) {
-                            server.http = app.listen(free_http_port, config.web_server.bind_ip, function () {
-                                var host = server.http.address().address
-                                console.log("HTTP server listening at http://%s:%s", host, free_http_port)
-                                logConfPortNotFree(config.web_server.http_port, free_http_port)
-                            })
-                        } else {
-                            console.error("Couldn't start HTTP server");
-                        }
-
-                        if (foundKey && foundCert) {
-                            console.log("Using Certificate:", foundCert, foundKey)
-                            const httpsOptions = {
-                                key: fs.readFileSync(foundKey),
-                                cert: fs.readFileSync(foundCert)
-                            }
-                            server.https = https.createServer(httpsOptions, app);
-                            if (free_https_port) {
-                                app.set('forceSSLOptions', {
-                                    httpsPort: free_https_port
-                                });
-                                server.https.listen(free_https_port);
-                                console.log("HTTPS server listening at https://%s:%s", config.web_server.bind_ip, free_https_port)
-                                logConfPortNotFree(config.web_server.https_port, free_https_port)
+                    const alternativePortsFileName = __dirname + "/ALTERNATIVE PORTS.txt";
+                    fs.removeSync(alternativePortsFileName)
+                    const privKPath = [ 'certificates/certificate.key', 'certificates/privkey.pem', 'certificates/default.key' ];
+                    const certPath = [ 'certificates/certificate.crt', 'certificates/fullchain.pem', 'certificates/default.crt' ];
+                    let foundKey = getFirstExistentFileInArray(privKPath);
+                    let foundCert = getFirstExistentFileInArray(certPath);
+                    get_free_port(config.web_server.http_port, (free_http_port) => {
+                        get_free_port(config.web_server.https_port, (free_https_port) => {
+                            if (free_http_port) {
+                                server.http = app.listen(free_http_port, config.web_server.bind_ip, function () {
+                                    var host = server.http.address().address
+                                    console.log("HTTP server listening at http://%s:%s", host, free_http_port)
+                                    logConfPortNotFree(config.web_server.http_port, free_http_port)
+                                })
                             } else {
-                                console.error("Couldn't start HTTPS server");
+                                console.error("Couldn't start HTTP server");
                             }
-                        }
+
+                            if (foundKey && foundCert) {
+                                console.log("Using Certificate:", foundCert, foundKey)
+                                const httpsOptions = {
+                                    key: fs.readFileSync(foundKey),
+                                    cert: fs.readFileSync(foundCert)
+                                }
+                                server.https = https.createServer(httpsOptions, app);
+                                if (free_https_port) {
+                                    app.set('forceSSLOptions', {
+                                        httpsPort: free_https_port
+                                    });
+                                    server.https.listen(free_https_port);
+                                    console.log("HTTPS server listening at https://%s:%s", config.web_server.bind_ip, free_https_port)
+                                    logConfPortNotFree(config.web_server.https_port, free_https_port)
+                                } else {
+                                    console.error("Couldn't start HTTPS server");
+                                }
+                            }
+                        })
                     })
-                })
 
-                function logConfPortNotFree(confPort, freePort) {
-                    if (confPort != freePort) {
-                        const warningMessage = ("!!! WARNING !!! Port " + confPort + " is not available! Closest free port found: " + freePort + "\n")
-                        console.log(warningMessage);
-                        fs.writeFileSync(alternativePortsFileName, warningMessage, { flag: "a+" })
-                    }
-                };
+                    function logConfPortNotFree(confPort, freePort) {
+                        if (confPort != freePort) {
+                            const warningMessage = ("!!! WARNING !!! Port " + confPort + " is not available! Closest free port found: " + freePort + "\n")
+                            console.log(warningMessage);
+                            fs.writeFileSync(alternativePortsFileName, warningMessage, { flag: "a+" })
+                        }
+                    };
 
-                setInterval(removeExpiredPlayers, 60 * 1000)
-            }
+                    setInterval(removeExpiredPlayers, 60 * 1000)
+                }
+            });
         });
 
 
@@ -584,7 +587,7 @@ async function init() {
 
             res.send(resData);
 
-            if ([ 'web_server', 'database', ].includes(parm.category)) restartProcess(1, 0);
+            if ([ 'web_server', 'database', 'discord_bot' ].includes(parm.category)) restartProcess(1, 0);
         })
 
         app.use('/api/lists/read/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
@@ -890,11 +893,11 @@ async function init() {
                             dbo.collection("lists").findOne({ _id: insWlPlayer.id_list }, (err, dbResList) => {
                                 if (err) serverError(res, err);
                                 else if (req.userSession.access_level < 100 || !dbResList.hidden_managers) {
-                                    dbo.collection("groups").findOne(insWlPlayer.id_group, (err, dbRes) => {
+                                    dbo.collection("groups").findOne(insWlPlayer.id_group, (err, dbResG) => {
                                         if (err) console.log("error", err)
-                                        else if (dbRes != null) {
+                                        else if (dbResG != null) {
 
-                                            insWlPlayer.approved = !(dbRes.require_appr || dbResC.confirmation_ovrd || dbResList.require_appr) || req.userSession.access_level <= 30;
+                                            insWlPlayer.approved = !(dbResG.require_appr || dbResC.confirmation_ovrd || dbResList.require_appr) || req.userSession.access_level <= 30;
                                             //console.log("\n\n\n\nNew Whitelist", insWlPlayer, dbRes);
 
 
@@ -902,6 +905,35 @@ async function init() {
                                                 if (err) console.log("ERR", err);//serverError(res, err);
                                                 else {
                                                     res.send({ status: "inserted_new_player", player: { ...insWlPlayer, inserted_by: [ { username: req.userSession.username } ] }, ...dbRes })
+                                                    // 982449246999547995
+
+                                                    let row, components = [];
+                                                    if (!insWlPlayer.approved) {
+                                                        row = new Discord.ActionRowBuilder()
+                                                            .addComponents(
+                                                                new Discord.ButtonBuilder()
+                                                                    .setCustomId('approval:approve:' + insWlPlayer._id)
+                                                                    .setLabel('Approve')
+                                                                    .setStyle(Discord.ButtonStyle.Success),
+                                                                new Discord.ButtonBuilder()
+                                                                    .setCustomId('approval:reject:' + insWlPlayer._id)
+                                                                    .setLabel('Reject')
+                                                                    .setStyle(Discord.ButtonStyle.Danger),
+                                                            )
+                                                        components.push(row);
+                                                    } else row = {};
+
+
+                                                    const embed = new Discord.EmbedBuilder()
+                                                        .setColor(config.app_personalization.accent_color)
+                                                        .setTitle('Whitelist Update')
+                                                        .setDescription(formatEmbed("Username",insWlPlayer.username) + formatEmbed("Clan",aDbResC[ 0 ].full_name) + formatEmbed("SteamID",insWlPlayer.steamid64) + formatEmbed("Group",dbResG.group_name) + formatEmbed("Manager",req.userSession.username) + formatEmbed("List",dbResList.title));
+
+                                                    discordBot.channels.cache.get(config.discord_bot.whitelist_updates_channel_id).send({ embeds: [ embed ], components: components })
+
+                                                    function formatEmbed(title, value) {
+                                                        return Discord.bold(title) + "\n" + Discord.inlineCode(value) + "\n"
+                                                    }
                                                 }
                                             })
                                         } else {
@@ -949,23 +981,7 @@ async function init() {
         })
         app.use('/api/approval/write/setApprovedStatus', (req, res, next) => {
             const parm = req.body;
-            mongoConn((dbo) => {
-                if (parm.approve_update && (parm.approve_update == true || parm.approve_update == 'true')) {
-                    dbo.collection("whitelists").updateOne({ _id: ObjectID(parm._id) }, { $set: { approved: true } }, (err, dbRes) => {
-                        if (err) serverError(res, err);
-                        else {
-                            res.send({ status: "approved", ...dbRes })
-                        }
-                    })
-                } else {
-                    dbo.collection("whitelists").deleteOne({ _id: ObjectID(parm._id) }, (err, dbRes) => {
-                        if (err) serverError(res, err);
-                        else {
-                            res.send({ status: "rejected", ...dbRes })
-                        }
-                    })
-                }
-            })
+            setApprovedStatus(parm, res)
         })
 
         app.use('/api/gameGroups/write/*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next(); else res.sendStatus(401); })
@@ -1346,6 +1362,63 @@ async function init() {
         }
     }
 
+    function discordBot(discCallback = null) {
+        console.log("Discord BOT")
+        if (config.discord_bot && config.discord_bot.token != "") {
+            const client = new Discord.Client({ intents: [ Discord.GatewayIntentBits.Guilds, Discord.GatewayIntentBits.GuildMessages ] });
+            client.login(config.discord_bot.token);
+
+            const tm = setTimeout(() => {
+                console.error(" > Connection timed out. Check your discord_bot configuration.");
+                console.log(" > Proceding without discord bot.");
+                discCallback();
+            }, 10000)
+
+            const commands = [
+                {
+                    name: 'ping',
+                    description: 'Replies with Pong!',
+                },
+            ];
+
+            client.on('ready', async () => {
+                discordBot = new Proxy(client, {});
+                console.log(` > Logged-in!`);
+                console.log(`  > Tag: ${client.user.tag}`);
+                console.log(`  > ID: ${client.user.id}`);
+                console.log(`  > Invite: https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&permissions=268458048&scope=bot`);
+                // console.log(client);
+                const rest = new Discord.REST({ version: '10' }).setToken(config.discord_bot.token);
+                await rest.put(Discord.Routes.applicationCommands(client.user.id), { body: commands });
+                discCallback();
+                clearTimeout(tm);
+            });
+
+            client.on('interactionCreate', async interaction => {
+                if (interaction.isChatInputCommand()) {
+                    switch (interaction.commandName) {
+                        case 'ping':
+                            await interaction.reply('Pong!');
+                            break;
+                    }
+                } else if (interaction.isButton()) {
+                    const idsplit = interaction.customId.split(':');
+                    switch (idsplit[ 0 ]) {
+                        case "approval":
+                            setApprovedStatus({ _id: idsplit[ 2 ], approve_update: idsplit[ 1 ] == "approve" ? true : false })
+                            interaction.reply({ content: "Done", ephemeral: true, });
+                            interaction.message.edit({ components: [] });
+                            break;
+                    }
+                }
+            });
+
+        } else {
+            console.log(" > Not configured. Skipping.");
+            discCallback();
+        }
+    }
+
     function restartProcess(delay = 5000, code = 0, forceRestart = false) {
         if ((args[ "self-pm" ] && args[ "self-pm" ] == true) || forceRestart/*args["using-pm"] && args["using-pm"] == true*/) {
             process.on("exit", function () {
@@ -1389,7 +1462,7 @@ async function init() {
     }
 
     function serverError(res, err) {
-        if(res) res.sendStatus(500);
+        if (res) res.sendStatus(500);
         console.error(err);
     }
 
@@ -1424,9 +1497,9 @@ async function init() {
                 logo_border_radius: "10",
                 title_hidden_in_header: false,
             },
-            /*discord_bot: {
+            discord_bot: {
                 token: "",
-            },*/
+            },
             other: {
                 automatic_updates: true,
                 update_check_interval_seconds: 3600,
@@ -1465,7 +1538,7 @@ async function init() {
         mongoConn((dbo) => {
             dbo.collection("users").findOne({ username: "admin" }, (err, dbRes) => {
                 if (err) {
-                    if(res) res.sendStatus(500);
+                    if (res) res.sendStatus(500);
                     console.error(err)
                 } else if (dbRes != null) {
                     // if (callback)
@@ -1570,6 +1643,26 @@ async function init() {
     }
     function updateConfig() {
 
+    }
+
+    function setApprovedStatus(parm, res = null) {
+        mongoConn((dbo) => {
+            if (parm.approve_update && (parm.approve_update == true || parm.approve_update == 'true')) {
+                dbo.collection("whitelists").updateOne({ _id: ObjectID(parm._id) }, { $set: { approved: true } }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        if (res) res.send({ status: "approved", ...dbRes })
+                    }
+                })
+            } else {
+                dbo.collection("whitelists").deleteOne({ _id: ObjectID(parm._id) }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        if (res) res.send({ status: "rejected", ...dbRes })
+                    }
+                })
+            }
+        })
     }
     process.on('uncaughtException', function (err) {
         console.error("Uncaught Exception", err.message, err.stack)
