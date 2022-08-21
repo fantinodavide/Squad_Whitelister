@@ -924,12 +924,22 @@ async function init() {
                                                     } else row = {};
 
 
-                                                    const embed = new Discord.EmbedBuilder()
-                                                        .setColor(config.app_personalization.accent_color)
-                                                        .setTitle('Whitelist Update')
-                                                        .setDescription(formatEmbed("Username",insWlPlayer.username) + formatEmbed("Clan",aDbResC[ 0 ].full_name) + formatEmbed("SteamID",insWlPlayer.steamid64) + formatEmbed("Group",dbResG.group_name) + formatEmbed("Manager",req.userSession.username) + formatEmbed("List",dbResList.title));
-
-                                                    discordBot.channels.cache.get(config.discord_bot.whitelist_updates_channel_id).send({ embeds: [ embed ], components: components })
+                                                    const embeds = [
+                                                        new Discord.EmbedBuilder()
+                                                            .setColor(config.app_personalization.accent_color)
+                                                            .setTitle('Whitelist Update')
+                                                            // .setDescription(formatEmbed("Manager", ) + formatEmbed("List", dbResList.title)),
+                                                            .addFields(
+                                                                { name: 'Username', value: insWlPlayer.username, inline: true },
+                                                                { name: 'SteamID', value: Discord.hyperlink(insWlPlayer.steamid64, "https://steamcommunity.com/profiles/" + insWlPlayer.steamid64), inline: true },
+                                                                { name: 'Clan', value: aDbResC[ 0 ].full_name },
+                                                                { name: 'Group', value: dbResG.group_name },
+                                                                { name: 'Manager', value: req.userSession.username },
+                                                                { name: 'List', value: dbResList.title },
+                                                                { name: 'Approval', value: insWlPlayer.approved ? `:white_check_mark: Approved` : ":hourglass: Pending", inline: true },
+                                                            )
+                                                    ]
+                                                    discordBot.channels.cache.get(config.discord_bot.whitelist_updates_channel_id).send({ embeds: embeds, components: components })
 
                                                     function formatEmbed(title, value) {
                                                         return Discord.bold(title) + "\n" + Discord.inlineCode(value) + "\n"
@@ -1405,9 +1415,16 @@ async function init() {
                     const idsplit = interaction.customId.split(':');
                     switch (idsplit[ 0 ]) {
                         case "approval":
-                            setApprovedStatus({ _id: idsplit[ 2 ], approve_update: idsplit[ 1 ] == "approve" ? true : false })
+                            const appr_status = idsplit[ 1 ] == "approve" ? true : false;
+                            setApprovedStatus({ _id: idsplit[ 2 ], approve_update: appr_status })
                             interaction.reply({ content: "Done", ephemeral: true, });
                             interaction.message.edit({ components: [] });
+                            console.log(interaction);
+                            let emb = interaction.message.embeds[ 0 ]
+                            emb.fields.filter((f) => f.name == "Approval")[0].value = (appr_status ? ":white_check_mark: Approved" : ":x: Rejected");
+                            emb.fields.push({ name: (appr_status ? "Approved" : "Rejected") + " by", value: Discord.userMention(interaction.member.user.id), inline: true });
+                            interaction.message.edit({ embeds: [ emb ] })
+
                             break;
                     }
                 }
@@ -1498,7 +1515,8 @@ async function init() {
                 title_hidden_in_header: false,
             },
             discord_bot: {
-                token: "",
+                token: "MTAxMDUyMzA3MjU3MjQyODMzOA.GZ91wM.rogpEiQ4anm3DHSTJJFQzVaTqXjJm-6KMBfQ-M",
+                whitelist_updates_channel_id: ""
             },
             other: {
                 automatic_updates: true,
