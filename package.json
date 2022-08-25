@@ -34,6 +34,8 @@
     "node-stream-zip": "^1.15.0",
     "node-zip": "^1.1.1",
     "path": "^0.12.7",
+    "socket.io": "^4.5.1",
+    "socket.io-client": "^4.5.1",
     "vue": "^3.2.31",
     "vue-marquee-text-component": "^2.0.1"
   },

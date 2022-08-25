@@ -51,6 +51,7 @@ async function init() {
     const fp = await irequire("find-free-port")
     const { mainModule } = await irequire("process");
     const Discord = await irequire("discord.js");
+    const { io } = require("socket.io-client");
 
     const enableServer = true;
     var errorCount = 0;
@@ -142,60 +143,62 @@ async function init() {
             console.log("ARGS:", args)
             setInterval(() => { checkUpdates(config.other.automatic_updates) }, config.other.update_check_interval_seconds * 1000);
             discordBot(() => {
-                if (enableServer) {
-                    const max_port_tries = 3;
+                SquadJSWebSocket(() => {
+                    if (enableServer) {
+                        const max_port_tries = 3;
 
-                    const alternativePortsFileName = __dirname + "/ALTERNATIVE PORTS.txt";
-                    fs.removeSync(alternativePortsFileName)
-                    const privKPath = [ 'certificates/certificate.key', 'certificates/privkey.pem', 'certificates/default.key' ];
-                    const certPath = [ 'certificates/certificate.crt', 'certificates/fullchain.pem', 'certificates/default.crt' ];
-                    let foundKey = getFirstExistentFileInArray(privKPath);
-                    let foundCert = getFirstExistentFileInArray(certPath);
-                    get_free_port(config.web_server.http_port, (free_http_port) => {
-                        get_free_port(config.web_server.https_port, (free_https_port) => {
-                            if (free_http_port) {
-                                server.http = app.listen(free_http_port, config.web_server.bind_ip, function () {
-                                    var host = server.http.address().address
-                                    console.log("HTTP server listening at http://%s:%s", host, free_http_port)
-                                    server.configs.http.port = free_http_port
-                                    logConfPortNotFree(config.web_server.http_port, free_http_port)
-                                })
-                            } else {
-                                console.error("Couldn't start HTTP server");
-                            }
-
-                            if (foundKey && foundCert) {
-                                console.log("Using Certificate:", foundCert, foundKey)
-                                const httpsOptions = {
-                                    key: fs.readFileSync(foundKey),
-                                    cert: fs.readFileSync(foundCert)
-                                }
-                                server.https = https.createServer(httpsOptions, app);
-                                if (free_https_port) {
-                                    app.set('forceSSLOptions', {
-                                        httpsPort: free_https_port
-                                    });
-                                    server.configs.https.port = free_https_port
-                                    server.https.listen(free_https_port);
-                                    console.log("HTTPS server listening at https://%s:%s", config.web_server.bind_ip, free_https_port)
-                                    logConfPortNotFree(config.web_server.https_port, free_https_port)
+                        const alternativePortsFileName = __dirname + "/ALTERNATIVE PORTS.txt";
+                        fs.removeSync(alternativePortsFileName)
+                        const privKPath = [ 'certificates/certificate.key', 'certificates/privkey.pem', 'certificates/default.key' ];
+                        const certPath = [ 'certificates/certificate.crt', 'certificates/fullchain.pem', 'certificates/default.crt' ];
+                        let foundKey = getFirstExistentFileInArray(privKPath);
+                        let foundCert = getFirstExistentFileInArray(certPath);
+                        get_free_port(config.web_server.http_port, (free_http_port) => {
+                            get_free_port(config.web_server.https_port, (free_https_port) => {
+                                if (free_http_port) {
+                                    server.http = app.listen(free_http_port, config.web_server.bind_ip, function () {
+                                        var host = server.http.address().address
+                                        console.log("HTTP server listening at http://%s:%s", host, free_http_port)
+                                        server.configs.http.port = free_http_port
+                                        logConfPortNotFree(config.web_server.http_port, free_http_port)
+                                    })
                                 } else {
-                                    console.error("Couldn't start HTTPS server");
+                                    console.error("Couldn't start HTTP server");
                                 }
-                            }
+
+                                if (foundKey && foundCert) {
+                                    console.log("Using Certificate:", foundCert, foundKey)
+                                    const httpsOptions = {
+                                        key: fs.readFileSync(foundKey),
+                                        cert: fs.readFileSync(foundCert)
+                                    }
+                                    server.https = https.createServer(httpsOptions, app);
+                                    if (free_https_port) {
+                                        app.set('forceSSLOptions', {
+                                            httpsPort: free_https_port
+                                        });
+                                        server.configs.https.port = free_https_port
+                                        server.https.listen(free_https_port);
+                                        console.log("HTTPS server listening at https://%s:%s", config.web_server.bind_ip, free_https_port)
+                                        logConfPortNotFree(config.web_server.https_port, free_https_port)
+                                    } else {
+                                        console.error("Couldn't start HTTPS server");
+                                    }
+                                }
+                            })
                         })
-                    })
 
-                    function logConfPortNotFree(confPort, freePort) {
-                        if (confPort != freePort) {
-                            const warningMessage = ("!!! WARNING !!! Port " + confPort + " is not available! Closest free port found: " + freePort + "\n")
-                            console.log(warningMessage);
-                            fs.writeFileSync(alternativePortsFileName, warningMessage, { flag: "a+" })
-                        }
-                    };
+                        function logConfPortNotFree(confPort, freePort) {
+                            if (confPort != freePort) {
+                                const warningMessage = ("!!! WARNING !!! Port " + confPort + " is not available! Closest free port found: " + freePort + "\n")
+                                console.log(warningMessage);
+                                fs.writeFileSync(alternativePortsFileName, warningMessage, { flag: "a+" })
+                            }
+                        };
 
-                    setInterval(removeExpiredPlayers, 60 * 1000)
-                }
+                        setInterval(removeExpiredPlayers, 60 * 1000)
+                    }
+                });
             });
         });
 
@@ -1551,7 +1554,7 @@ async function init() {
                             break;
                         case 'userinfo':
                             console.log(interaction.member)
-                            interaction.reply({content: "ok", ephemeral: true})
+                            interaction.reply({ content: "ok", ephemeral: true })
                             break;
                     }
                 } else if (interaction.isButton()) {
@@ -1576,6 +1579,57 @@ async function init() {
         } else {
             console.log(" > Not configured. Skipping.");
             discCallback();
+        }
+    }
+
+    function SquadJSWebSocket(cb = null) {
+        console.log("SquadJS WebSocket")
+        if (config.SquadJS && config.SquadJS.token != "" && config.SquadJS.host != "") {
+            const tm = setTimeout(() => {
+                console.error(" > Connection timed out. Check your SquadJS WebSocket configuration.");
+                console.log(" > Proceding without SquadJS WebSocket.");
+                if (cb) cb();
+            }, 10000)
+
+            let socket = io(`ws://${config.SquadJS.host}:${config.SquadJS.port}`, {
+                auth: {
+                    token: config.SquadJS.token
+                }
+            })
+            socket.on("connect", async () => {
+                clearTimeout(tm);
+                console.log(" > Connected");
+                socket.emit("rcon.warn", "76561198419229279", "Whitelister Connected", (d) => {
+                    console.log(d)
+                })
+                cb();
+            });
+            socket.on("PLAYER_CONNECTED", async (dt) => {
+                if (dt.player.steamID == "76561198419229279") {
+                    socket.emit("rcon.warn", "76561198419229279", "This server is using the Whitelister tool", (d) => {
+                        console.log(d)
+                    })
+                }
+            })
+            socket.on("CHAT_MESSAGE", async (dt) => {
+                if (dt.message.length == 6 && !dt.message.includes(' ')) {
+                    mongoConn(async (dbo) => {
+                        dbo.collection("profilesLinking").findOne({ code: dt.message }, async (err, dbRes) => {
+                            if (err) serverError(null, err);
+                            else if (dbRes) {
+                                const discordUser = await discordBot.users.fetch("282583193939607554");
+                                const discordUsername = discordUser.username + "#" + discordUser.discriminator;
+                                socket.emit("rcon.warn", dt.steamID, "Linked Discord profile: " + discordUsername, (d) => {
+                                    console.log(d);
+                                })
+                            }
+                        })
+                    })
+                }
+            })
+        } else {
+            console.log(" > Not configured. Skipping.");
+            if (cb) cb();
         }
     }
 

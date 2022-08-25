@@ -1,2 +1,0 @@
-!!! WARNING !!! Port 443 is not available! Closest free port found: 444
-!!! WARNING !!! Port 80 is not available! Closest free port found: 81
