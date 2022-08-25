@@ -33,3 +33,5 @@ release
 conf.json
 yarn.lock
 *.bak
+
+ALTERNATIVE PORTS.txt
