@@ -1462,7 +1462,7 @@ async function init() {
                                     // dbo.collection("clans").find({}).project({ _id: 0, admins: 0, available_groups: 0 }).sort({ full_name: 1, tag: 1 }).toArray((err, dbRes) => {
                                     dbo.collection("clans").aggregate(pipeline).toArray((err, dbRes) => {
                                         if (err) console.error(err)
-                                        console.log(dbRes);
+                                        // console.log(dbRes);
                                         let embeds = [];
                                         for (let c of dbRes) {
                                             let fields = [];
