@@ -74,8 +74,17 @@ async function init() {
 
     var server = {
         http: undefined,
-        https: undefined
+        https: undefined,
+        configs: {
+            https: {
+                port: undefined
+            },
+            http: {
+                port: undefined
+            }
+        }
     };
+    var urlCalls = []
     var config;
 
     const mongodb_global_connection = true;
@@ -148,6 +157,7 @@ async function init() {
                                 server.http = app.listen(free_http_port, config.web_server.bind_ip, function () {
                                     var host = server.http.address().address
                                     console.log("HTTP server listening at http://%s:%s", host, free_http_port)
+                                    server.configs.http.port = free_http_port
                                     logConfPortNotFree(config.web_server.http_port, free_http_port)
                                 })
                             } else {
@@ -165,6 +175,7 @@ async function init() {
                                     app.set('forceSSLOptions', {
                                         httpsPort: free_https_port
                                     });
+                                    server.configs.https.port = free_https_port
                                     server.https.listen(free_https_port);
                                     console.log("HTTPS server listening at https://%s:%s", config.web_server.bind_ip, free_https_port)
                                     logConfPortNotFree(config.web_server.https_port, free_https_port)
@@ -196,6 +207,7 @@ async function init() {
         app.use(cookieParser());
         app.use(forceHTTPS);
         app.use('/', getSession);
+        app.use(detectRequestUrl);
 
         app.post('/api/changepassword', (req, res, next) => {
             const parm = req.body;
@@ -1258,6 +1270,13 @@ async function init() {
             console.log("\nREQ: " + reqPath + "\nSESSION: ", req.userSession, "\nPARM " + (usingQuery ? "GET" : "POST") + ": ", parm);
             next();
         }
+        function detectRequestUrl(req, res, next) {
+            const host = req.get('host');
+            if (urlCalls[ host ]) urlCalls[ host ]++;
+            else urlCalls[ host ] = 1;
+            // console.log(urlCalls);
+            next();
+        }
         function getReqPath(req, callback) {
             const fullPath = req.originalUrl.replace(/\?.*$/, '')
             let basePaths = [
@@ -1389,6 +1408,10 @@ async function init() {
                     name: 'ping',
                     description: 'Replies with Pong!',
                 },
+                {
+                    name: 'listclans',
+                    description: 'Gives a full list of clans with corresponding info',
+                },
             ];
 
             client.on('ready', async () => {
@@ -1410,6 +1433,41 @@ async function init() {
                         case 'ping':
                             await interaction.reply('Pong!');
                             break;
+                        case 'listclans':
+                            mongoConn((dbo) => {
+                                dbo.collection("lists").find().toArray((err, dbResL) => {
+                                    dbo.collection("clans").find({}).project({ _id: 0, admins: 0, available_groups: 0 }).sort({ full_name: 1, tag: 1 }).toArray((err, dbRes) => {
+                                        let embeds = [];
+                                        for (let c of dbRes) {
+                                            let fields = [];
+                                            for (let cK of ["tag", "clan_code", "player_limit" ]) {
+                                                if (cK == "player_limit" && c[ cK ] == "") c[ cK ] = "ထ";
+                                                fields.push({ name: toUpperFirstChar(cK.replace(/\_/g, ' ')), value: c[ cK ], inline: (cK != "full_name") })
+                                            }
+                                            const sortedCallsList = urlCalls.sort();
+                                            const winnerUrl = Object.keys(sortedCallsList)[ 0 ];
+                                            const winnerUrlCount = sortedCallsList[ winnerUrl ];
+                                            if (winnerUrlCount) {
+                                                let wlUrls = [];
+                                                for (let l of dbResL) {
+                                                    const wlUrl = 'https://' + winnerUrl + ":" + server.configs.https.port + "/" + l.output_path + "/" + c[ 'clan_code' ];
+                                                    wlUrls.push(Discord.hyperlink(l.title, wlUrl))
+                                                }
+                                                fields.push({ name: "Player Count", value: "WIP", inline: true })
+                                                fields.push({ name: "Whitelist", value: wlUrls.join(' - '), inline: false })
+                                            }
+                                            embeds.push(
+                                                new Discord.EmbedBuilder()
+                                                    .setColor(config.app_personalization.accent_color)
+                                                    .setTitle(toUpperFirstChar(c.full_name.replace(/\_/g, ' ')))
+                                                    .addFields(...fields)
+                                            )
+                                        }
+                                        interaction.reply({ embeds: embeds });
+                                    })
+                                })
+                            })
+                            break;
                     }
                 } else if (interaction.isButton()) {
                     const idsplit = interaction.customId.split(':');
@@ -1421,7 +1479,7 @@ async function init() {
                             interaction.message.edit({ components: [] });
                             console.log(interaction);
                             let emb = interaction.message.embeds[ 0 ]
-                            emb.fields.filter((f) => f.name == "Approval")[0].value = (appr_status ? ":white_check_mark: Approved" : ":x: Rejected");
+                            emb.fields.filter((f) => f.name == "Approval")[ 0 ].value = (appr_status ? ":white_check_mark: Approved" : ":x: Rejected");
                             emb.fields.push({ name: (appr_status ? "Approved" : "Rejected") + " by", value: Discord.userMention(interaction.member.user.id), inline: true });
                             interaction.message.edit({ embeds: [ emb ] })
 
@@ -1515,7 +1573,7 @@ async function init() {
                 title_hidden_in_header: false,
             },
             discord_bot: {
-                token: "MTAxMDUyMzA3MjU3MjQyODMzOA.GZ91wM.rogpEiQ4anm3DHSTJJFQzVaTqXjJm-6KMBfQ-M",
+                token: "",
                 whitelist_updates_channel_id: ""
             },
             other: {
@@ -1712,7 +1770,6 @@ async function init() {
             }
         })
     }
-
     function getFirstExistentFileInArray(arr, elm = 0) {
         if (elm >= arr.length) return null;
 
