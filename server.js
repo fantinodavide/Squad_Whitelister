@@ -1436,13 +1436,39 @@ async function init() {
                         case 'listclans':
                             mongoConn((dbo) => {
                                 dbo.collection("lists").find().toArray((err, dbResL) => {
-                                    dbo.collection("clans").find({}).project({ _id: 0, admins: 0, available_groups: 0 }).sort({ full_name: 1, tag: 1 }).toArray((err, dbRes) => {
+                                    const pipeline = [
+                                        {
+                                            $lookup: {
+                                                from: "whitelists",
+                                                localField: "_id",
+                                                foreignField: "id_clan",
+                                                as: "clan_whitelist"
+                                            }
+                                        },
+                                        {
+                                            $addFields: {
+                                                uniqueSteamids: { '$setUnion': '$clan_whitelist.steamid64' },
+                                            }
+                                        },
+                                        {
+                                            $addFields: {
+                                                unique_players: { $size: "$uniqueSteamids" },
+                                            }
+                                        },
+                                        {
+                                            $project: { _id: 0, admins: 0, available_groups: 0, clan_whitelist: 0, uniqueSteamids: 0 }
+                                        }
+                                    ]
+                                    // dbo.collection("clans").find({}).project({ _id: 0, admins: 0, available_groups: 0 }).sort({ full_name: 1, tag: 1 }).toArray((err, dbRes) => {
+                                    dbo.collection("clans").aggregate(pipeline).toArray((err, dbRes) => {
+                                        if (err) console.error(err)
+                                        console.log(dbRes);
                                         let embeds = [];
                                         for (let c of dbRes) {
                                             let fields = [];
-                                            for (let cK of ["tag", "clan_code", "player_limit" ]) {
+                                            for (let cK of [ "tag", "clan_code", "player_limit", "unique_players" ]) {
                                                 if (cK == "player_limit" && c[ cK ] == "") c[ cK ] = "ထ";
-                                                fields.push({ name: toUpperFirstChar(cK.replace(/\_/g, ' ')), value: c[ cK ], inline: (cK != "full_name") })
+                                                fields.push({ name: toUpperFirstChar(cK.replace(/\_/g, ' ')), value: c[ cK ].toString(), inline: (cK != "full_name") })
                                             }
                                             const sortedCallsList = urlCalls.sort();
                                             const winnerUrl = Object.keys(sortedCallsList)[ 0 ];
@@ -1453,7 +1479,6 @@ async function init() {
                                                     const wlUrl = 'https://' + winnerUrl + ":" + server.configs.https.port + "/" + l.output_path + "/" + c[ 'clan_code' ];
                                                     wlUrls.push(Discord.hyperlink(l.title, wlUrl))
                                                 }
-                                                fields.push({ name: "Player Count", value: "WIP", inline: true })
                                                 fields.push({ name: "Whitelist", value: wlUrls.join(' - '), inline: false })
                                             }
                                             embeds.push(
