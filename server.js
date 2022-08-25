@@ -1,5 +1,5 @@
 const cp = require('child_process');
-const { fdatasync } = require('fs');
+const { fdatasync, link } = require('fs');
 var installingDependencies = false;
 const irequire = async module => {
     try {
@@ -1412,6 +1412,14 @@ async function init() {
                     name: 'listclans',
                     description: 'Gives a full list of clans with corresponding info',
                 },
+                {
+                    name: 'linksteam',
+                    description: 'Links the Steam profile to the Discord profile',
+                },
+                {
+                    name: 'userinfo',
+                    description: 'gets user info',
+                },
             ];
 
             client.on('ready', async () => {
@@ -1492,6 +1500,58 @@ async function init() {
                                     })
                                 })
                             })
+                            break;
+                        case 'linksteam':
+                            const sender = interaction.member.user.id;
+                            const expiratioDelay = 5 * 60 * 1000;
+                            const codeExpiration = (new Date(Date.now() + expiratioDelay));
+                            do {
+                                let linkingCode = randomString(6);
+                                error = false;
+                                mongoConn((dbo) => {
+                                    dbo.collection("profilesLinking").deleteOne({ discordUserId: sender }, (err, dbRes) => {
+                                        dbo.collection("profilesLinking").findOne({ code: linkingCode }, (err, dbRes) => {
+                                            if (err) {
+                                                res.sendStatus(500);
+                                                console.error(err)
+                                            }
+                                            else if (dbRes == null) {
+                                                dbo.collection("profilesLinking").insertOne({ source: "Discord", discordUserId: sender, code: linkingCode, expiration: codeExpiration }, (err, dbRes) => {
+                                                    if (err) {
+                                                        res.sendStatus(500);
+                                                        console.error(err)
+                                                    }
+                                                    else {
+                                                        interaction.reply({
+                                                            embeds: [
+                                                                new Discord.EmbedBuilder()
+                                                                    .setColor(config.app_personalization.accent_color)
+                                                                    .setTitle("Link Steam Profile")
+                                                                    .setDescription("Join our Squad server and send in any chat the following code")
+                                                                    .addFields(
+                                                                        { name: "Linking Code", value: linkingCode, inline: false },
+                                                                        { name: "Expiration", value: Discord.time(codeExpiration, 'R'), inline: false },
+                                                                    )
+                                                            ],
+                                                            ephemeral: true
+                                                        });
+
+                                                        setInterval(async () => {
+                                                            dbo.collection("profilesLinking").deleteOne({ _id: dbRes.insertedId });
+                                                        }, expiratioDelay)
+                                                    }
+                                                })
+                                            } else {
+                                                error = true;
+                                            }
+                                        })
+                                    })
+                                })
+                            } while (error);
+                            break;
+                        case 'userinfo':
+                            console.log(interaction.member)
+                            interaction.reply({content: "ok", ephemeral: true})
                             break;
                     }
                 } else if (interaction.isButton()) {
