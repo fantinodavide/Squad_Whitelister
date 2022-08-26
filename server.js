@@ -1617,6 +1617,9 @@ async function init() {
                 //         console.log(d)
                 //     })
                 // }
+                mongoConn(async (dbo) => {
+                    dbo.collection("players").updateOne({ steamid64: dt.player.steamID }, { $set: { steamid64: dt.player.steamID, username: dt.player.name } }, { upsert: true })
+                })
                 setTimeout(() => {
                     mongoConn((dbo) => {
                         const pipeline = [
@@ -1628,21 +1631,34 @@ async function init() {
                                     foreignField: "_id",
                                     as: "group_full_data"
                                 }
+                            },
+                            {
+                                $lookup: {
+                                    from: "players",
+                                    localField: "steamid64",
+                                    foreignField: "steamid64",
+                                    as: "playerProfile"
+                                }
                             }
                         ]
-                        dbo.collection("whitelists").aggregate(pipeline).toArray((err, dbRes) => {
+                        dbo.collection("whitelists").aggregate(pipeline).toArray(async (err, dbRes) => {
                             if (err) serverError(null, err);
                             else if (dbRes && dbRes[ 0 ]) {
+                                let discordUsername = "";
+                                if (dbRes[ 0 ].playerProfile[ 0 ] && dbRes[ 0 ].playerProfile[ 0 ].discord_user_id && dbRes[ 0 ].playerProfile[ 0 ].discord_user_id != "") {
+                                    const discordUser = await discordBot.users.fetch(dbRes[ 0 ].playerProfile[ 0 ].discord_user_id);
+                                    discordUsername = discordUser.username + "#" + discordUser.discriminator;
+                                }
                                 const msg =
                                     "Welcome " + dt.player.name + "\n\n" +
                                     "Group: " + dbRes[ 0 ].group_full_data[ 0 ].group_name + "\n" +
                                     "Expiration: " + (dbRes[ 0 ].expiration ? ((dbRes[ 0 ].expiration - new Date()) / 1000 / 60 / 60).toFixed(1) + " h" : "Never") + "\n" +
-                                    "Discord Profile: Not linked"
+                                    "Discord Profile: " + (discordUsername != "" ? discordUsername : "Not linked")
                                 socket.emit("rcon.warn", dt.player.steamID, msg, (d) => { })
                             }
                         })
                     })
-                }, 10000)
+                }, 5000)
             })
             // socket.on("PLAYER_DISCONNECTED", async (dt) => {
             //     console.log("Player disconnected: ", dt)
@@ -1657,11 +1673,21 @@ async function init() {
                                 dbo.collection("profilesLinking").findOne({ code: dt.message }, async (err, dbRes) => {
                                     if (err) serverError(null, err);
                                     else if (dbRes) {
-                                        const discordUser = await discordBot.users.fetch("282583193939607554");
-                                        const discordUsername = discordUser.username + "#" + discordUser.discriminator;
-                                        socket.emit("rcon.warn", dt.steamID, "Linked Discord profile: " + discordUsername, (d) => {
-                                            console.log(d);
-                                        })
+                                        if (dbRes.expiration > new Date()) {
+                                            const discordUser = await discordBot.users.fetch(dbRes.discordUserId);
+                                            const discordUsername = discordUser.username + "#" + discordUser.discriminator;
+                                            dbo.collection("players").updateOne({ steamid64: dt.player.steamID }, { $set: { steamid64: dt.player.steamID, username: dt.player.name, discord_user_id: dbRes.discordUserId } }, { upsert: true }, (err, dbResU) => {
+                                                dbo.collection("profilesLinking").deleteOne({ _id: dbRes._id })
+                                                if (err) serverError(null, err);
+                                                else {
+                                                    socket.emit("rcon.warn", dt.steamID, "Linked Discord profile: " + discordUsername, (d) => {
+                                                        console.log(d);
+                                                    })
+                                                }
+                                            })
+                                        } else {
+                                            dbo.collection("profilesLinking").deleteOne({ _id: dbRes._id })
+                                        }
                                     }
                                 })
                             })
