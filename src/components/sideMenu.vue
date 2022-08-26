@@ -11,6 +11,7 @@
 				config_tr: {
 					web_server: 'Web Server',
 					app_personalization: 'Personalization',
+					squadjs: 'SquadJS',
 				} as any,
 				keys: [] as Array<string>,
 			};

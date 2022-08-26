@@ -1,4 +1,5 @@
 const cp = require('child_process');
+const { CommandInteractionOptionResolver } = require('discord.js');
 const { fdatasync, link } = require('fs');
 var installingDependencies = false;
 const irequire = async module => {
@@ -51,7 +52,7 @@ async function init() {
     const fp = await irequire("find-free-port")
     const { mainModule } = await irequire("process");
     const Discord = await irequire("discord.js");
-    const { io } = require("socket.io-client");
+    const { io } = await require("socket.io-client");
 
     const enableServer = true;
     var errorCount = 0;
@@ -85,6 +86,10 @@ async function init() {
             }
         }
     };
+    var squadjs = {
+        ws: null,
+        initDone: false
+    }
     var urlCalls = []
     var config;
 
@@ -602,7 +607,7 @@ async function init() {
 
             res.send(resData);
 
-            if ([ 'web_server', 'database', 'discord_bot' ].includes(parm.category)) restartProcess(1, 0);
+            if ([ 'web_server', 'database', 'discord_bot', 'squadjs' ].includes(parm.category)) restartProcess(1, 0);
         })
 
         app.use('/api/lists/read/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
@@ -1426,6 +1431,7 @@ async function init() {
             ];
 
             client.on('ready', async () => {
+                clearTimeout(tm);
                 discordBot = new Proxy(client, {});
                 console.log(` > Logged-in!`);
                 console.log(`  > Tag: ${client.user.tag}`);
@@ -1435,7 +1441,6 @@ async function init() {
                 const rest = new Discord.REST({ version: '10' }).setToken(config.discord_bot.token);
                 await rest.put(Discord.Routes.applicationCommands(client.user.id), { body: commands });
                 discCallback();
-                clearTimeout(tm);
             });
 
             client.on('interactionCreate', async interaction => {
@@ -1584,48 +1589,83 @@ async function init() {
 
     function SquadJSWebSocket(cb = null) {
         console.log("SquadJS WebSocket")
-        if (config.SquadJS && config.SquadJS.token != "" && config.SquadJS.host != "") {
+        if (config.squadjs.websocket && config.squadjs.websocket.token != "" && config.squadjs.websocket.host != "") {
             const tm = setTimeout(() => {
                 console.error(" > Connection timed out. Check your SquadJS WebSocket configuration.");
                 console.log(" > Proceding without SquadJS WebSocket.");
                 if (cb) cb();
             }, 10000)
 
-            let socket = io(`ws://${config.SquadJS.host}:${config.SquadJS.port}`, {
+            let socket = io(`ws://${config.squadjs.websocket.host}:${config.squadjs.websocket.port}`, {
                 auth: {
-                    token: config.SquadJS.token
+                    token: config.squadjs.websocket.token
                 }
             })
             socket.on("connect", async () => {
                 clearTimeout(tm);
                 console.log(" > Connected");
-                socket.emit("rcon.warn", "76561198419229279", "Whitelister Connected", (d) => {
-                    console.log(d)
-                })
-                cb();
+                socket.emit("rcon.warn", "76561198419229279", "Whitelister Connected", () => { })
+                if (!squadjs.initDone) {
+                    squadjs.initDone = true;
+                    cb();
+                }
             });
             socket.on("PLAYER_CONNECTED", async (dt) => {
-                if (dt.player.steamID == "76561198419229279") {
-                    socket.emit("rcon.warn", "76561198419229279", "This server is using the Whitelister tool", (d) => {
-                        console.log(d)
-                    })
-                }
-            })
-            socket.on("CHAT_MESSAGE", async (dt) => {
-                if (dt.message.length == 6 && !dt.message.includes(' ')) {
-                    mongoConn(async (dbo) => {
-                        dbo.collection("profilesLinking").findOne({ code: dt.message }, async (err, dbRes) => {
+                //     console.log("Player connected: ", dt)
+                // if (dt.player.steamID == "76561198419229279") {
+                //     socket.emit("rcon.warn", "76561198419229279", "This server is using the Whitelister tool", (d) => {
+                //         console.log(d)
+                //     })
+                // }
+                setTimeout(() => {
+                    mongoConn((dbo) => {
+                        const pipeline = [
+                            { $match: { steamid64: dt.player.steamID } },
+                            {
+                                $lookup: {
+                                    from: "groups",
+                                    localField: "id_group",
+                                    foreignField: "_id",
+                                    as: "group_full_data"
+                                }
+                            }
+                        ]
+                        dbo.collection("whitelists").aggregate(pipeline).toArray((err, dbRes) => {
                             if (err) serverError(null, err);
-                            else if (dbRes) {
-                                const discordUser = await discordBot.users.fetch("282583193939607554");
-                                const discordUsername = discordUser.username + "#" + discordUser.discriminator;
-                                socket.emit("rcon.warn", dt.steamID, "Linked Discord profile: " + discordUsername, (d) => {
-                                    console.log(d);
-                                })
+                            else if (dbRes && dbRes[ 0 ]) {
+                                const msg =
+                                    "Welcome " + dt.player.name + "\n\n" +
+                                    "Group: " + dbRes[ 0 ].group_full_data[ 0 ].group_name + "\n" +
+                                    "Expiration: " + (dbRes[ 0 ].expiration ? ((dbRes[ 0 ].expiration - new Date()) / 1000 / 60 / 60).toFixed(1) + " h" : "Never") + "\n" +
+                                    "Discord Profile: Not linked"
+                                socket.emit("rcon.warn", dt.player.steamID, msg, (d) => { })
                             }
                         })
                     })
-                }
+                }, 10000)
+            })
+            // socket.on("PLAYER_DISCONNECTED", async (dt) => {
+            //     console.log("Player disconnected: ", dt)
+            // })
+            socket.on("CHAT_MESSAGE", async (dt) => {
+                if (dt.message == "test") {
+
+                } else
+                    if (dt.message == "playerinfo") console.log(dt); else
+                        if (dt.message.length == 6 && !dt.message.includes(' ')) {
+                            mongoConn(async (dbo) => {
+                                dbo.collection("profilesLinking").findOne({ code: dt.message }, async (err, dbRes) => {
+                                    if (err) serverError(null, err);
+                                    else if (dbRes) {
+                                        const discordUser = await discordBot.users.fetch("282583193939607554");
+                                        const discordUsername = discordUser.username + "#" + discordUser.discriminator;
+                                        socket.emit("rcon.warn", dt.steamID, "Linked Discord profile: " + discordUsername, (d) => {
+                                            console.log(d);
+                                        })
+                                    }
+                                })
+                            })
+                        }
             })
         } else {
             console.log(" > Not configured. Skipping.");
@@ -1714,6 +1754,13 @@ async function init() {
             discord_bot: {
                 token: "",
                 whitelist_updates_channel_id: ""
+            },
+            squadjs: {
+                websocket: {
+                    host: "",
+                    port: 3000,
+                    token: ""
+                }
             },
             other: {
                 automatic_updates: true,
