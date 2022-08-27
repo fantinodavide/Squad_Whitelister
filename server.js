@@ -1,6 +1,4 @@
 const cp = require('child_process');
-const { CommandInteractionOptionResolver } = require('discord.js');
-const { fdatasync, link } = require('fs');
 var installingDependencies = false;
 const irequire = async module => {
     try {
