@@ -1421,7 +1421,7 @@ async function init() {
                     description: 'Gives a full list of clans with corresponding info',
                 },
                 {
-                    name: 'profilelink',
+                    name: 'profile',
                     description: 'Links the Discord profile to the Steam profile',
                     options: [
                         {
@@ -1452,7 +1452,9 @@ async function init() {
             });
 
             client.on('interactionCreate', async interaction => {
-                const sender = interaction.member.user.id;
+                console.log(interaction.member, interaction.user)
+                const sender = interaction.member ? interaction.member.user : interaction.user;
+                const sender_id = sender.id;
                 if (interaction.isChatInputCommand()) {
                     switch (interaction.commandName) {
                         case 'ping':
@@ -1518,29 +1520,30 @@ async function init() {
                                 })
                             })
                             break;
-                        case 'profilelink':
+                        case 'profile':
                             mongoConn((dbo) => {
-                                let publicMessage = interaction.options.getUser('user')!=null;
-                                let requestedProfile = interaction.options.getUser('user')
-                                
-                                dbo.collection("players").findOne({ discord_user_id: (publicMessage?requestedProfile.id:sender) }, (err, dbRes) => {
+                                let publicMessage = interaction.options.getUser('user') != null;
+                                let requestedProfile = publicMessage ? interaction.options.getUser('user') : sender
+
+                                dbo.collection("players").findOne({ discord_user_id: (publicMessage ? requestedProfile.id : sender_id) }, (err, dbRes) => {
                                     if (err) serverError(null, err);
                                     else {
                                         let fields = [
-                                            { name: "Steam" + (dbRes ? "Username " : ""), value: (dbRes ? dbRes.username : "*Not linked*"), inline: true },
+                                            { name: "Steam " + (dbRes ? "Username " : ""), value: (dbRes ? dbRes.username : "*Not linked*"), inline: true },
                                         ]
                                         if (dbRes) fields.push({ name: 'SteamID', value: Discord.hyperlink(dbRes.steamid64, "https://steamcommunity.com/profiles/" + dbRes.steamid64), inline: true })
-                                        console.log(interaction.member.user)
                                         interaction.reply({
+                                            content: Discord.userMention(requestedProfile.id),
                                             embeds: [
                                                 new Discord.EmbedBuilder()
                                                     .setColor(config.app_personalization.accent_color)
-                                                    .setAuthor({ name: requestedProfile.username + "'s Linked Profiles", iconURL: requestedProfile.avatarURL() })
-                                                    // .setTitle(interaction.member.user.username + "'s Linked Profiles")
-                                                    .setDescription(Discord.userMention(requestedProfile.id))
+                                                    .setAuthor({ name: requestedProfile.username, iconURL: requestedProfile.avatarURL() })
+                                                    .setTitle("Linked Profiles")
+                                                    // .setTitle(sender.username + "'s Linked Profiles")
+                                                    // .setDescription(Discord.userMention(requestedProfile.id))
                                                     .addFields(...fields)
                                             ],
-                                            components: publicMessage?[]:[
+                                            components: publicMessage ? [] : [
                                                 new Discord.ActionRowBuilder()
                                                     .addComponents(
                                                         (dbRes ?
@@ -1578,7 +1581,7 @@ async function init() {
                             interaction.message.edit({ components: [] });
                             let emb = interaction.message.embeds[ 0 ]
                             emb.fields.filter((f) => f.name == "Approval")[ 0 ].value = (appr_status ? ":white_check_mark: Approved" : ":x: Rejected");
-                            emb.fields.push({ name: (appr_status ? "Approved" : "Rejected") + " by", value: Discord.userMention(interaction.member.user.id), inline: true });
+                            emb.fields.push({ name: (appr_status ? "Approved" : "Rejected") + " by", value: Discord.userMention(sender.id), inline: true });
                             interaction.message.edit({ embeds: [ emb ] })
                             break;
                         case 'profilelink':
@@ -1593,14 +1596,14 @@ async function init() {
                                                 const expiratioDelay = 5 * 60 * 1000;
                                                 const codeExpiration = (new Date(Date.now() + expiratioDelay));
                                                 mongoConn((dbo) => {
-                                                    dbo.collection("profilesLinking").deleteOne({ discordUserId: sender }, (err, dbRes) => {
+                                                    dbo.collection("profilesLinking").deleteOne({ discordUserId: sender_id }, (err, dbRes) => {
                                                         dbo.collection("profilesLinking").findOne({ code: linkingCode }, (err, dbRes) => {
                                                             if (err) {
                                                                 res.sendStatus(500);
                                                                 console.error(err)
                                                             }
                                                             else if (dbRes == null) {
-                                                                dbo.collection("profilesLinking").insertOne({ source: "Discord", discordUserId: sender, code: linkingCode, expiration: codeExpiration }, (err, dbRes) => {
+                                                                dbo.collection("profilesLinking").insertOne({ source: "Discord", discordUserId: sender_id, code: linkingCode, expiration: codeExpiration }, (err, dbRes) => {
                                                                     if (err) {
                                                                         res.sendStatus(500);
                                                                         console.error(err)
@@ -1660,7 +1663,7 @@ async function init() {
                                                 switch (idsplit[ 3 ]) {
                                                     case 'confirm':
                                                         mongoConn((dbo) => {
-                                                            dbo.collection("players").updateOne({ discord_user_id: sender }, { $unset: { discord_user_id: 1 } }, (err, dbRes) => {
+                                                            dbo.collection("players").updateOne({ discord_user_id: sender_id }, { $unset: { discord_user_id: 1 } }, (err, dbRes) => {
                                                                 if (err) serverError(null, err);
                                                                 else {
                                                                     console.log(dbRes)
