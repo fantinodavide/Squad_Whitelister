@@ -901,7 +901,7 @@ async function init() {
                                 username_l: parm.username.toLowerCase(),
                                 steamid64: parm.steamid64,
                                 id_group: ObjectID(parm.group),
-                                discord_username: parm.discordUsername,
+                                discord_username: parm.discordUsername.startsWith('@') ? "" : "@" + parm.discordUsername,
                                 inserted_by: ObjectID(req.userSession.id_user),
                                 expiration: (parm.durationHours && parm.durationHours != "") ? new Date(Date.now() + (parseFloat(parm.durationHours) * 60 * 60 * 1000)) : false,
                                 insert_date: new Date(),
@@ -1443,7 +1443,6 @@ async function init() {
                 console.log(`  > Tag: ${client.user.tag}`);
                 console.log(`  > ID: ${client.user.id}`);
                 console.log(`  > Invite: https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&permissions=268458048&scope=bot`);
-                // console.log(client);
                 const rest = new Discord.REST({ version: '10' }).setToken(config.discord_bot.token);
                 await rest.put(Discord.Routes.applicationCommands(client.user.id), { body: commands });
                 discCallback();
