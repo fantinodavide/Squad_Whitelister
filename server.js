@@ -1400,7 +1400,13 @@ async function init() {
     function discordBot(discCallback = null) {
         console.log("Discord BOT")
         if (config.discord_bot && config.discord_bot.token != "") {
-            const client = new Discord.Client({ intents: [ Discord.GatewayIntentBits.Guilds, Discord.GatewayIntentBits.GuildMessages ] });
+            const client = new Discord.Client({
+                intents: [
+                    Discord.GatewayIntentBits.Guilds,
+                    Discord.GatewayIntentBits.GuildMessages,
+                    Discord.GatewayIntentBits.GuildMembers,
+                ]
+            });
             client.login(config.discord_bot.token);
 
             const tm = setTimeout(() => {
@@ -1439,13 +1445,25 @@ async function init() {
             client.on('ready', async () => {
                 clearTimeout(tm);
                 discordBot = new Proxy(client, {});
+                // const permissionsString = "1099780151360";
+                const permissionsString = "8";
                 console.log(` > Logged-in!`);
                 console.log(`  > Tag: ${client.user.tag}`);
                 console.log(`  > ID: ${client.user.id}`);
-                console.log(`  > Invite: https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&permissions=268458048&scope=bot`);
+                console.log(`  > Invite: https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&permissions=${permissionsString}&scope=bot`);
                 const rest = new Discord.REST({ version: '10' }).setToken(config.discord_bot.token);
                 await rest.put(Discord.Routes.applicationCommands(client.user.id), { body: commands });
                 discCallback();
+            });
+
+            client.on('guildMemberUpdate', (oldMember, newMember) => {
+                const updateAdd = newMember.roles.cache.filter((e) => !Array.from(oldMember.roles.cache).includes(e));
+                const updateRemove = oldMember.roles.cache.filter((e) => !Array.from(newMember.roles.cache).includes(e));
+                let addedGroups = [];
+                let removedGroups = [];
+                for(let g of updateAdd) addedGroups.push(g[1].name)
+                for(let g of updateRemove) removedGroups.push(g[1].name)
+                console.log(`guildMemberUpdate:\n\n + >`, addedGroups, "\n - >", removedGroups);
             });
 
             client.on('interactionCreate', async interaction => {
