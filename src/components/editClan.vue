@@ -10,6 +10,7 @@
 		data() {
 			return {
 				available_game_groups: [] as Array<any>,
+				discord_roles: [] as Array<any>,
 			};
 		},
 		props: {

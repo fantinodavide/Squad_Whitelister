@@ -96,6 +96,11 @@ async function init() {
 
     var discordBot;
 
+    var subcomponent_status = {
+        discord_bot: false,
+        squadjs: false
+    }
+
     start();
 
 
@@ -901,7 +906,7 @@ async function init() {
                                 username_l: parm.username.toLowerCase(),
                                 steamid64: parm.steamid64,
                                 id_group: ObjectID(parm.group),
-                                discord_username: parm.discordUsername.startsWith('@') ? "" : "@" + parm.discordUsername,
+                                discord_username: !parm.discordUsername.startsWith('@') && parm.discordUsername != "" ? "@" : "" + parm.discordUsername,
                                 inserted_by: ObjectID(req.userSession.id_user),
                                 expiration: (parm.durationHours && parm.durationHours != "") ? new Date(Date.now() + (parseFloat(parm.durationHours) * 60 * 60 * 1000)) : false,
                                 insert_date: new Date(),
@@ -1080,6 +1085,44 @@ async function init() {
                     })
                 }
             })
+        })
+
+        app.use('/api/discord/*', (...p) => { accessLevelAuthorization(30, ...p) })
+        app.use('/api/discord/write', (...p) => { accessLevelAuthorization(10, ...p) })
+        app.get('/api/discord/read/getStatus', (req, res, next) => {
+            res.send(subcomponent_status.discord_bot)
+        })
+        app.get('/api/discord/read/getRoles', (req, res, next) => {
+            const parm = req.query;
+            if (subcomponent_status.discord_bot) {
+                const clientServer = discordBot.guilds.cache.find((s) => s.id == config.discord_bot.server_id);
+                let roles = [];
+                for (let r of clientServer.roles.cache) roles.push({ id: r[ 1 ].id, name: r[ 1 ].name })
+                res.send(roles)
+            } else {
+                res.sendStatus(404)
+            }
+        })
+        app.get('/api/discord/read/getServers', (req, res, next) => {
+            const parm = req.query;
+            if (subcomponent_status.discord_bot) {
+                let ret = [];
+                for (let g of discordBot.guilds.cache) ret.push({ id: g[ 1 ].id, name: g[ 1 ].name })
+                res.send(ret)
+                console.log(ret);
+            } else {
+                res.sendStatus(404)
+            }
+        })
+        app.get('/api/discord/read/getChannels', async (req, res, next) => {
+            const parm = req.query;
+            if (subcomponent_status.discord_bot) {
+                let ret = [];
+                res.send((await discordBot.guilds.fetch(config.discord_bot.server_id)).channels.cache.sort((a, b) => a.rawPosition - b.rawPosition).filter((e) => e.type != 4))
+                // for(let c of (await discordBot.guilds.fetch(config.discord_bot.server_id)).channels.cache) ret.push(discordBot.channels.fetch(c))
+            } else {
+                res.sendStatus(404)
+            }
         })
 
         app.use('/api/clans*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next() })
@@ -1444,6 +1487,7 @@ async function init() {
 
             client.on('ready', async () => {
                 clearTimeout(tm);
+                subcomponent_status.discord_bot = true;
                 discordBot = new Proxy(client, {});
                 // const permissionsString = "1099780151360";
                 const permissionsString = "8";
@@ -1457,17 +1501,23 @@ async function init() {
             });
 
             client.on('guildMemberUpdate', (oldMember, newMember) => {
-                const updateAdd = newMember.roles.cache.filter((e) => !Array.from(oldMember.roles.cache).includes(e));
-                const updateRemove = oldMember.roles.cache.filter((e) => !Array.from(newMember.roles.cache).includes(e));
-                let addedGroups = [];
-                let removedGroups = [];
-                for(let g of updateAdd) addedGroups.push(g[1].name)
-                for(let g of updateRemove) removedGroups.push(g[1].name)
-                console.log(`guildMemberUpdate:\n\n + >`, addedGroups, "\n - >", removedGroups);
+                let newRoles = [];
+                let oldRoles = [];
+                for (let g of newMember.roles.cache) newRoles.push(g[ 1 ].id)
+                for (let g of oldMember.roles.cache) oldRoles.push(g[ 1 ].id)
+
+                let addedGroups = newRoles.filter((e) => !oldRoles.includes(e));
+                let removedGroups = oldRoles.filter((e) => !newRoles.includes(e));
+
+                console.log(`guildMemberUpdate:\n\n NEW >`, addedGroups, "\n OLD >", removedGroups);
+                // console.log(newRoles);
+
+                // for(let g of updateAdd) addedGroups.push(g[1].name)
+                // for(let g of updateRemove) removedGroups.push(g[1].name)
             });
 
             client.on('interactionCreate', async interaction => {
-                console.log(interaction.member, interaction.user)
+                // console.log(interaction.member, interaction.user)
                 const sender = interaction.member ? interaction.member.user : interaction.user;
                 const sender_id = sender.id;
                 if (interaction.isChatInputCommand()) {
@@ -2116,6 +2166,10 @@ async function init() {
                 })
             }
         })
+    }
+    function accessLevelAuthorization(accessLevel, req, res, next) {
+        if (req.userSession && req.userSession.access_level <= accessLevel) next()
+        else res.sendStatus(401)
     }
     function getFirstExistentFileInArray(arr, elm = 0) {
         if (elm >= arr.length) return null;

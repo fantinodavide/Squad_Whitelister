@@ -70,7 +70,8 @@
 		white-space: nowrap;
 		margin-bottom: 10px;
 	}
-	label > input {
+	label > input,
+	label > select {
 		margin: 0;
 		margin-left: 10px;
 	}
