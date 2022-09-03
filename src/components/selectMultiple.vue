@@ -7,6 +7,7 @@
 				models: {
 					searchOption: '',
 				},
+				valRet: [] as Array<string>,
 			};
 		},
 		props: {
@@ -27,30 +28,43 @@
 				required: true,
 				type: String,
 			},
+			preselect: {
+				required: false,
+				default: [] as Array<any>,
+			},
 		},
 		methods: {
 			log: console.log,
 			compare: function (str1: string, str2: string) {
 				return str1.includes(str2);
 			},
+			optionSelectChanged: function (e: any) {
+				const tg: any = e.target;
+				if (tg.checked) {
+					this.valRet.push(tg.name);
+				} else {
+					this.valRet = this.valRet.filter((elm) => elm != tg.name);
+				}
+				this.$emit('selectChanged', [...this.valRet]);
+			},
 		},
 	};
 </script>
 
 <template>
-	<div id="multipleSelectContainer">
-		<div id="multipleSelectHeader">
+	<div class="multipleSelectContainer">
+		<div class="multipleSelectHeader">
 			<h4 v-if="title != ''">{{ title }}</h4>
-			<input type="text" v-model="models.searchOption" placeholder="Search" />
+			<input popupIgnore type="text" v-model="models.searchOption" placeholder="Search" />
 		</div>
-		<div id="optionsContainer">
-			<label v-for="elm of elements" :key="elm[oIdKey]" v-show="models.searchOption == '' || elm[oTitleKey].toLowerCase().includes(models.searchOption.toLowerCase())"><input type="checkbox" :name="elm[oIdKey]" />{{ elm[oTitleKey] }}</label>
+		<div class="optionsContainer">
+			<label v-for="elm of elements" :key="elm[oIdKey]" v-show="models.searchOption == '' || elm[oTitleKey].toLowerCase().includes(models.searchOption.toLowerCase())"> <input popupIgnore type="checkbox" :name="elm[oIdKey]" :checked="preselect.includes(elm[oIdKey])" @change="optionSelectChanged" />{{ elm[oTitleKey] }} </label>
 		</div>
 	</div>
 </template>
 
 <style scoped>
-	#multipleSelectContainer {
+	.multipleSelectContainer {
 		background: #333;
 		border-radius: 15px;
 		margin: 5px;
@@ -61,12 +75,12 @@
 		width: 100%;
 		overflow: hidden;
 	}
-	#optionsContainer {
+	.optionsContainer {
 		margin: 5px 10px;
 		max-height: 150px;
 		overflow: auto;
 	}
-	#multipleSelectHeader {
+	.multipleSelectHeader {
 		padding: 2px 10px;
 		background: #0002;
 		display: flex;
@@ -75,7 +89,7 @@
 	label {
 		user-select: none;
 	}
-	#multipleSelectHeader input {
+	.multipleSelectHeader input {
 		width: auto;
 		flex-grow: 1;
 		margin: 5px 0;

@@ -11,9 +11,13 @@
 			return {
 				permissions: ['startvote', 'changemap', 'pause', 'cheat', 'private', 'balance', 'chat', 'kick', 'ban', 'config', 'cameraman', 'immune', 'manageserver', 'featuretest', 'reserve', 'demos', 'clientdemos', 'debug', 'teamchange', 'forceteamchange', 'canseeadminchat'],
 				discord_roles: [] as Array<any>,
+				extRet: {
+					discord_roles: [] as Array<any>,
+				},
 			};
 		},
 		methods: {
+			log: console.log,
 			confirmBtnClick(dt: any) {
 				console.log(dt);
 				$.ajax({
@@ -50,7 +54,7 @@
 </script>
 
 <template>
-	<popup ref="popupComp" title="New Group" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick">
+	<popup ref="popupComp" title="New Group" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick" :extRetProp="extRet">
 		<input name="group_name" type="text" placeholder="Group Name" regex="^[a-zA-Z\d]{2,}$" />
 		<select name="group_permissions" multiple>
 			<option v-for="p in permissions.sort()" :value="p">{{ p }}</option>
@@ -59,7 +63,7 @@
 			<option hidden selected multiple>Bound discord role</option>
 			<option v-for="p in discord_roles" :value="p.id">{{ p.name }}</option>
 		</select> -->
-		<SelectMultiple :elements="discord_roles" oIdKey="id" oTitleKey="name" title="Discord Roles" />
+		<SelectMultiple :elements="discord_roles" oIdKey="id" oTitleKey="name" title="Discord Roles" @selectChanged="extRet.discord_roles = $event" />
 		<label>Require Approval<input name="require_appr" type="checkbox" placeholder="Require Approval" /></label>
 	</popup>
 </template>

@@ -2,6 +2,7 @@
 	import { assertExpressionStatement } from '@babel/types';
 	import $ from 'jquery';
 	import popup from './popup.vue';
+	import SelectMultiple from './selectMultiple.vue';
 </script>
 
 <script lang="ts">
@@ -10,6 +11,9 @@
 			return {
 				permissions: ['startvote', 'changemap', 'pause', 'cheat', 'private', 'balance', 'chat', 'kick', 'ban', 'config', 'cameraman', 'immune', 'manageserver', 'featuretest', 'reserve', 'demos', 'clientdemos', 'debug', 'teamchange', 'forceteamchange', 'canseeadminchat'],
 				discord_roles: [] as Array<any>,
+				extRet: {
+					discord_roles: [] as Array<any>,
+				},
 			};
 		},
 		props: {
@@ -52,20 +56,18 @@
 			this.getAllDiscordRoles();
 			console.log(this.group_data);
 		},
-		components: { popup },
+		components: { popup, SelectMultiple },
 	};
 </script>
 
 <template>
-	<popup ref="popupComp" title="Edit Group" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick">
+	<popup ref="popupComp" title="Edit Group" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick" :extRetProp="extRet">
 		<input name="group_name" type="text" placeholder="Group Name" :value="group_data.group_name" regex="^[a-zA-Z\d]{2,}$" />
 		<select name="group_permissions" multiple>
 			<option v-for="p in permissions.sort()" :value="p" :selected="group_data.group_permissions.includes(p)">{{ p }}</option>
 		</select>
-		<select name="discord_role" multiple>
-			<option hidden selected>Bound discord role</option>
-			<option v-for="p in discord_roles" :value="p.id" :selected="p.id == group_data.discord_role">{{ p.name }}</option>
-		</select>
+		<SelectMultiple :elements="discord_roles" oIdKey="id" oTitleKey="name" title="Discord Roles" :preselect="group_data.discord_roles" @selectChanged="extRet.discord_roles = $event" />
+
 		<label>Require Approval<input name="require_appr" type="checkbox" placeholder="Require Approval" :checked="group_data.require_appr" /></label>
 	</popup>
 </template>

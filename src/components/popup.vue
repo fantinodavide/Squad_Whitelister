@@ -1,6 +1,7 @@
 <script setup lang="ts">
 	import $ from 'jquery';
 	import blackoutBackground from './blackoutBackground.vue';
+	import { log } from 'console';
 </script>
 
 <script lang="ts">
@@ -35,10 +36,15 @@
 				required: false,
 				type: Object,
 			},
+			extRetProp: {
+				default: [] as any,
+				required: false,
+			},
 		},
 		methods: {
 			checkInputs(evt: any) {
-				let inputs = this.getInputs();
+				let inputs = Array.from(this.getInputs()) as Array<any>;
+				inputs = inputs.filter((i: any) => !i.hasAttribute('popupIgnore'));
 				let valid = true;
 				let dt: { [key: string]: any } = {};
 				for (let i of inputs) {
@@ -72,6 +78,7 @@
 						}
 					}
 				}
+				dt = { ...dt, ...this.extRetProp };
 				if (valid) this.$emit('confirmBtnClick', dt);
 			},
 			blinkBgColor(elm: any, color: string = '#a228') {
