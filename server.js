@@ -1501,19 +1501,20 @@ async function init() {
             });
 
             client.on('guildMemberUpdate', (oldMember, newMember) => {
-                let newRoles = [];
-                let oldRoles = [];
-                for (let g of newMember.roles.cache) newRoles.push(g[ 1 ].id)
-                for (let g of oldMember.roles.cache) oldRoles.push(g[ 1 ].id)
+                const user_id = newMember.user.id;
+                console.log(user_id);
+                // let newRoles = [];
+                // let oldRoles = [];
+                // for (let g of newMember.roles.cache) newRoles.push(g[ 1 ].id)
+                // for (let g of oldMember.roles.cache) oldRoles.push(g[ 1 ].id)
 
-                let addedGroups = newRoles.filter((e) => !oldRoles.includes(e));
-                let removedGroups = oldRoles.filter((e) => !newRoles.includes(e));
+                // let addedGroups = newRoles.filter((e) => !oldRoles.includes(e));
+                // let removedGroups = oldRoles.filter((e) => !newRoles.includes(e));
+                // console.log(`guildMemberUpdate:\n\n + >`, addedGroups, "\n - >", removedGroups);
 
-                console.log(`guildMemberUpdate:\n\n NEW >`, addedGroups, "\n OLD >", removedGroups);
-                // console.log(newRoles);
-
-                // for(let g of updateAdd) addedGroups.push(g[1].name)
-                // for(let g of updateRemove) removedGroups.push(g[1].name)
+                // mongoConn((dbo) => {
+                //     dbo.collection("players").updateOne({ discord_user_id: user_id }, { $set: { discord_user_id: user_id, discord_roles_ids: newRoles } }, { upsert: true })
+                // })
             });
 
             client.on('interactionCreate', async interaction => {
