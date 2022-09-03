@@ -62,7 +62,7 @@
 		<select name="group_permissions" multiple>
 			<option v-for="p in permissions.sort()" :value="p" :selected="group_data.group_permissions.includes(p)">{{ p }}</option>
 		</select>
-		<select name="discord_role">
+		<select name="discord_role" multiple>
 			<option hidden selected>Bound discord role</option>
 			<option v-for="p in discord_roles" :value="p.id" :selected="p.id == group_data.discord_role">{{ p.name }}</option>
 		</select>

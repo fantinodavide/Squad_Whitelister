@@ -2,6 +2,7 @@
 	import { assertExpressionStatement } from '@babel/types';
 	import $ from 'jquery';
 	import popup from './popup.vue';
+	import SelectMultiple from './selectMultiple.vue';
 </script>
 
 <script lang="ts">
@@ -41,7 +42,7 @@
 					});
 			},
 		},
-		components: { popup },
+		components: { popup, SelectMultiple },
 		created() {
 			this.getAllDiscordRoles();
 		},
@@ -54,10 +55,11 @@
 		<select name="group_permissions" multiple>
 			<option v-for="p in permissions.sort()" :value="p">{{ p }}</option>
 		</select>
-		<select name="discord_role">
-			<option hidden selected>Bound discord role</option>
+		<!-- <select name="discord_role">
+			<option hidden selected multiple>Bound discord role</option>
 			<option v-for="p in discord_roles" :value="p.id">{{ p.name }}</option>
-		</select>
+		</select> -->
+		<SelectMultiple :elements="discord_roles" oIdKey="id" oTitleKey="name" title="Discord Roles" />
 		<label>Require Approval<input name="require_appr" type="checkbox" placeholder="Require Approval" /></label>
 	</popup>
 </template>
