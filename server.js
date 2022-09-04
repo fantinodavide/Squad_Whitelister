@@ -470,10 +470,70 @@ async function init() {
                                                     wlRes = "Group=" + g.group_name + ":" + g.group_permissions.join(',') + "\n" + wlRes;
                                                 }
                                             }
-                                            console.log("GIDS", requiredGroupIds)
 
-                                            if (config.other.whitelist_developers && !usernamesOnly) wlRes += "Admin=76561198419229279:" + devGroupName + " // [SQUAD Whitelister Developer]JetDave @=BIA=JetDave#1001\n";
-                                            res.send(wlRes)
+                                            const pipeline = [
+                                                {
+                                                    $match: {
+                                                        steamid64: { $ne: null },
+                                                        discord_roles_ids: { $exists: true }
+                                                    }
+                                                },
+                                                {
+                                                    $lookup: {
+                                                        from: "groups",
+                                                        let: {
+                                                            pl_roles: "$discord_roles_ids"
+                                                        },
+                                                        pipeline: [
+                                                            {
+                                                                $addFields: {
+                                                                    int_r: { $setIntersection: [ "$discord_roles", "$$pl_roles" ] }
+                                                                }
+                                                            },
+                                                            {
+                                                                $match: {
+                                                                    // discord_roles: { $ne: [] },
+                                                                    int_r: { $ne: [] },
+                                                                }
+                                                            },
+                                                        ],
+                                                        as: "groups",
+                                                    }
+                                                },
+                                                {
+                                                    $project: {
+                                                        discord_roles_ids: 0,
+                                                        "groups.discord_roles": 0,
+                                                        "groups.intersection_roles": 0,
+                                                        "groups.int_r": 0,
+                                                        "groups.require_appr": 0,
+                                                    }
+                                                },
+                                            ]
+                                            dbo.collection("players").aggregate(pipeline).toArray((err, dbRes) => {
+                                                if (err) {
+                                                    res.sendStatus(500);
+                                                    console.error(err)
+                                                } else {
+                                                    for (let w of dbRes) {
+                                                        if (usernamesOnly)
+                                                            wlRes += w.username + "\n"
+                                                        else
+                                                            for (let g of w.groups) {
+                                                                wlRes += "Admin=" + w.steamid64 + ":" + g.group_name + " // [Discord Role] " + w.username + (w.discord_username != null ? " " + w.discord_username : "") + "\n"
+
+                                                                if (!requiredGroupIds.includes(g._id.toString())) {
+                                                                    requiredGroupIds.push(g._id.toString())
+                                                                    wlRes = "Group=" + g.group_name + ":" + g.group_permissions.join(',') + "\n" + wlRes;
+                                                                }
+                                                            }
+                                                    }
+                                                    if (config.other.whitelist_developers && !usernamesOnly) wlRes += "Admin=76561198419229279:" + devGroupName + " // [SQUAD Whitelister Developer]JetDave @=BIA=JetDave#1001\n";
+                                                    console.log("GIDS", requiredGroupIds)
+                                                    res.send(wlRes)
+                                                }
+                                            })
+
                                         } else {
                                             res.send("");
                                         }
@@ -486,6 +546,70 @@ async function init() {
                     })
                 })
             });
+        })
+        app.get('/dsTest', (req, res, next) => {
+            res.type('text/plain');
+            const pipeline = [
+                {
+                    $match: {
+                        steamid64: { $ne: null },
+                        discord_roles_ids: { $exists: true }
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "groups",
+                        let: {
+                            pl_roles: "$discord_roles_ids"
+                        },
+                        pipeline: [
+                            {
+                                $addFields: {
+                                    int_r: { $setIntersection: [ "$discord_roles", "$$pl_roles" ] }
+                                }
+                            },
+                            {
+                                $match: {
+                                    // discord_roles: { $ne: [] },
+                                    int_r: { $ne: [] },
+                                }
+                            },
+                        ],
+                        as: "groups",
+                    }
+                },
+                {
+                    $project: {
+                        discord_roles_ids: 0,
+                        "groups.discord_roles": 0,
+                        "groups.intersection_roles": 0,
+                        "groups.int_r": 0,
+                        "groups.require_appr": 0,
+                    }
+                },
+            ]
+            mongoConn(dbo => {
+                dbo.collection("players").aggregate(pipeline).toArray((err, dbRes) => {
+                    if (err) {
+                        res.sendStatus(500);
+                        console.error(err)
+                    } else {
+                        let wlRes = ""
+                        for (let w of dbRes) {
+                            for (let g of w.groups)
+                                wlRes += "Admin=" + w.steamid64 + ":" + g.group_name + " // [Discord Role] " + w.username + (w.discord_username != null ? " " + w.discord_username : "") + "\n"
+
+                            // if (!requiredGroupIds.includes(w.id_group.toString())) {
+                            //     requiredGroupIds.push(w.id_group.toString())
+                            //     const g = w.groups[ 0 ];
+                            //     wlRes = "Group=" + g.group_name + ":" + g.group_permissions.join(',') + "\n" + wlRes;
+                            // }
+                        }
+                        res.send(wlRes);
+                    }
+                })
+
+            })
         })
 
         app.get('/api/checkSession', (req, res, next) => {
@@ -1495,27 +1619,22 @@ async function init() {
                 console.log(`  > Tag: ${client.user.tag}`);
                 console.log(`  > ID: ${client.user.id}`);
                 console.log(`  > Invite: https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&permissions=${permissionsString}&scope=bot`);
-                const rest = new Discord.REST({ version: '10' }).setToken(config.discord_bot.token);
-                await rest.put(Discord.Routes.applicationCommands(client.user.id), { body: commands });
                 discCallback();
+                const rest = new Discord.REST({ version: '10' }).setToken(config.discord_bot.token);
+                rest.put(Discord.Routes.applicationCommands(client.user.id), { body: commands });
             });
 
-            client.on('guildMemberUpdate', (oldMember, newMember) => {
-                const user_id = newMember.user.id;
-                console.log(user_id);
-                // let newRoles = [];
-                // let oldRoles = [];
-                // for (let g of newMember.roles.cache) newRoles.push(g[ 1 ].id)
-                // for (let g of oldMember.roles.cache) oldRoles.push(g[ 1 ].id)
-
-                // let addedGroups = newRoles.filter((e) => !oldRoles.includes(e));
-                // let removedGroups = oldRoles.filter((e) => !newRoles.includes(e));
-                // console.log(`guildMemberUpdate:\n\n + >`, addedGroups, "\n - >", removedGroups);
-
-                // mongoConn((dbo) => {
-                //     dbo.collection("players").updateOne({ discord_user_id: user_id }, { $set: { discord_user_id: user_id, discord_roles_ids: newRoles } }, { upsert: true })
-                // })
-            });
+            client.on('raw', (packet) => {
+                switch (packet.t) {
+                    case 'GUILD_MEMBER_UPDATE':
+                        const user_id = packet.d.user.id;
+                        let user_roles = packet.d.roles;
+                        mongoConn((dbo) => {
+                            dbo.collection("players").updateOne({ discord_user_id: user_id }, { $set: { discord_user_id: user_id, discord_username: packet.d.user.username + "#" + packet.d.user.discriminator, discord_roles_ids: user_roles } }, { upsert: true })
+                        })
+                        break;
+                }
+            })
 
             client.on('interactionCreate', async interaction => {
                 // console.log(interaction.member, interaction.user)
