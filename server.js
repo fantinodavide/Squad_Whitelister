@@ -1221,7 +1221,7 @@ async function init() {
             if (subcomponent_status.discord_bot) {
                 const clientServer = discordBot.guilds.cache.find((s) => s.id == config.discord_bot.server_id);
                 let roles = [];
-                for (let r of clientServer.roles.cache) roles.push({ id: r[ 1 ].id, name: r[ 1 ].name })
+                for (let r of clientServer.roles.cache) if (r[ 1 ].name.toLowerCase() !== "@everyone") roles.push({ id: r[ 1 ].id, name: r[ 1 ].name })
                 res.send(roles)
             } else {
                 res.sendStatus(404)

@@ -1,14 +1,18 @@
 <script setup lang="ts">
-	import { assertExpressionStatement } from '@babel/types';
 	import $ from 'jquery';
-	import { render } from 'vue';
 	import popup from './popup.vue';
+	import SelectMultiple from './selectMultiple.vue';
 </script>
 
 <script lang="ts">
 	export default {
 		data() {
-			return {};
+			return {
+				discord_roles: [] as Array<any>,
+				extRet: {
+					discord_roles: [] as Array<any>,
+				},
+			};
 		},
 		props: {
 			add_data: {
@@ -43,16 +47,26 @@
 					},
 				});
 			},
+			getAllDiscordRoles: function () {
+				fetch('/api/discord/read/getRoles')
+					.then((res) => res.json())
+					.then((dt) => {
+						this.discord_roles = dt;
+					});
+			},
 		},
-		components: { popup },
-		created() {},
+		components: { popup, SelectMultiple },
+		created() {
+			this.getAllDiscordRoles();
+		},
 	};
 </script>
 
 <template>
-	<popup ref="popupLogin" title="New List" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick">
+	<popup ref="popupLogin" title="New List" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick" :extRetProp="extRet">
 		<input name="title" type="text" placeholder="Title" />
 		<input name="output_path" type="text" placeholder="Output Path" regex="^[a-zA-Z\d]{2,}$" />
+		<SelectMultiple :elements="discord_roles" oIdKey="id" oTitleKey="name" title="Discord Roles" :preselect="discord_roles" @selectChanged="extRet.discord_roles = $event" />
 		<label>Hidden to managers<input name="hidden_managers" type="checkbox" placeholder="Hidden to managers" /></label>
 		<label>Require Approval<input name="require_appr" type="checkbox" placeholder="Require Approval" /></label>
 	</popup>

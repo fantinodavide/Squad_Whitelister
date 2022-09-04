@@ -47,6 +47,12 @@
 				}
 				this.$emit('selectChanged', [...this.valRet]);
 			},
+			arrIncludesObj: function (arr: any, obj: any) {
+				return arr.find((e: any) => JSON.stringify(e) == JSON.stringify(obj)) != null;
+			},
+		},
+		created() {
+			this.valRet = [...this.preselect];
 		},
 	};
 </script>
@@ -55,10 +61,10 @@
 	<div class="multipleSelectContainer">
 		<div class="multipleSelectHeader">
 			<h4 v-if="title != ''">{{ title }}</h4>
-			<input popupIgnore type="text" v-model="models.searchOption" placeholder="Search" />
+			<input popupIgnore type="text" v-model="models.searchOption" placeholder="Search" v-show="elements.length > 5" />
 		</div>
 		<div class="optionsContainer">
-			<label v-for="elm of elements" :key="elm[oIdKey]" v-show="models.searchOption == '' || elm[oTitleKey].toLowerCase().includes(models.searchOption.toLowerCase())"> <input popupIgnore type="checkbox" :name="elm[oIdKey]" :checked="preselect.includes(elm[oIdKey])" @change="optionSelectChanged" />{{ elm[oTitleKey] }} </label>
+			<label v-for="elm of elements" :key="elm[oIdKey]" v-show="models.searchOption == '' || elm[oTitleKey].toLowerCase().includes(models.searchOption.toLowerCase())"> <input popupIgnore type="checkbox" :name="elm[oIdKey]" :checked="preselect.includes(elm[oIdKey]) || arrIncludesObj(preselect, elm)" @change="optionSelectChanged" />{{ elm[oTitleKey] }} </label>
 		</div>
 	</div>
 </template>
@@ -82,7 +88,7 @@
 	}
 	.multipleSelectHeader {
 		padding: 2px 10px;
-		background: #0002;
+		background: #00000028;
 		display: flex;
 		flex-direction: column;
 	}
