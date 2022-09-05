@@ -12,6 +12,7 @@
 				onHover: false,
 				hoverMenuLeft: 0,
 				expirationTime: '',
+				upd_int: -1 as any,
 			};
 		},
 		props: {
@@ -53,7 +54,7 @@
 					const hours = Math.floor((y - x) / 1000 / 60 / 60);
 					if (hours < 24) {
 						const minutes = Math.floor((y - x) / 1000 / 60 - hours * 60);
-						const secs = Math.floor((y - x) / 1000 - (hours < 1 ? 1 : hours) * minutes * 60);
+						const secs = Math.floor((y - x) / 1000 - hours * 60 * 60 - minutes * 60);
 
 						oHours = (hours < 10 ? '0' : '') + hours;
 						oMin = (minutes < 10 ? '0' : '') + minutes;
@@ -71,13 +72,16 @@
 			},
 			startIntervalExpirTimeouts: function (precision: number = 5) {
 				this.expirationTime = this.getHoursLeft(precision);
-				setInterval(() => {
+				this.upd_int = setInterval(() => {
 					this.expirationTime = this.getHoursLeft(precision);
 				}, precision * 1000);
 			},
 		},
 		created: function () {
 			this.startIntervalExpirTimeouts(1);
+		},
+		unmounted: function () {
+			clearInterval(this.upd_int);
 		},
 	};
 </script>
