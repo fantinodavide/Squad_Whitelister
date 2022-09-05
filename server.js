@@ -1120,12 +1120,17 @@ async function init() {
                                                                     { name: 'Username', value: insWlPlayer.username, inline: true },
                                                                     { name: 'SteamID', value: Discord.hyperlink(insWlPlayer.steamid64, "https://steamcommunity.com/profiles/" + insWlPlayer.steamid64), inline: true },
                                                                     { name: 'Clan', value: aDbResC[ 0 ].full_name },
-                                                                    { name: 'Group', value: dbResG.group_name },
-                                                                    { name: 'Manager', value: req.userSession.username },
-                                                                    { name: 'List', value: dbResList.title },
-                                                                    { name: 'Approval', value: insWlPlayer.approved ? `:white_check_mark: Approved` : ":hourglass: Pending", inline: true },
+                                                                    { name: 'Group', value: dbResG.group_name, inline: true },
                                                                 )
                                                         ]
+                                                        if (insWlPlayer.expiration) {
+                                                            embeds[ 0 ].addFields({ name: 'Expiration', value: Discord.time(insWlPlayer.expiration, 'R'), inline: true })
+                                                        }
+                                                        embeds[ 0 ].addFields(
+                                                            { name: 'Manager', value: req.userSession.username },
+                                                            { name: 'List', value: dbResList.title },
+                                                            { name: 'Approval', value: insWlPlayer.approved ? `:white_check_mark: Approved` : ":hourglass: Pending", inline: true },
+                                                        )
                                                         discordBot.channels.cache.get(config.discord_bot.whitelist_updates_channel_id).send({ embeds: embeds, components: components })
 
                                                         function formatEmbed(title, value) {

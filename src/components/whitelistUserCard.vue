@@ -51,19 +51,23 @@
 				const x: any = new Date();
 				if (y - x > 0) {
 					const hours = Math.floor((y - x) / 1000 / 60 / 60);
-					const minutes = Math.floor((y - x) / 1000 / 60 - hours * 60);
-					const secs = Math.floor((y - x) / 1000 - (hours < 1 ? 1 : hours) * minutes * 60);
+					if (hours < 24) {
+						const minutes = Math.floor((y - x) / 1000 / 60 - hours * 60);
+						const secs = Math.floor((y - x) / 1000 - (hours < 1 ? 1 : hours) * minutes * 60);
 
-					oHours = (hours < 10 ? '0' : '') + hours;
-					oMin = (minutes < 10 ? '0' : '') + minutes;
-					oSec = (secs < 10 ? '0' : '') + secs;
-					if (hours < 0) oHours = '00';
-					if (minutes < 0) oMin = '00';
-					if (secs < 0) oSec = '00';
-					console.log('Expiration', this.wl_data.username, this.wl_data.expiration, hours, minutes, secs, oHours, oMin, oSec);
+						oHours = (hours < 10 ? '0' : '') + hours;
+						oMin = (minutes < 10 ? '0' : '') + minutes;
+						oSec = (secs < 10 ? '0' : '') + secs;
+						if (hours < 0) oHours = '00';
+						if (minutes < 0) oMin = '00';
+						if (secs < 0) oSec = '00';
+						console.log('Expiration', this.wl_data.username, this.wl_data.expiration, hours, minutes, secs, oHours, oMin, oSec);
+						return oHours + ':' + oMin + ':' + oSec;
+					} else {
+						return Math.round(hours / 24) + ' days';
+					}
 				}
-
-				return oHours + ':' + oMin + ':' + oSec;
+				return '';
 			},
 			startIntervalExpirTimeouts: function (precision: number = 5) {
 				this.expirationTime = this.getHoursLeft(precision);
