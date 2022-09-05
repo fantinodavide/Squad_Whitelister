@@ -480,6 +480,32 @@ async function init() {
                                                 },
                                                 {
                                                     $lookup: {
+                                                        from: "lists",
+                                                        let: {
+                                                            pl_roles: "$discord_roles_ids"
+                                                        },
+                                                        pipeline: [
+                                                            {
+                                                                $match: {
+                                                                    output_path: req.params.basePath
+                                                                }
+                                                            },
+                                                            {
+                                                                $addFields: {
+                                                                    int_r: { $setIntersection: [ "$discord_roles", "$$pl_roles" ] }
+                                                                }
+                                                            },
+                                                            {
+                                                                $match: {
+                                                                    int_r: { $ne: [] },
+                                                                }
+                                                            },
+                                                        ],
+                                                        as: "lists",
+                                                    }
+                                                },
+                                                {
+                                                    $lookup: {
                                                         from: "groups",
                                                         let: {
                                                             pl_roles: "$discord_roles_ids"
@@ -509,12 +535,18 @@ async function init() {
                                                         "groups.require_appr": 0,
                                                     }
                                                 },
+                                                {
+                                                    $match: {
+                                                        lists: { $ne: [] }
+                                                    }
+                                                }
                                             ]
                                             dbo.collection("players").aggregate(pipeline).toArray((err, dbRes) => {
                                                 if (err) {
                                                     res.sendStatus(500);
                                                     console.error(err)
                                                 } else {
+                                                    console.log(dbRes);
                                                     for (let w of dbRes) {
                                                         if (usernamesOnly)
                                                             wlRes += w.username + "\n"
@@ -760,7 +792,8 @@ async function init() {
                     title: parm.title,
                     output_path: parm.output_path,
                     hidden_managers: parm.hidden_managers,
-                    require_appr: parm.require_appr
+                    require_appr: parm.require_appr,
+                    discord_roles: parm.discord_roles
                 }
                 dbo.collection("lists").insertOne(insData, (err, dbRes) => {
                     if (err) serverError(res, err);
@@ -790,7 +823,14 @@ async function init() {
         app.post('/api/lists/write/editList', (req, res, next) => {
             const parm = req.body;
             mongoConn((dbo) => {
-                dbo.collection("lists").updateOne({ _id: ObjectID(parm.sel_list_id) }, { $set: { title: parm.title, output_path: parm.output_path, hidden_managers: parm.hidden_managers, require_appr: parm.require_appr } }, (err, dbRes) => {
+                const insData = {
+                    title: parm.title,
+                    output_path: parm.output_path,
+                    hidden_managers: parm.hidden_managers,
+                    require_appr: parm.require_appr,
+                    discord_roles: parm.discord_roles
+                }
+                dbo.collection("lists").updateOne({ _id: ObjectID(parm.sel_list_id) }, { $set: insData }, (err, dbRes) => {
                     if (err) serverError(res, err);
                     else {
                         res.send({ status: "edited_list", ...dbRes })
@@ -1053,43 +1093,44 @@ async function init() {
                                                 else {
                                                     res.send({ status: "inserted_new_player", player: { ...insWlPlayer, inserted_by: [ { username: req.userSession.username } ] }, ...dbRes })
                                                     // 982449246999547995
+                                                    if (subcomponent_status.discord_bot) {
+                                                        let row, components = [];
+                                                        if (!insWlPlayer.approved) {
+                                                            row = new Discord.ActionRowBuilder()
+                                                                .addComponents(
+                                                                    new Discord.ButtonBuilder()
+                                                                        .setCustomId('approval:approve:' + insWlPlayer._id)
+                                                                        .setLabel('Approve')
+                                                                        .setStyle(Discord.ButtonStyle.Success),
+                                                                    new Discord.ButtonBuilder()
+                                                                        .setCustomId('approval:reject:' + insWlPlayer._id)
+                                                                        .setLabel('Reject')
+                                                                        .setStyle(Discord.ButtonStyle.Danger),
+                                                                )
+                                                            components.push(row);
+                                                        } else row = {};
 
-                                                    let row, components = [];
-                                                    if (!insWlPlayer.approved) {
-                                                        row = new Discord.ActionRowBuilder()
-                                                            .addComponents(
-                                                                new Discord.ButtonBuilder()
-                                                                    .setCustomId('approval:approve:' + insWlPlayer._id)
-                                                                    .setLabel('Approve')
-                                                                    .setStyle(Discord.ButtonStyle.Success),
-                                                                new Discord.ButtonBuilder()
-                                                                    .setCustomId('approval:reject:' + insWlPlayer._id)
-                                                                    .setLabel('Reject')
-                                                                    .setStyle(Discord.ButtonStyle.Danger),
-                                                            )
-                                                        components.push(row);
-                                                    } else row = {};
 
+                                                        const embeds = [
+                                                            new Discord.EmbedBuilder()
+                                                                .setColor(config.app_personalization.accent_color)
+                                                                .setTitle('Whitelist Update')
+                                                                // .setDescription(formatEmbed("Manager", ) + formatEmbed("List", dbResList.title)),
+                                                                .addFields(
+                                                                    { name: 'Username', value: insWlPlayer.username, inline: true },
+                                                                    { name: 'SteamID', value: Discord.hyperlink(insWlPlayer.steamid64, "https://steamcommunity.com/profiles/" + insWlPlayer.steamid64), inline: true },
+                                                                    { name: 'Clan', value: aDbResC[ 0 ].full_name },
+                                                                    { name: 'Group', value: dbResG.group_name },
+                                                                    { name: 'Manager', value: req.userSession.username },
+                                                                    { name: 'List', value: dbResList.title },
+                                                                    { name: 'Approval', value: insWlPlayer.approved ? `:white_check_mark: Approved` : ":hourglass: Pending", inline: true },
+                                                                )
+                                                        ]
+                                                        discordBot.channels.cache.get(config.discord_bot.whitelist_updates_channel_id).send({ embeds: embeds, components: components })
 
-                                                    const embeds = [
-                                                        new Discord.EmbedBuilder()
-                                                            .setColor(config.app_personalization.accent_color)
-                                                            .setTitle('Whitelist Update')
-                                                            // .setDescription(formatEmbed("Manager", ) + formatEmbed("List", dbResList.title)),
-                                                            .addFields(
-                                                                { name: 'Username', value: insWlPlayer.username, inline: true },
-                                                                { name: 'SteamID', value: Discord.hyperlink(insWlPlayer.steamid64, "https://steamcommunity.com/profiles/" + insWlPlayer.steamid64), inline: true },
-                                                                { name: 'Clan', value: aDbResC[ 0 ].full_name },
-                                                                { name: 'Group', value: dbResG.group_name },
-                                                                { name: 'Manager', value: req.userSession.username },
-                                                                { name: 'List', value: dbResList.title },
-                                                                { name: 'Approval', value: insWlPlayer.approved ? `:white_check_mark: Approved` : ":hourglass: Pending", inline: true },
-                                                            )
-                                                    ]
-                                                    discordBot.channels.cache.get(config.discord_bot.whitelist_updates_channel_id).send({ embeds: embeds, components: components })
-
-                                                    function formatEmbed(title, value) {
-                                                        return Discord.bold(title) + "\n" + Discord.inlineCode(value) + "\n"
+                                                        function formatEmbed(title, value) {
+                                                            return Discord.bold(title) + "\n" + Discord.inlineCode(value) + "\n"
+                                                        }
                                                     }
                                                 }
                                             })
@@ -1613,8 +1654,8 @@ async function init() {
                 clearTimeout(tm);
                 subcomponent_status.discord_bot = true;
                 discordBot = new Proxy(client, {});
-                // const permissionsString = "1099780151360";
-                const permissionsString = "8";
+                const permissionsString = "1099780151360";
+                // const permissionsString = "8";
                 console.log(` > Logged-in!`);
                 console.log(`  > Tag: ${client.user.tag}`);
                 console.log(`  > ID: ${client.user.id}`);
@@ -1899,6 +1940,15 @@ async function init() {
                     squadjs.initDone = true;
                     cb();
                 }
+                // setTimeout(() => {
+                //     socket.disconnect();
+                // },5000)
+                subcomponent_status.squadjs = true;
+            });
+            socket.on("disconnect", async () => {
+                console.log("SquadJS WebSocket\n > Disconnected\n > Trying to reconnect")
+                socket.connect();
+                subcomponent_status.squadjs = false;
             });
             socket.on("PLAYER_CONNECTED", async (dt) => {
                 //     console.log("Player connected: ", dt)
@@ -1929,27 +1979,35 @@ async function init() {
                                 dbo.collection("players").findOne({ steamid64: dt.player.steamID }, async (err, dbResP) => {
                                     if (err) serverError(null, err);
                                     else {
-                                        let discordUsername = "";
-                                        if (dbResP && dbResP.discord_user_id && dbResP.discord_user_id != "") {
-                                            const discordUser = await discordBot.users.fetch(dbResP.discord_user_id);
-                                            discordUsername = discordUser.username + "#" + discordUser.discriminator;
-                                        }
-
                                         let msg = "Welcome " + dt.player.name + "\n\n";
-                                        if (dbRes[ 0 ] && dbRes[ 0 ].group_full_data[ 0 ]) {
-                                            msg +=
-                                                "Group: " + dbRes[ 0 ].group_full_data[ 0 ].group_name + "\n" +
-                                                "Expiration: " + (dbRes[ 0 ].expiration ? ((dbRes[ 0 ].expiration - new Date()) / 1000 / 60 / 60).toFixed(1) + " h" : "Never") + "\n"
-                                        }
-                                        msg += "Discord Username: " + (discordUsername != "" ? discordUsername : "Not linked")
 
-                                        socket.emit("rcon.warn", dt.player.steamID, msg, (d) => { })
+                                        if (subcomponent_status.squadjs) {
+                                            if (dbRes[ 0 ] && dbRes[ 0 ].group_full_data[ 0 ]) {
+                                                msg +=
+                                                    "Group: " + dbRes[ 0 ].group_full_data[ 0 ].group_name + "\n" +
+                                                    "Expiration: " + (dbRes[ 0 ].expiration ? ((dbRes[ 0 ].expiration - new Date()) / 1000 / 60 / 60).toFixed(1) + " h" : "Never") + "\n"
+                                            }
+                                        }
+                                        if (subcomponent_status.discord_bot) {
+                                            let discordUsername = "";
+                                            if (dbResP && dbResP.discord_user_id && dbResP.discord_user_id != "") {
+                                                const discordUser = await discordBot.users.fetch(dbResP.discord_user_id);
+                                                discordUsername = discordUser.username + "#" + discordUser.discriminator;
+                                            }
+
+                                            msg += "Discord Username: " + (discordUsername != "" ? discordUsername : "Not linked")
+                                        }
+
+
+                                        if (subcomponent_status.squadjs) {
+                                            socket.emit("rcon.warn", dt.player.steamID, msg, (d) => { })
+                                        }
                                     }
                                 })
                             }
                         })
                     })
-                }, 5000)
+                }, 10000)
             })
             // socket.on("PLAYER_DISCONNECTED", async (dt) => {
             //     console.log("Player disconnected: ", dt)
@@ -2125,7 +2183,8 @@ async function init() {
             title: "Main",
             output_path: "wl",
             hidden_managers: false,
-            require_appr: false
+            require_appr: false,
+            discord_roles: []
         }
 
         mongoConn((dbo) => {

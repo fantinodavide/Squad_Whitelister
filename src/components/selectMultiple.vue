@@ -7,6 +7,7 @@
 				models: {
 					searchOption: '',
 				},
+				optRefs: [] as Array<any>,
 				valRet: [] as Array<string>,
 			};
 		},
@@ -52,7 +53,19 @@
 			},
 		},
 		created() {
-			this.valRet = [...this.preselect];
+			if (typeof this.preselect[0] === 'object')
+				for (let e of this.preselect)
+					if (!this.preselect.includes(e[this.oIdKey])) this.valRet.push(e[this.oIdKey]);
+					else this.valRet = this.preselect;
+			this.$emit('selectChanged', [...this.valRet]);
+		},
+		updated() {
+			if (typeof this.preselect[0] === 'object')
+				for (let e of this.preselect)
+					if (!this.preselect.includes(e[this.oIdKey])) this.valRet.push(e[this.oIdKey]);
+					else this.valRet = this.preselect;
+			this.$emit('selectChanged', [...this.valRet]);
+			this.log('updated', this.preselect);
 		},
 	};
 </script>
@@ -64,7 +77,7 @@
 			<input popupIgnore type="text" v-model="models.searchOption" placeholder="Search" v-show="elements.length > 5" />
 		</div>
 		<div class="optionsContainer">
-			<label v-for="elm of elements" :key="elm[oIdKey]" v-show="models.searchOption == '' || elm[oTitleKey].toLowerCase().includes(models.searchOption.toLowerCase())"> <input popupIgnore type="checkbox" :name="elm[oIdKey]" :checked="preselect.includes(elm[oIdKey]) || arrIncludesObj(preselect, elm)" @change="optionSelectChanged" />{{ elm[oTitleKey] }} </label>
+			<label v-for="elm of elements" :key="elm[oIdKey]" v-show="models.searchOption == '' || elm[oTitleKey].toLowerCase().includes(models.searchOption.toLowerCase())"> <input popupIgnore :ref="(r) => optRefs.push(r)" type="checkbox" :name="elm[oIdKey]" :checked="preselect.includes(elm[oIdKey]) || arrIncludesObj(preselect, elm)" @change="optionSelectChanged" />{{ elm[oTitleKey] }} </label>
 		</div>
 	</div>
 </template>
