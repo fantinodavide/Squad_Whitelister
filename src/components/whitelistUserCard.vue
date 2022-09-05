@@ -52,7 +52,7 @@
 				if (y - x > 0) {
 					const hours = Math.floor((y - x) / 1000 / 60 / 60);
 					const minutes = Math.floor((y - x) / 1000 / 60 - hours * 60);
-					const secs = Math.floor((y - x) / 1000) - hours * (minutes < 1 ? 1 : minutes) * 60;
+					const secs = Math.floor((y - x) / 1000 - (hours < 1 ? 1 : hours) * minutes * 60);
 
 					oHours = (hours < 10 ? '0' : '') + hours;
 					oMin = (minutes < 10 ? '0' : '') + minutes;
