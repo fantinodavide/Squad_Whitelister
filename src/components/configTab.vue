@@ -111,6 +111,7 @@
 			<label>
 				Discord Server
 				<select @change="(e:any) => (currentConfigMenu.server_id = e.target.value)">
+					<option value="" hidden selected>Select a server</option>
 					<option :key="s.id" v-for="s of discord_servers" :value="s.id" :selected="s.id == currentConfigMenu.server_id">
 						{{ s.name }}
 					</option>

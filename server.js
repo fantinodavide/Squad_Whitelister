@@ -762,7 +762,7 @@ async function init() {
             fs.writeFileSync("conf.json.bak", fs.readFileSync('conf.json'));
             fs.writeFileSync("conf.json", JSON.stringify(config, null, "\t"));
             let resData = { status: "config_updated" }
-            if ([ 'app_personalization' ].includes(parm.category)) resData.action = 'reload';
+            if ([ 'app_personalization', 'discord_bot' ].includes(parm.category)) resData.action = 'reload';
 
             res.send(resData);
 
@@ -1659,15 +1659,20 @@ async function init() {
                 clearTimeout(tm);
                 subcomponent_status.discord_bot = true;
                 discordBot = new Proxy(client, {});
-                const permissionsString = "1099780151360";
+                // const permissionsString = "1099780151360";
+                const permissionsString = "268564544";
                 // const permissionsString = "8";
                 console.log(` > Logged-in!`);
                 console.log(`  > Tag: ${client.user.tag}`);
                 console.log(`  > ID: ${client.user.id}`);
-                console.log(`  > Invite: https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&permissions=${permissionsString}&scope=bot`);
+                console.log(`  > Invite: https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&permissions=${permissionsString}&scope=bot%20applications.commands`);
                 discCallback();
                 const rest = new Discord.REST({ version: '10' }).setToken(config.discord_bot.token);
                 rest.put(Discord.Routes.applicationCommands(client.user.id), { body: commands });
+
+                let discordBotServers = [];
+                for (let g of client.guilds.cache) discordBotServers.push({ id: g[ 1 ].id, name: g[ 1 ].name })
+                if (config.discord_bot.server_id == "") config.discord_bot.server_id = discordBotServers[ 0 ].id;
             });
 
             client.on('raw', (packet) => {
@@ -1962,57 +1967,59 @@ async function init() {
                 //         console.log(d)
                 //     })
                 // }
-                mongoConn(async (dbo) => {
-                    dbo.collection("players").updateOne({ steamid64: dt.player.steamID }, { $set: { steamid64: dt.player.steamID, username: dt.player.name } }, { upsert: true })
-                })
-                setTimeout(() => {
-                    mongoConn((dbo) => {
-                        const pipeline = [
-                            { $match: { steamid64: dt.player.steamID } },
-                            {
-                                $lookup: {
-                                    from: "groups",
-                                    localField: "id_group",
-                                    foreignField: "_id",
-                                    as: "group_full_data"
-                                }
-                            }
-                        ]
-                        dbo.collection("whitelists").aggregate(pipeline).toArray(async (err, dbRes) => {
-                            if (err) serverError(null, err);
-                            else {
-                                dbo.collection("players").findOne({ steamid64: dt.player.steamID }, async (err, dbResP) => {
-                                    if (err) serverError(null, err);
-                                    else {
-                                        let msg = "Welcome " + dt.player.name + "\n\n";
-
-                                        if (subcomponent_status.squadjs) {
-                                            if (dbRes[ 0 ] && dbRes[ 0 ].group_full_data[ 0 ]) {
-                                                msg +=
-                                                    "Group: " + dbRes[ 0 ].group_full_data[ 0 ].group_name + "\n" +
-                                                    "Expiration: " + (dbRes[ 0 ].expiration ? ((dbRes[ 0 ].expiration - new Date()) / 1000 / 60 / 60).toFixed(1) + " h" : "Never") + "\n"
-                                            }
-                                        }
-                                        if (subcomponent_status.discord_bot) {
-                                            let discordUsername = "";
-                                            if (dbResP && dbResP.discord_user_id && dbResP.discord_user_id != "") {
-                                                const discordUser = await discordBot.users.fetch(dbResP.discord_user_id);
-                                                discordUsername = discordUser.username + "#" + discordUser.discriminator;
-                                            }
-
-                                            msg += "Discord Username: " + (discordUsername != "" ? discordUsername : "Not linked")
-                                        }
-
-
-                                        if (subcomponent_status.squadjs) {
-                                            socket.emit("rcon.warn", dt.player.steamID, msg, (d) => { })
-                                        }
-                                    }
-                                })
-                            }
-                        })
+                if (dt.player.steamID) {
+                    mongoConn(async (dbo) => {
+                        dbo.collection("players").updateOne({ steamid64: dt.player.steamID }, { $set: { steamid64: dt.player.steamID, username: dt.player.name } }, { upsert: true })
                     })
-                }, 10000)
+                    setTimeout(() => {
+                        mongoConn((dbo) => {
+                            const pipeline = [
+                                { $match: { steamid64: dt.player.steamID } },
+                                {
+                                    $lookup: {
+                                        from: "groups",
+                                        localField: "id_group",
+                                        foreignField: "_id",
+                                        as: "group_full_data"
+                                    }
+                                }
+                            ]
+                            dbo.collection("whitelists").aggregate(pipeline).toArray(async (err, dbRes) => {
+                                if (err) serverError(null, err);
+                                else {
+                                    dbo.collection("players").findOne({ steamid64: dt.player.steamID }, async (err, dbResP) => {
+                                        if (err) serverError(null, err);
+                                        else {
+                                            let msg = "Welcome " + dt.player.name + "\n\n";
+
+                                            if (subcomponent_status.squadjs) {
+                                                if (dbRes[ 0 ] && dbRes[ 0 ].group_full_data[ 0 ]) {
+                                                    msg +=
+                                                        "Group: " + dbRes[ 0 ].group_full_data[ 0 ].group_name + "\n" +
+                                                        "Expiration: " + (dbRes[ 0 ].expiration ? ((dbRes[ 0 ].expiration - new Date()) / 1000 / 60 / 60).toFixed(1) + " h" : "Never") + "\n"
+                                                }
+                                            }
+                                            if (subcomponent_status.discord_bot) {
+                                                let discordUsername = "";
+                                                if (dbResP && dbResP.discord_user_id && dbResP.discord_user_id != "") {
+                                                    const discordUser = await discordBot.users.fetch(dbResP.discord_user_id);
+                                                    discordUsername = discordUser.username + "#" + discordUser.discriminator;
+                                                }
+
+                                                msg += "Discord Username: " + (discordUsername != "" ? discordUsername : "Not linked")
+                                            }
+
+
+                                            if (subcomponent_status.squadjs) {
+                                                socket.emit("rcon.warn", dt.player.steamID, msg, (d) => { })
+                                            }
+                                        }
+                                    })
+                                }
+                            })
+                        })
+                    }, 10000)
+                }
             })
             // socket.on("PLAYER_DISCONNECTED", async (dt) => {
             //     console.log("Player disconnected: ", dt)
