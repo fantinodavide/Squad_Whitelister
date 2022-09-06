@@ -100,6 +100,14 @@ async function init() {
         discord_bot: false,
         squadjs: false
     }
+    var subcomponent_data = {
+        discord_bot: {
+            invite_link: ""
+        },
+        squadjs: {
+
+        }
+    }
 
     start();
 
@@ -1294,6 +1302,9 @@ async function init() {
                 res.sendStatus(404)
             }
         })
+        app.get('/api/discord/read/inviteLink', async (req, res, next) => {
+            res.send({ url: subcomponent_data.discord_bot.invite_link });
+        })
 
         app.use('/api/clans*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next() })
         app.get('/api/clans/getAllClans', (req, res, next) => {
@@ -1662,10 +1673,11 @@ async function init() {
                 // const permissionsString = "1099780151360";
                 const permissionsString = "268564544";
                 // const permissionsString = "8";
+                subcomponent_data.discord_bot.invite_link = `https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&permissions=${permissionsString}&scope=bot%20applications.commands`;
                 console.log(` > Logged-in!`);
                 console.log(`  > Tag: ${client.user.tag}`);
                 console.log(`  > ID: ${client.user.id}`);
-                console.log(`  > Invite: https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&permissions=${permissionsString}&scope=bot%20applications.commands`);
+                console.log(`  > Invite: ${subcomponent_data.discord_bot.invite_link}`);
                 discCallback();
                 const rest = new Discord.REST({ version: '10' }).setToken(config.discord_bot.token);
                 rest.put(Discord.Routes.applicationCommands(client.user.id), { body: commands });

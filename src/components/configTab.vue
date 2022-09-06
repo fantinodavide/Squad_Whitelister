@@ -17,6 +17,7 @@
 				config_tr: {} as any,
 				discord_servers: [] as Array<any>,
 				discord_channels: [] as Array<any>,
+				discord_invite_link: '' as string,
 			};
 		},
 		methods: {
@@ -88,10 +89,22 @@
 						this.discord_channels = dt;
 					});
 			},
+			getDiscordInviteLink: function () {
+				fetch('/api/discord/read/inviteLink')
+					.then((res) => res.json())
+					.then((dt) => {
+						console.log(dt);
+						this.discord_invite_link = dt.url;
+					});
+			},
+			openNewTab: function (url: string) {
+				window.open(url, '_blank');
+			},
 		},
 		created() {
 			this.getDiscordServers();
 			this.getDiscordChannels();
+			this.getDiscordInviteLink();
 		},
 		components: { SideMenu, tab, confLabelInput },
 	};
@@ -126,7 +139,8 @@
 				</select>
 			</label>
 			<!-- {{ JSON.stringify(currentConfigMenu) }} -->
-			<button style="float: right; width: 100px" @click="$emit('confirm', { title: 'Save server configuration?', text: 'Are you sure you want to change the server configuration? Bad configuration may result into multiple failures or temporary data loss.', callback: sendConfigToServer })">Save</button>
+			<button style="float: right; padding-left: 30px; padding-right: 30px" @click="$emit('confirm', { title: 'Save server configuration?', text: 'Are you sure you want to change the server configuration? Bad configuration may result into multiple failures or temporary data loss.', callback: sendConfigToServer })">Save</button>
+			<button @click="openNewTab(discord_invite_link)" style="background: #5865f2; color: #fff; float: right; padding-left: 30px; padding-right: 30px">Invite to Server</button>
 		</div>
 	</tab>
 </template>
