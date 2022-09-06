@@ -140,7 +140,7 @@
 			</label>
 			<!-- {{ JSON.stringify(currentConfigMenu) }} -->
 			<button style="float: right; padding-left: 30px; padding-right: 30px" @click="$emit('confirm', { title: 'Save server configuration?', text: 'Are you sure you want to change the server configuration? Bad configuration may result into multiple failures or temporary data loss.', callback: sendConfigToServer })">Save</button>
-			<button @click="openNewTab(discord_invite_link)" style="background: #5865f2; color: #fff; float: right; padding-left: 30px; padding-right: 30px">Invite to Server</button>
+			<button v-if="discord_invite_link != ''" @click="openNewTab(discord_invite_link)" style="background: #5865f2; color: #fff; float: right; padding-left: 30px; padding-right: 30px">Invite to Server</button>
 		</div>
 	</tab>
 </template>
