@@ -20,7 +20,7 @@
 - Insert `certificate.crt` in the **certificates** folder
 
 #### If you are NOT using a Process Manager *(ex. PM2)*
-Add run argument `--self-pm` to automatically restart after an update
+Add run argument `--self-pm` to automatically restart after an update or crash
 
 #### Linking to the *RemoteAdminListHosts.cfg*
 - Full output is found at path **/wl** (*ex. https://example.ex/wl*)
