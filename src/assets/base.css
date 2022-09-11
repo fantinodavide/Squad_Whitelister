@@ -117,6 +117,11 @@ button {
 	cursor: pointer;
 }
 
+button[disabled] {
+	opacity: 0.7;
+	cursor: auto;
+}
+
 input,
 select,
 textarea {
@@ -143,7 +148,8 @@ select:disabled {
 	appearance: none;
 }
 
-.tab select, .tab input {
+.tab select,
+.tab input {
 	height: 40px;
 	border-radius: 10px;
 	margin: 0;
@@ -178,7 +184,7 @@ footer img {
 	margin-right: 10px;
 }
 
-footer .copyright{
+footer .copyright {
 	color: #aaa;
 	margin: 10px;
 }
@@ -275,18 +281,21 @@ label {
 .tag.redTrans {
 	opacity: 0.6;
 }
-.tag img{
-    height: 20px;
-    margin-right: 5px;
+
+.tag img {
+	height: 20px;
+	margin-right: 5px;
 }
 
 .overflow {
 	overflow: auto;
 }
+
 .overflow.y {
 	overflow: hidden;
 	overflow-y: auto;
 }
+
 .overflow.x {
 	overflow: hidden;
 	overflow-x: auto;
@@ -306,18 +315,19 @@ label {
 	overflow: auto;
 }
 
-button.redBG{
+button.redBG {
 	background: #c33;
 	color: #eee;
 }
-button.round{
+
+button.round {
 	height: 35px;
 	width: 35px;
 	padding: 5px;
 	flex-shrink: 0;
 }
 
-.grayout{
-    color: #666;
-	
+.grayout {
+	color: #666;
+
 }
