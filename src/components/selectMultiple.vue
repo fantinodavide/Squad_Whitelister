@@ -53,18 +53,16 @@
 			},
 		},
 		created() {
-			if (typeof this.preselect[0] === 'object')
-				for (let e of this.preselect)
-					if (!this.preselect.includes(e[this.oIdKey])) this.valRet.push(e[this.oIdKey]);
-					else this.valRet = this.preselect;
+			if (typeof this.preselect[0] === 'object') {
+				for (let e of this.preselect) if (!this.preselect.includes(e[this.oIdKey])) this.valRet.push(e[this.oIdKey]);
+			} else this.valRet = this.preselect;
 
 			this.$emit('selectChanged', [...this.valRet]);
 		},
 		updated() {
-			if (typeof this.preselect[0] === 'object')
-				for (let e of this.preselect)
-					if (!this.preselect.includes(e[this.oIdKey])) this.valRet.push(e[this.oIdKey]);
-					else this.valRet = this.preselect;
+			if (typeof this.preselect[0] === 'object') {
+				for (let e of this.preselect) if (!this.preselect.includes(e[this.oIdKey])) this.valRet.push(e[this.oIdKey]);
+			} else this.valRet = this.preselect;
 			this.$emit('selectChanged', [...this.valRet]);
 			this.log('updated', this.preselect);
 		},
