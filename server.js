@@ -1654,7 +1654,7 @@ async function init() {
                     options: [
                         {
                             name: "user",
-                            description: "Get info of a user",
+                            description: "Leave empty to get info of yourself, or fill to get info of a specific user",
                             type: 6,
                             required: false
                         }
@@ -1773,14 +1773,15 @@ async function init() {
                                 let publicMessage = interaction.options.getUser('user') != null;
                                 let requestedProfile = publicMessage ? interaction.options.getUser('user') : sender
 
-                                dbo.collection("players").findOne({ discord_user_id: (publicMessage ? requestedProfile.id : sender_id) }, (err, dbRes) => {
+                                dbo.collection("players").findOne({ discord_user_id: (publicMessage ? requestedProfile.id : sender_id) }, async (err, dbRes) => {
                                     if (err) serverError(null, err);
                                     else {
+                                        console.log(dbRes);
                                         let fields = [
-                                            { name: "Steam " + (dbRes ? "Username " : ""), value: (dbRes ? dbRes.username : "*Not linked*"), inline: true },
+                                            { name: "Steam " + ((dbRes && dbRes.steamid64) ? "Username " : ""), value: ((dbRes && dbRes.steamid64) ? dbRes.username : "*Not linked*"), inline: true },
                                         ]
-                                        if (dbRes) fields.push({ name: 'SteamID', value: Discord.hyperlink(dbRes.steamid64, "https://steamcommunity.com/profiles/" + dbRes.steamid64), inline: true })
-                                        interaction.reply({
+                                        if (dbRes && dbRes.steamid64) fields.push({ name: 'SteamID', value: Discord.hyperlink(dbRes.steamid64, "https://steamcommunity.com/profiles/" + dbRes.steamid64), inline: true })
+                                        let reply = await interaction.reply({
                                             content: Discord.userMention(requestedProfile.id),
                                             embeds: [
                                                 new Discord.EmbedBuilder()
@@ -1791,10 +1792,10 @@ async function init() {
                                                     // .setDescription(Discord.userMention(requestedProfile.id))
                                                     .addFields(...fields)
                                             ],
-                                            components: publicMessage ? [] : [
+                                            components: (false && publicMessage) ? [] : [
                                                 new Discord.ActionRowBuilder()
                                                     .addComponents(
-                                                        (dbRes ?
+                                                        ((dbRes && dbRes.steamid64) ?
                                                             new Discord.ButtonBuilder()
                                                                 .setCustomId('profilelink:steam:unlink')
                                                                 .setLabel('Unlink Steam')
@@ -1808,6 +1809,13 @@ async function init() {
                                             ],
                                             ephemeral: !publicMessage
                                         });
+                                        if (!reply.interaction.ephemeral) {
+                                            setTimeout(async () => {
+                                                const sentReply = await reply.interaction.webhook.fetchMessage();
+                                                // console.log(sentReply);
+                                                sentReply.edit({ components: [] })
+                                            }, 30 * 1000)
+                                        }
                                     }
                                 })
 
@@ -1833,99 +1841,111 @@ async function init() {
                             interaction.message.edit({ embeds: [ emb ] })
                             break;
                         case 'profilelink':
-                            switch (idsplit[ 1 ]) {
-                                case 'steam':
-                                    switch (idsplit[ 2 ]) {
-                                        case 'link':
-                                            let error;
-                                            do {
-                                                let linkingCode = randomString(6);
-                                                error = false;
-                                                const expiratioDelay = 5 * 60 * 1000;
-                                                const codeExpiration = (new Date(Date.now() + expiratioDelay));
-                                                mongoConn((dbo) => {
-                                                    dbo.collection("profilesLinking").deleteOne({ discordUserId: sender_id }, (err, dbRes) => {
-                                                        dbo.collection("profilesLinking").findOne({ code: linkingCode }, (err, dbRes) => {
-                                                            if (err) {
-                                                                res.sendStatus(500);
-                                                                console.error(err)
-                                                            }
-                                                            else if (dbRes == null) {
-                                                                dbo.collection("profilesLinking").insertOne({ source: "Discord", discordUserId: sender_id, code: linkingCode, expiration: codeExpiration }, (err, dbRes) => {
-                                                                    if (err) {
-                                                                        res.sendStatus(500);
-                                                                        console.error(err)
-                                                                    }
-                                                                    else {
-                                                                        interaction.reply({
-                                                                            embeds: [
-                                                                                new Discord.EmbedBuilder()
-                                                                                    .setColor(config.app_personalization.accent_color)
-                                                                                    .setTitle("Link Steam Profile")
-                                                                                    .setDescription("Join our Squad server and send in any chat the following code")
-                                                                                    .addFields(
-                                                                                        { name: "Linking Code", value: linkingCode, inline: false },
-                                                                                        { name: "Expiration", value: Discord.time(codeExpiration, 'R'), inline: false },
-                                                                                    )
-                                                                            ],
-                                                                            ephemeral: true
-                                                                        });
+                            if (interaction.message.mentions.users.find(m => m.id == sender_id)) {
+                                switch (idsplit[ 1 ]) {
+                                    case 'steam':
+                                        switch (idsplit[ 2 ]) {
+                                            case 'link':
+                                                let error;
+                                                do {
+                                                    let linkingCode = randomString(6);
+                                                    error = false;
+                                                    const expiratioDelay = 5 * 60 * 1000;
+                                                    const codeExpiration = (new Date(Date.now() + expiratioDelay));
+                                                    mongoConn((dbo) => {
+                                                        dbo.collection("profilesLinking").deleteOne({ discordUserId: sender_id }, (err, dbRes) => {
+                                                            dbo.collection("profilesLinking").findOne({ code: linkingCode }, (err, dbRes) => {
+                                                                if (err) {
+                                                                    res.sendStatus(500);
+                                                                    console.error(err)
+                                                                }
+                                                                else if (dbRes == null) {
+                                                                    dbo.collection("profilesLinking").insertOne({ source: "Discord", discordUserId: sender_id, code: linkingCode, expiration: codeExpiration }, (err, dbRes) => {
+                                                                        if (err) {
+                                                                            res.sendStatus(500);
+                                                                            console.error(err)
+                                                                        }
+                                                                        else {
+                                                                            interaction.reply({
+                                                                                embeds: [
+                                                                                    new Discord.EmbedBuilder()
+                                                                                        .setColor(config.app_personalization.accent_color)
+                                                                                        .setTitle("Link Steam Profile")
+                                                                                        .setDescription("Join our Squad server and send in any chat the following code")
+                                                                                        .addFields(
+                                                                                            { name: "Linking Code", value: linkingCode, inline: false },
+                                                                                            { name: "Expiration", value: Discord.time(codeExpiration, 'R'), inline: false },
+                                                                                        )
+                                                                                ],
+                                                                                ephemeral: true
+                                                                            });
 
-                                                                        setInterval(async () => {
-                                                                            dbo.collection("profilesLinking").deleteOne({ _id: dbRes.insertedId });
-                                                                        }, expiratioDelay)
-                                                                    }
-                                                                })
-                                                            } else {
-                                                                error = true;
-                                                            }
-                                                        })
-                                                    })
-                                                })
-                                            } while (error);
-                                            break;
-                                        case 'unlink':
-                                            // const modal = new Discord.ModalBuilder()
-                                            //     .setCustomId('profilelink:steam:unlink')
-                                            //     .setTitle('Unlink Steam?')
-                                            // await interaction.showModal(modal);
-                                            if (!idsplit[ 3 ]) {
-                                                await interaction.reply({
-                                                    embeds: [
-                                                        new Discord.EmbedBuilder()
-                                                            .setColor(config.app_personalization.accent_color)
-                                                            .setTitle("Unlink Steam")
-                                                            .setDescription("Do you really want to unlink your steam profile?")
-                                                    ],
-                                                    components: [
-                                                        new Discord.ActionRowBuilder()
-                                                            .addComponents(
-                                                                new Discord.ButtonBuilder()
-                                                                    .setCustomId('profilelink:steam:unlink:confirm')
-                                                                    .setLabel('Confirm')
-                                                                    .setStyle(Discord.ButtonStyle.Danger)
-                                                            ) ],
-                                                    ephemeral: true
-                                                });
-                                            } else {
-                                                switch (idsplit[ 3 ]) {
-                                                    case 'confirm':
-                                                        mongoConn((dbo) => {
-                                                            dbo.collection("players").updateOne({ discord_user_id: sender_id }, { $unset: { discord_user_id: 1 } }, (err, dbRes) => {
-                                                                if (err) serverError(null, err);
-                                                                else {
-                                                                    console.log(dbRes)
-                                                                    if (dbRes.modifiedCount == 1) interaction.reply({ content: "Your Steam account has been unlinked", ephemeral: true });
-                                                                    else interaction.reply({ content: "You don't have a Steam account to unlink", ephemeral: true })
+                                                                            setInterval(async () => {
+                                                                                dbo.collection("profilesLinking").deleteOne({ _id: dbRes.insertedId });
+                                                                            }, expiratioDelay)
+                                                                        }
+                                                                    })
+                                                                } else {
+                                                                    error = true;
                                                                 }
                                                             })
                                                         })
-                                                        break;
+                                                    })
+                                                } while (error);
+                                                break;
+                                            case 'unlink':
+                                                // const modal = new Discord.ModalBuilder()
+                                                //     .setCustomId('profilelink:steam:unlink')
+                                                //     .setTitle('Unlink Steam?')
+                                                // await interaction.showModal(modal);
+                                                if (!idsplit[ 3 ]) {
+                                                    await interaction.reply({
+                                                        embeds: [
+                                                            new Discord.EmbedBuilder()
+                                                                .setColor(config.app_personalization.accent_color)
+                                                                .setTitle("Unlink Steam")
+                                                                .setDescription("Do you really want to unlink your steam profile?")
+                                                        ],
+                                                        components: [
+                                                            new Discord.ActionRowBuilder()
+                                                                .addComponents(
+                                                                    new Discord.ButtonBuilder()
+                                                                        .setCustomId('profilelink:steam:unlink:confirm')
+                                                                        .setLabel('Confirm')
+                                                                        .setStyle(Discord.ButtonStyle.Danger)
+                                                                ) ],
+                                                        ephemeral: true
+                                                    });
+                                                } else {
+                                                    switch (idsplit[ 3 ]) {
+                                                        case 'confirm':
+                                                            mongoConn((dbo) => {
+                                                                dbo.collection("players").updateOne({ discord_user_id: sender_id }, { $unset: { discord_user_id: 1 } }, (err, dbRes) => {
+                                                                    if (err) serverError(null, err);
+                                                                    else {
+                                                                        console.log(dbRes)
+                                                                        if (dbRes.modifiedCount == 1) interaction.reply({ content: "Your Steam account has been unlinked", ephemeral: true });
+                                                                        else interaction.reply({ content: "You don't have a Steam account to unlink", ephemeral: true })
+                                                                    }
+                                                                })
+                                                            })
+                                                            break;
+                                                    }
                                                 }
-                                            }
-                                            break;
-                                    }
-                                    break;
+                                                break;
+                                        }
+                                        break;
+                                }
+                            } else {
+                                interaction.reply({
+                                    embeds: [
+                                        new Discord.EmbedBuilder()
+                                            .setColor(config.app_personalization.accent_color)
+                                            .setTitle("Unauthorized")
+                                            .setDescription("Only the owner of the profile can use this action")
+                                    ],
+                                    ephemeral: true
+                                })
                             }
                             break;
                     }
@@ -2023,7 +2043,9 @@ async function init() {
 
 
                                             if (subcomponent_status.squadjs) {
-                                                socket.emit("rcon.warn", dt.player.steamID, msg, (d) => { })
+                                                setTimeout(() => {
+                                                    socket.emit("rcon.warn", dt.player.steamID, msg, (d) => { })
+                                                }, 5000)
                                             }
                                         }
                                     })
