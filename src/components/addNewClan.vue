@@ -3,6 +3,7 @@
 	import $ from 'jquery';
 	import { render } from 'vue';
 	import popup from './popup.vue';
+	import SelectMultiple from './selectMultiple.vue';
 </script>
 
 <script lang="ts">
@@ -10,6 +11,9 @@
 		data() {
 			return {
 				available_game_groups: [] as Array<any>,
+				extRet: {
+					available_groups: [] as Array<any>,
+				},
 			};
 		},
 		methods: {
@@ -42,7 +46,7 @@
 					});
 			},
 		},
-		components: { popup },
+		components: { popup, SelectMultiple },
 		created() {
 			this.getGameGroups();
 		},
@@ -50,12 +54,10 @@
 </script>
 
 <template>
-	<popup ref="popupLogin" title="New Clan" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick">
+	<popup ref="popupLogin" title="New Clan" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick" :extRetProp="extRet">
 		<input name="full_name" type="text" placeholder="Full Clan Name" />
 		<input name="tag" type="text" placeholder="Clan Tag" />
-		<select name="available_groups" placeholder="Available Groups" multiple optional>
-			<option v-for="p in available_game_groups.sort()" :value="p._id">{{ p.group_name }}</option>
-		</select>
+		<SelectMultiple :elements="available_game_groups.sort()" oIdKey="_id" oTitleKey="group_name" title="Available groups" @selectChanged="extRet.available_groups = $event" />
 		<label>Player Limit<input name="player_limit" type="number" placeholder="Unlimited" style="width: 100px" optional /></label>
 		<label>Always Require Approval<input name="confirmation_ovrd" type="checkbox" placeholder="Confirmation Override" /></label>
 	</popup>

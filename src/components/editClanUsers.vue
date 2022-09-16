@@ -3,6 +3,7 @@
 	import $ from 'jquery';
 	import { render } from 'vue';
 	import popup from './popup.vue';
+	import SelectMultiple from './selectMultiple.vue';
 </script>
 
 <script lang="ts">
@@ -11,6 +12,9 @@
 			return {
 				clan_users: [] as Array<any>,
 				clan_admins: [] as Array<any>,
+				extRet: {
+					clan_admins: [] as Array<any>,
+				},
 			};
 		},
 		props: {
@@ -76,7 +80,7 @@
 				});
 			},
 		},
-		components: { popup },
+		components: { popup, SelectMultiple },
 		created() {
 			console.log('clan_data', this.clan_data);
 			console.log('clan_admins', this.clan_admins);
@@ -88,9 +92,10 @@
 
 <template>
 	<popup ref="popupLogin" title="Clan Managers" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick">
-		<select name="clan_admins" placeholder="Clan Users" multiple optional>
+		<SelectMultiple :elements="clan_users.sort()" oIdKey="_id" oTitleKey="username" title="Clan members" :preselect="clan_admins" @selectChanged="extRet.clan_admins = $event" />
+		<!-- <select name="clan_admins" placeholder="Clan Users" multiple optional>
 			<option v-for="p in clan_users.sort()" :value="p._id" :selected="clan_admins.includes(p._id)">{{ p.username }}</option>
-		</select>
+		</select> -->
 	</popup>
 </template>
 

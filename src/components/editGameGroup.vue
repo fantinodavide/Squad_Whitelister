@@ -9,10 +9,33 @@
 	export default {
 		data() {
 			return {
-				permissions: ['startvote', 'changemap', 'pause', 'cheat', 'private', 'balance', 'chat', 'kick', 'ban', 'config', 'cameraman', 'immune', 'manageserver', 'featuretest', 'reserve', 'demos', 'clientdemos', 'debug', 'teamchange', 'forceteamchange', 'canseeadminchat'],
+				permissions: [
+					{ id: 'balance', name: 'Balance' },
+					{ id: 'ban', name: 'Ban' },
+					{ id: 'cameraman', name: 'Cameraman' },
+					{ id: 'canseeadminchat', name: 'Can see Admin Chat' },
+					{ id: 'changemap', name: 'Change Map' },
+					{ id: 'chat', name: 'Chat' },
+					{ id: 'cheat', name: 'Cheat' },
+					{ id: 'clientdemos', name: 'Client Demos' },
+					{ id: 'config', name: 'Config' },
+					{ id: 'debug', name: 'Debug' },
+					{ id: 'demos', name: 'Demos' },
+					{ id: 'featuretest', name: 'Feature Test' },
+					{ id: 'forceteamchange', name: 'Force Team Change' },
+					{ id: 'immune', name: 'Immune' },
+					{ id: 'kick', name: 'Kick' },
+					{ id: 'manageserver', name: 'Manage Server' },
+					{ id: 'pause', name: 'Pause' },
+					{ id: 'private', name: 'Private' },
+					{ id: 'reserve', name: 'Reserve' },
+					{ id: 'startvote', name: 'Start Vote' },
+					{ id: 'teamchange', name: 'Team Change' },
+				],
 				discord_roles: [] as Array<any>,
 				extRet: {
 					discord_roles: [] as Array<any>,
+					group_permissions: [] as Array<any>,
 				},
 			};
 		},
@@ -63,9 +86,10 @@
 <template>
 	<popup ref="popupComp" title="Edit Group" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick" :extRetProp="extRet">
 		<input name="group_name" type="text" placeholder="Group Name" :value="group_data.group_name" regex="^[a-zA-Z\d]{2,}$" />
-		<select name="group_permissions" multiple>
+		<!-- <select name="group_permissions" multiple>
 			<option v-for="p in permissions.sort()" :value="p" :selected="group_data.group_permissions.includes(p)">{{ p }}</option>
-		</select>
+		</select> -->
+		<SelectMultiple :elements="permissions" oIdKey="id" oTitleKey="name" title="Permissions" :preselect="group_data.group_permissions" @selectChanged="extRet.group_permissions = $event" />
 		<SelectMultiple :elements="discord_roles" oIdKey="id" oTitleKey="name" title="Discord Roles" :preselect="group_data.discord_roles" @selectChanged="extRet.discord_roles = $event" />
 
 		<label>Require Approval<input name="require_appr" type="checkbox" placeholder="Require Approval" :checked="group_data.require_appr" /></label>
