@@ -1683,8 +1683,8 @@ async function init() {
                 rest.put(Discord.Routes.applicationCommands(client.user.id), { body: commands });
 
                 let discordBotServers = [];
-                for (let g of client.guilds.cache) discordBotServers.push({ id: g[ 1 ].id, name: g[ 1 ].name })
-                if (config.discord_bot.server_id == "") config.discord_bot.server_id = discordBotServers[ 0 ].id;
+                if (client.guilds) for (let g of client.guilds.cache) discordBotServers.push({ id: g[ 1 ].id, name: g[ 1 ].name })
+                if (config.discord_bot.server_id == "" && discordBotServers.length > 0) config.discord_bot.server_id = discordBotServers[ 0 ].id;
             });
 
             client.on('raw', (packet) => {
