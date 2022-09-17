@@ -55,11 +55,9 @@
 				if (typeof this.preselect[0] === 'object') {
 					const preselectFilter = this.preselect.filter((e) => this.elements.find((e2) => e[this.oIdKey] == e2[this.oIdKey]));
 					for (let e of preselectFilter) if (!preselectFilter.includes(e[this.oIdKey])) this.valRet.push(e[this.oIdKey]);
-					// console.log('obj', this.elements, this.preselect, preselectFilter);
 				} else {
 					const preselectFilter = this.preselect.filter((e) => this.elements.includes(e) || this.elements.find((e2) => e == e2[this.oIdKey]));
 					this.valRet = preselectFilter;
-					// console.log('arr', this.elements, this.preselect, preselectFilter);
 				}
 				this.$emit('selectChanged', [...this.valRet]);
 			},

@@ -35,7 +35,9 @@
 					success: (dt) => {
 						console.log(dt);
 						if (successCB) successCB();
-						if (!skipConfirmation) this.$emit('removedUser', this.$props.user_data);
+						if (dt.modifiedCount > 0) {
+							if (!skipConfirmation) this.$emit('removedUser', this.$props.user_data);
+						}
 					},
 				});
 			},
@@ -64,11 +66,12 @@
 </script>
 
 <template>
-	<div class="gameGroupCard shadow" v-if="user_data.username != 'admin'">
+	<div class="gameGroupCard shadow">
 		<div class="groupName tag">{{ user_data.username }}</div>
 		<div class="mainContainer">
 			<span v-if="user_data.clan_data && user_data.clan_data.length > 0" class="tag"><img v-if="user_data.clan_data[0].admins && user_data.clan_data[0].admins.length > 0 && user_data.clan_data[0] && user_data.clan_data[0].admins.includes(user_data._id)" :src="crown_icon" alt="" />{{ user_data.clan_data[0] ? user_data.clan_data[0].tag : '' }}</span>
 			<select
+				:disabled="user_data.access_level == 0"
 				:ref="
 					(e) => {
 						refs.roleSel = e;
@@ -77,9 +80,9 @@
 				name="roleSel"
 				@change="updateAccessLevel"
 			>
-				<option v-for="r in roles" :value="r.access_level" :selected="user_data.access_level == r.access_level">{{ r.name }}</option>
+				<option v-for="r in roles" :value="r.access_level" :selected="user_data.access_level == r.access_level" :hidden="r.access_level == 0">{{ r.name }}</option>
 			</select>
-			<button class="redBG round" @click="$emit('deleteRecord', { _id: user_data._id, username: user_data.username, callback: deleteRecord })"><img :src="bin_icon" /></button>
+			<button :disabled="user_data.access_level == 0" class="redBG round" @click="$emit('deleteRecord', { _id: user_data._id, username: user_data.username, callback: deleteRecord })"><img :src="bin_icon" /></button>
 		</div>
 	</div>
 </template>

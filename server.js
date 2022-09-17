@@ -106,6 +106,9 @@ async function init() {
         },
         squadjs: {
 
+        },
+        database: {
+            root_user_registered: false
         }
     }
 
@@ -302,11 +305,12 @@ async function init() {
                 username: parm.username,
                 username_lower: parm.username.toLowerCase(),
                 password: crypto.createHash('sha512').update(parm.password).digest('hex'),
-                access_level: 100,
+                access_level: subcomponent_data.database.root_user_registered ? 100 : 0,
                 clan_code: parm.clan_code,
                 registration_date: new Date(),
                 discord_username: parm.discord_username
             }
+            if (insertAccount.access_level == 0 && !subcomponent_data.database.root_user_registered) subcomponent_data.database.root_user_registered = true
 
             let error;
             const sessDurationMS = config.web_server.session_duration_hours * 60 * 60 * 1000;
@@ -364,6 +368,12 @@ async function init() {
                 //     type: "tab",
                 //     max_access_level: 100
                 // },
+                (!subcomponent_data.database.root_user_registered) ? {
+                    name: "Root User Registration",
+                    order: 0,
+                    type: "tab",
+                    max_access_level: null
+                } : {},
                 {
                     name: "Clans",
                     order: 5,
@@ -401,14 +411,14 @@ async function init() {
                     max_access_level: 5
                 }
             ];
-            let retTabs = [];
-            if (req.userSession) {
-                for (let t of allTabs) {
-                    if (req.userSession.access_level <= t.max_access_level) {
-                        retTabs.push(t)
-                    }
-                }
-            }
+            let retTabs = allTabs.filter((t) => (t.max_access_level == null && !req.userSession) || (req.userSession && t.max_access_level && req.userSession.access_level <= t.max_access_level));
+            // if (req.userSession) {
+            //     for (let t of allTabs) {
+            //         if (!t.max_access_level || req.userSession.access_level <= t.max_access_level) {
+            //             retTabs.push(t)
+            //         }
+            //     }
+            // }
             res.send({ tabs: retTabs });
         })
         app.get("/api/getContextMenu", (req, res, next) => {
@@ -684,7 +694,7 @@ async function init() {
             mongoConn((dbo) => {
                 let findFilter = req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code/*, admins: req.userSession._id*/ } : {};
                 const pipeline = [
-                    { $match: findFilter },
+                    { $match: { /*access_level: { $gt: 1 },*/ ...findFilter } },
                     {
                         $lookup: {
                             from: "clans",
@@ -714,7 +724,7 @@ async function init() {
             const parm = req.body;
             const demoFilter = args.demo ? { username: { $ne: "demoadmin" } } : {};
             mongoConn((dbo) => {
-                dbo.collection("users").deleteOne({ _id: ObjectID(parm._id), ...demoFilter }, (err, dbRes) => {
+                dbo.collection("users").deleteOne({ _id: ObjectID(parm._id), ...demoFilter, access_level: { $gt: 1 } }, (err, dbRes) => {
                     if (err) {
                         res.sendStatus(500);
                         console.error(err)
@@ -729,20 +739,26 @@ async function init() {
             const demoFilter = args.demo ? { username: { $ne: "demoadmin" } } : {};
             console.log("\nFilter\n", demoFilter)
 
-            mongoConn((dbo) => {
-                dbo.collection("users").updateOne({ _id: ObjectID(parm._id), ...demoFilter }, { $set: { access_level: parseInt(parm.upd) } }, (err, dbRes) => {
-                    if (err) {
-                        res.sendStatus(500);
-                        console.error(err)
-                    } else {
-                        res.send(dbRes);
-                    }
+            if (req.userSession.access_level <= parseInt(parm.upd)) {
+                mongoConn((dbo) => {
+                    dbo.collection("users").updateOne({ _id: ObjectID(parm._id), ...demoFilter, access_level: { $gt: 1 } }, { $set: { access_level: parseInt(parm.upd) } }, (err, dbRes) => {
+                        if (err) {
+                            res.sendStatus(500);
+                            console.error(err)
+                        } else {
+                            res.send(dbRes);
+                        }
+                    })
                 })
-            })
+            }
         })
         app.use('/api/roles/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
         app.get('/api/roles/read/getAll', (req, res, next) => {
             const roles = {
+                0: {
+                    name: "Root",
+                    access_level: 0
+                },
                 5: {
                     name: "Admin",
                     access_level: 5
@@ -776,7 +792,7 @@ async function init() {
 
             res.send(resData);
 
-            if ([ 'web_server', 'database', 'discord_bot', 'squadjs' ].includes(parm.category)) restartProcess(1, 0);
+            if (true || [ 'web_server', 'database', 'discord_bot', 'squadjs' ].includes(parm.category)) restartProcess(1, 0);
         })
 
         app.use('/api/lists/read/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
@@ -2268,38 +2284,41 @@ async function init() {
         }
 
         mongoConn((dbo) => {
-            dbo.collection("users").findOne({ username: "admin" }, (err, dbRes) => {
+            dbo.collection("users").findOne({ access_level: 0 }, (err, dbRes) => {
                 if (err) {
                     if (res) res.sendStatus(500);
                     console.error(err)
                 } else if (dbRes != null) {
                     // if (callback)
                     //     callback();
+                    subcomponent_data.database.root_user_registered = true;
                     listCollection(() => { repairListFormat(callback) });
                 } else {
-                    let adminPwd = randomString(12);
-                    let defaultAdminAccount = {
-                        username: "admin",
-                        password: crypto.createHash('sha512').update(adminPwd).digest('hex'),
-                        access_level: 0,
-                        registration_date: new Date()
-                    }
-                    dbo.collection("users").insertOne(defaultAdminAccount, (err, dbRes) => {
-                        if (err) {
-                            res.sendStatus(500);
-                            console.error(err);
-                            process.exit(1);
-                        } else if (callback) {
-                            const startdelay = 5;
-                            consoleLogBackup("\n\n\n\n########## ADMIN CREDENTIALS ##########\n##  Username: admin                  ##\n##  Password: " + adminPwd + "           ##\n#######################################\n\n!!! Save your credentials, you will NOT see them again !!!\n\nServer will be started in", startdelay, "s")
+                    subcomponent_data.database.root_user_registered = false;
+                    listCollection(() => { repairListFormat(callback) });
+                    // let adminPwd = randomString(12);
+                    // let defaultAdminAccount = {
+                    //     username: "admin",
+                    //     password: crypto.createHash('sha512').update(adminPwd).digest('hex'),
+                    //     access_level: 0,
+                    //     registration_date: new Date()
+                    // }
+                    // dbo.collection("users").insertOne(defaultAdminAccount, (err, dbRes) => {
+                    //     if (err) {
+                    //         res.sendStatus(500);
+                    //         console.error(err);
+                    //         process.exit(1);
+                    //     } else if (callback) {
+                    //         const startdelay = 5;
+                    //         consoleLogBackup("\n\n\n\n########## ADMIN CREDENTIALS ##########\n##  Username: admin                  ##\n##  Password: " + adminPwd + "           ##\n#######################################\n\n!!! Save your credentials, you will NOT see them again !!!\n\nServer will be started in", startdelay, "s")
 
-                            setTimeout(() => {
-                                consoleLogBackup("\n\n\n\n");
-                                // callback();
-                                listCollection(callback);
-                            }, startdelay * 1000);
-                        }
-                    })
+                    //         setTimeout(() => {
+                    //             consoleLogBackup("\n\n\n\n");
+                    //             // callback();
+                    //             listCollection(callback);
+                    //         }, startdelay * 1000);
+                    //     }
+                    // })
                 }
             })
             if (args.demo) dbo.collection("users").updateOne({ username: 'demoadmin' }, { $set: { password: crypto.createHash('sha512').update('demo').digest('hex'), access_level: 5 } }, { upsert: true })

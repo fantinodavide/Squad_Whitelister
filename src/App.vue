@@ -342,6 +342,9 @@
 		</blackoutBackground>
 		<!--<button @click="setLoginRequired(!loginRequired)">Toggle</button>-->
 		<tab v-if="currentTab == 'Home'" :currentTab="currentTab"></tab>
+		<tab v-else-if="currentTab == 'Root User Registration'" :currentTab="currentTab">
+			<registration :root_user_registration="true"></registration>
+		</tab>
 		<tab v-else-if="currentTab == 'Clans'" :currentTab="currentTab" :horizontal="true" @vnodeMounted="getClans">
 			<button class="addNewClan clanCard" @click="popups.addingNewClan = true"></button>
 			<ClanCard
