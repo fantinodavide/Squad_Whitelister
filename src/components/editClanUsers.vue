@@ -91,7 +91,7 @@
 </script>
 
 <template>
-	<popup ref="popupLogin" title="Clan Managers" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick">
+	<popup ref="popupLogin" title="Clan Managers" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick" :extRetProp="extRet">
 		<SelectMultiple :elements="clan_users.sort()" oIdKey="_id" oTitleKey="username" title="Registered Clan Members" :preselect="clan_admins" @selectChanged="extRet.clan_admins = $event" />
 		<!-- <select name="clan_admins" placeholder="Clan Users" multiple optional>
 			<option v-for="p in clan_users.sort()" :value="p._id" :selected="clan_admins.includes(p._id)">{{ p.username }}</option>

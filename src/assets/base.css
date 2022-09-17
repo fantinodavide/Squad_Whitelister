@@ -189,6 +189,12 @@ footer .copyright {
 	margin: 10px;
 }
 
+a {
+	text-decoration: none;
+	/* font-size: 14px; */
+	/* font-style: italic; */
+}
+
 a:link {
 	color: #aaa;
 }
@@ -199,6 +205,7 @@ a:visited {
 
 a:hover {
 	color: #ccc;
+	text-decoration: underline;
 }
 
 a:active {

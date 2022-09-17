@@ -1078,7 +1078,7 @@ async function init() {
                                 username_l: parm.username.toLowerCase(),
                                 steamid64: parm.steamid64,
                                 id_group: ObjectID(parm.group),
-                                discord_username: !parm.discordUsername.startsWith('@') && parm.discordUsername != "" ? "@" : "" + parm.discordUsername,
+                                discord_username: !parm.discordUsername.startsWith('@') && parm.discordUsername != "" ? "@" + parm.discordUsername : "" + parm.discordUsername,
                                 inserted_by: ObjectID(req.userSession.id_user),
                                 expiration: (parm.durationHours && parm.durationHours != "") ? new Date(Date.now() + (parseFloat(parm.durationHours) * 60 * 60 * 1000)) : false,
                                 insert_date: new Date(),
@@ -1961,6 +1961,7 @@ async function init() {
     }
 
     function SquadJSWebSocket(cb = null) {
+        let reconnect_int = null;
         console.log("SquadJS WebSocket")
         if (config.squadjs.websocket && config.squadjs.websocket.token != "" && config.squadjs.websocket.host != "") {
             const tm = setTimeout(() => {
@@ -1978,18 +1979,20 @@ async function init() {
                 clearTimeout(tm);
                 console.log(" > Connected");
                 socket.emit("rcon.warn", "76561198419229279", "Whitelister Connected", () => { })
+
                 if (!squadjs.initDone) {
                     squadjs.initDone = true;
+                    // seedingTimeTracking();
                     cb();
                 }
-                // setTimeout(() => {
-                //     socket.disconnect();
-                // },5000)
+                clearInterval(reconnect_int);
                 subcomponent_status.squadjs = true;
             });
             socket.on("disconnect", async () => {
                 console.log("SquadJS WebSocket\n > Disconnected\n > Trying to reconnect")
-                socket.connect();
+                reconnect_int = setInterval(() => {
+                    if (!subcomponent_status.squadjs) socket.connect()
+                }, 10 * 1000)
                 subcomponent_status.squadjs = false;
             });
             socket.on("PLAYER_CONNECTED", async (dt) => {
@@ -2102,6 +2105,32 @@ async function init() {
                         break;
                 }
             })
+
+            function seedingTimeTracking() {
+                const checkIntervalMinutes = 5;
+                setInterval(() => {
+                    if (subcomponent_status.squadjs) {
+                        socket.emit("rcon.getListPlayers", (players) => {
+                            if (players.length < config.squadjs.seeding_time_tracker.live_player_count) {
+                                console.log("current seeders", objArrToValArr(players, "name"));
+                                for (let p of players) {
+                                    mongoConn(dbo => {
+                                        dbo.collection("players").findOneAndUpdate({ steamid64: p.steamID }, { $set: { steamid64: p.steamID, username: p.name }, $inc: { seeding_points: 1 } }, { upsert: true, returnNewDocument: true }, (err, dbRes) => {
+                                            if (err) serverError(null, err)
+                                            else {
+                                                console.log(dbRes);
+                                                if (dbRes.value && dbRes.value.seeding_points && dbRes.value.seeding_points % 10 == 0)
+                                                    socket.emit("rcon.warn", p.steamID, `Seeding Reward:\n\nYour points: ${dbRes.value.seeding_points}\n${50 - dbRes.value.seeding_points} points left to claim your reward!`, (d) => { })
+                                            }
+                                        })
+                                    })
+                                }
+
+                            }
+                        })
+                    }
+                }, checkIntervalMinutes * 60 * 1000)
+            }
         } else {
             console.log(" > Not configured. Skipping.");
             if (cb) cb();
@@ -2195,7 +2224,10 @@ async function init() {
                     host: "",
                     port: 3000,
                     token: ""
-                }
+                }/*,
+                seeding_time_tracker: {
+                    live_player_count: 50,
+                }*/
             },
             other: {
                 automatic_updates: true,
@@ -2460,6 +2492,18 @@ async function init() {
             }
 
         }
+    }
+    function objArrToValArr(arr, ...key) {
+        let vet = [];
+        for (let o of arr) {
+            let obj = o;
+            for (let k of key) {
+                if (obj[ k ])
+                    obj = obj[ k ];
+            }
+            vet.push(obj);
+        }
+        return vet;
     }
 }
 
