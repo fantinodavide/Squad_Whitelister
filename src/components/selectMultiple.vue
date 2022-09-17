@@ -51,20 +51,22 @@
 			arrIncludesObj: function (arr: any, obj: any) {
 				return arr.find((e: any) => JSON.stringify(e) == JSON.stringify(obj)) != null;
 			},
+			preselectProcedure: function () {
+				if (typeof this.preselect[0] === 'object') {
+					const preselectFilter = this.preselect.filter((e) => this.elements.find((e2) => e[this.oIdKey] == e2[this.oIdKey]));
+					for (let e of preselectFilter) if (!preselectFilter.includes(e[this.oIdKey])) this.valRet.push(e[this.oIdKey]);
+				} else {
+					const preselectFilter = this.preselect.filter((e) => this.elements.includes(e));
+					this.valRet = preselectFilter;
+				}
+				this.$emit('selectChanged', [...this.valRet]);
+			},
 		},
 		created() {
-			if (typeof this.preselect[0] === 'object') {
-				for (let e of this.preselect) if (!this.preselect.includes(e[this.oIdKey])) this.valRet.push(e[this.oIdKey]);
-			} else this.valRet = this.preselect;
-
-			this.$emit('selectChanged', [...this.valRet]);
+			this.preselectProcedure();
 		},
 		updated() {
-			if (typeof this.preselect[0] === 'object') {
-				for (let e of this.preselect) if (!this.preselect.includes(e[this.oIdKey])) this.valRet.push(e[this.oIdKey]);
-			} else this.valRet = this.preselect;
-			this.$emit('selectChanged', [...this.valRet]);
-			this.log('updated', this.preselect);
+			this.preselectProcedure();
 		},
 	};
 </script>

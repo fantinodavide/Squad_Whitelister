@@ -761,8 +761,8 @@ async function init() {
         // app.use('/api/whitelist/*', removeExpiredPlayers);
         app.use('/api/config/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
         app.get('/api/config/read/getFull', async (req, res, next) => {
-            let cpyConf = {...config};
-            if(args.demo) cpyConf.discord_bot.token = "hidden";
+            let cpyConf = { ...config };
+            if (args.demo && req.userSession.access_level > 0) cpyConf.discord_bot.token = "hidden";
             res.send(cpyConf);
         })
         app.use('/api/config/write', (req, res, next) => { if (!args.demo || req.userSession.access_level == 0) next(); else res.sendStatus(403) })
