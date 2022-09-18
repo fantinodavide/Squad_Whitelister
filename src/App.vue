@@ -345,6 +345,9 @@
 		<tab v-else-if="currentTab == 'Root User Registration'" :currentTab="currentTab">
 			<registration :root_user_registration="true"></registration>
 		</tab>
+		<tab v-else-if="currentTab == 'Updating'" :currentTab="currentTab">
+			<popup ref="popupLogin" title="Update in progress" :hide-confirm="true" :hide-cancel="true" style="margin: auto" />
+		</tab>
 		<tab v-else-if="currentTab == 'Clans'" :currentTab="currentTab" :horizontal="true" @vnodeMounted="getClans">
 			<button class="addNewClan clanCard" @click="popups.addingNewClan = true"></button>
 			<ClanCard

@@ -109,6 +109,9 @@ async function init() {
         },
         database: {
             root_user_registered: false
+        },
+        updater: {
+            updating: false
         }
     }
 
@@ -411,7 +414,15 @@ async function init() {
                     max_access_level: 5
                 }
             ];
-            let retTabs = allTabs.filter((t) => (t.max_access_level == null && !req.userSession) || (req.userSession && t.max_access_level && req.userSession.access_level <= t.max_access_level));
+            let retTabs;
+            if (subcomponent_data.updater.updating) {
+                retTabs = [ {
+                    name: "Updating",
+                    order: 0,
+                    type: "tab",
+                    max_access_level: null
+                } ]
+            } else retTabs = allTabs.filter((t) => (t.max_access_level == null && !req.userSession) || (req.userSession && t.max_access_level && req.userSession.access_level <= t.max_access_level));
             // if (req.userSession) {
             //     for (let t of allTabs) {
             //         if (!t.max_access_level || req.userSession.access_level <= t.max_access_level) {
