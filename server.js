@@ -1768,6 +1768,7 @@ async function init() {
                                         if (err) console.error(err)
                                         // console.log(dbRes);
                                         let embeds = [];
+                                        let reply = true;
                                         for (let c of dbRes) {
                                             let fields = [];
                                             for (let cK of [ "tag", "clan_code", "player_limit", "unique_players" ]) {
@@ -1785,14 +1786,25 @@ async function init() {
                                                 }
                                                 fields.push({ name: "Whitelist", value: wlUrls.join(' - '), inline: false })
                                             }
+                                            // console.log(interaction.guildId, interaction.channelId);
                                             embeds.push(
                                                 new Discord.EmbedBuilder()
                                                     .setColor(config.app_personalization.accent_color)
                                                     .setTitle(toUpperFirstChar(c.full_name.replace(/\_/g, ' ')))
                                                     .addFields(...fields)
                                             )
+                                            // for (let i = 0; i < 10; i++)
+                                            if (embeds.length % 10 == 0) {
+                                                if (reply) {
+                                                    reply = false;
+                                                    interaction.reply({ embeds: embeds });
+                                                } else {
+                                                    client.channels.cache.get(interaction.channelId).send({ embeds: embeds });
+                                                }
+                                                embeds = [];
+                                            }
                                         }
-                                        interaction.reply({ embeds: embeds });
+                                        if (embeds.length > 0) client.channels.cache.get(interaction.channelId).send({ embeds: embeds });
                                     })
                                 })
                             })
