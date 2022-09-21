@@ -1882,7 +1882,7 @@ async function init() {
                             interaction.message.edit({ embeds: [ emb ] })
                             break;
                         case 'profilelink':
-                            if (interaction.message.mentions.users.find(m => m.id == sender_id)) {
+                            if (interaction.message.mentions.users.find(m => m.id == sender_id) || interaction.message.ephemeral) {
                                 switch (idsplit[ 1 ]) {
                                     case 'steam':
                                         switch (idsplit[ 2 ]) {
