@@ -1,3 +1,4 @@
+const { match } = require('assert');
 const cp = require('child_process');
 var installingDependencies = false;
 const irequire = async module => {
@@ -483,15 +484,39 @@ async function init() {
                                     //res.send(wlRes)
                                     let findF2 = { approved: true, id_clan: { $in: clansIds }, id_list: dbResList._id };
                                     console.log(findF2);
-                                    dbo.collection("whitelists").find(findF2).sort({ id_clan: 1, id_group: 1 }).toArray((err, dbRes) => {
+                                    const pipel = [
+                                        {
+                                            $match: findF2
+                                        },
+                                        {
+                                            $lookup: {
+                                                from: "players",
+                                                let: {
+                                                    steamid64: "$steamid64"
+                                                },
+                                                pipeline: [
+                                                    {
+                                                        $match: {
+                                                            $expr: { $eq: [ "$steamid64", "$$steamid64" ] },
+                                                            discord_user_id: { $exists: true }
+                                                        }
+                                                    }
+                                                ],
+                                                as: "serverPlayerData",
+                                            }
+                                        }
+                                    ]
+                                    // dbo.collection("whitelists").find(findF2).sort({ id_clan: 1, id_group: 1 }).toArray((err, dbRes) => {
+                                    dbo.collection("whitelists").aggregate(pipel).toArray((err, dbRes) => {
                                         if (err) serverError(res, err);
                                         else if (dbRes != null) {
-
                                             for (let w of dbRes) {
+                                                let discordUsername = w.serverPlayerData[0].discord_username || w.discord_username || "";
+                                                if(discordUsername!="" && !discordUsername.startsWith("@")) discordUsername = "@"+discordUsername;
                                                 if (usernamesOnly)
                                                     wlRes += w.username + "\n"
                                                 else
-                                                    wlRes += "Admin=" + w.steamid64 + ":" + groups[ w.id_group ].group_name + " // [" + clansById[ w.id_clan ].tag + "]" + w.username + (w.discord_username != null ? " " + w.discord_username : "") + "\n"
+                                                    wlRes += "Admin=" + w.steamid64 + ":" + groups[ w.id_group ].group_name + " // [" + clansById[ w.id_clan ].tag + "]" + w.username + " " + discordUsername + "\n"
 
                                                 if (!requiredGroupIds.includes(w.id_group.toString()) && !usernamesOnly) {
                                                     requiredGroupIds.push(w.id_group.toString())
