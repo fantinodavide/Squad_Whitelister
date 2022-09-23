@@ -511,8 +511,8 @@ async function init() {
                                         if (err) serverError(res, err);
                                         else if (dbRes != null) {
                                             for (let w of dbRes) {
-                                                let discordUsername = w.serverPlayerData[0].discord_username || w.discord_username || "";
-                                                if(discordUsername!="" && !discordUsername.startsWith("@")) discordUsername = "@"+discordUsername;
+                                                let discordUsername = (w.serverPlayerData && w.serverPlayerData[ 0 ] ? w.serverPlayerData[ 0 ].discord_username : null) || w.discord_username || "";
+                                                if (discordUsername != "" && !discordUsername.startsWith("@")) discordUsername = "@" + discordUsername;
                                                 if (usernamesOnly)
                                                     wlRes += w.username + "\n"
                                                 else
