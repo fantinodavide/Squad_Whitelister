@@ -968,6 +968,14 @@ async function init() {
                         }
                     },
                     {
+                        $lookup: {
+                            from: "players",
+                            localField: "steamid64",
+                            foreignField: "steamid64",
+                            as: "serverData"
+                        }
+                    },
+                    {
                         $sort: { id_clan: 1, approved: -1, id_group: 1, username: 1 }
                     },
                 ]
