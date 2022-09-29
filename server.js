@@ -510,6 +510,12 @@ async function init() {
                                                 ],
                                                 as: "serverPlayerData",
                                             }
+                                        },
+                                        {
+                                            $sort:{
+                                                id_group: 1,
+                                                username_l: 1,
+                                            }
                                         }
                                     ]
                                     // dbo.collection("whitelists").find(findF2).sort({ id_clan: 1, id_group: 1 }).toArray((err, dbRes) => {
