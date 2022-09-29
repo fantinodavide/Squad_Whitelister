@@ -2052,9 +2052,10 @@ async function init() {
                 // console.log(await client.guilds.cache.get(config.discord_bot.server_id).members.cache.map((e)=>e.id));
                 const member = await client.guilds.cache.get(config.discord_bot.server_id).members.cache.find((m) => m.id == member_id);
                 if (member) {
+                    const user = member.user;
                     const user_roles = member._roles;
                     mongoConn((dbo) => {
-                        dbo.collection("players").updateOne({ discord_user_id: member_id }, { $set: { discord_user_id: member_id, discord_username: member.username + "#" + member.discriminator, discord_roles_ids: user_roles } }, { upsert: true })
+                        dbo.collection("players").updateOne({ discord_user_id: member_id }, { $set: { discord_user_id: member_id, discord_username: user.username + "#" + user.discriminator, discord_roles_ids: user_roles } }, { upsert: true })
                     })
                 }
             }
