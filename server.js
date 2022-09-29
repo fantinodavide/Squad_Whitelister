@@ -402,6 +402,12 @@ async function init() {
                     type: "tab",
                     max_access_level: 30
                 },
+                // {
+                //     name: "Seeding",
+                //     order: 27,
+                //     type: "tab",
+                //     max_access_level: 30
+                // },
                 {
                     name: "Users and Roles",
                     order: 30,
@@ -1747,6 +1753,16 @@ async function init() {
                 let discordBotServers = [];
                 if (client.guilds) for (let g of client.guilds.cache) discordBotServers.push({ id: g[ 1 ].id, name: g[ 1 ].name })
                 if (config.discord_bot.server_id == "" && discordBotServers.length > 0) config.discord_bot.server_id = discordBotServers[ 0 ].id;
+
+                setInterval(() => {
+                    mongoConn((dbo) => {
+                        dbo.collection("players").find({ discord_user_id: { $exists: true } }).toArray((err,dbRes)=>{
+                            for(let m of dbRes){
+                                updateUserRoles(m.discord_user_id);
+                            }
+                        })
+                    })
+                }, 5 * 60 * 1000)
             });
 
             client.on('raw', (packet) => {
@@ -1900,10 +1916,7 @@ async function init() {
                         //     interaction.reply({ content: "ok", ephemeral: true })
                         //     break;
                     }
-                    const user_roles = await interaction.guild.members.cache.find((m) => m.id == sender_id)._roles;
-                    mongoConn((dbo) => {
-                        dbo.collection("players").updateOne({ discord_user_id: sender_id }, { $set: { discord_user_id: sender_id, discord_username: sender.username + "#" + sender.discriminator, discord_roles_ids: user_roles } }, { upsert: true })
-                    })
+                    updateUserRoles(sender_id);
                 } else if (interaction.isButton()) {
                     const idsplit = interaction.customId.split(':');
                     console.log(idsplit);
@@ -2031,6 +2044,18 @@ async function init() {
                     interaction.reply({ content: "Modal received", ephemeral: true })
                 }
             });
+
+            async function updateUserRoles(member_id) {
+                // console.log(await client.guilds.cache.get(config.discord_bot.server_id).members.cache.map((e)=>e.id));
+                const member = await client.guilds.cache.get(config.discord_bot.server_id).members.cache.find((m) => m.id == member_id);
+                if (member) {
+                    const user_roles = member._roles;
+                    mongoConn((dbo) => {
+                        dbo.collection("players").updateOne({ discord_user_id: member_id }, { $set: { discord_user_id: member_id, discord_username: member.username + "#" + member.discriminator, discord_roles_ids: user_roles } }, { upsert: true })
+                    })
+                }
+            }
+
 
         } else {
             console.log(" > Not configured. Skipping.");

@@ -420,6 +420,7 @@
 		<tab v-else-if="currentTab == 'Approvals'" :currentTab="currentTab">
 			<approvalsTab />
 		</tab>
+		<tab v-else-if="currentTab == 'Seeding'" :currentTab="currentTab"> </tab>
 		<tab
 			v-else-if="currentTab == 'Users and Roles'"
 			:currentTab="currentTab"
