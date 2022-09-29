@@ -1754,10 +1754,10 @@ async function init() {
                 if (client.guilds) for (let g of client.guilds.cache) discordBotServers.push({ id: g[ 1 ].id, name: g[ 1 ].name })
                 if (config.discord_bot.server_id == "" && discordBotServers.length > 0) config.discord_bot.server_id = discordBotServers[ 0 ].id;
                 
-                temporaryRoleUpdate();
-                setInterval(temporaryRoleUpdate, 5 * 60 * 1000)
+                temporizedRoleUpdate();
+                setInterval(temporizedRoleUpdate, 5 * 60 * 1000)
 
-                function temporaryRoleUpdate(){
+                function temporizedRoleUpdate(){
                     mongoConn((dbo) => {
                         dbo.collection("players").find({ discord_user_id: { $exists: true } }).toArray((err,dbRes)=>{
                             for(let m of dbRes){
