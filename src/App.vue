@@ -27,6 +27,7 @@
 	import addNewList from './components/addNewList.vue';
 	import editList from './components/editList.vue';
 	import ConfigTab from './components/configTab.vue';
+	import AdvancedInput from './components/advancedInput.vue';
 
 	import bia_logo from './assets/bia_logo.png';
 	import jd_logo from './assets/jd_logo.png';
@@ -420,7 +421,10 @@
 		<tab v-else-if="currentTab == 'Approvals'" :currentTab="currentTab">
 			<approvalsTab />
 		</tab>
-		<tab v-else-if="currentTab == 'Seeding'" :currentTab="currentTab"> </tab>
+		<tab v-else-if="currentTab == 'Seeding'" :currentTab="currentTab">
+			<AdvancedInput text="Testone superone" name="tstone" placeholder="Text here" />
+			<AdvancedInput text="Testone 2" name="tst2one" placeholder="Text lool" />
+		</tab>
 		<tab
 			v-else-if="currentTab == 'Users and Roles'"
 			:currentTab="currentTab"

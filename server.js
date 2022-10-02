@@ -402,12 +402,12 @@ async function init() {
                     type: "tab",
                     max_access_level: 30
                 },
-                // {
-                //     name: "Seeding",
-                //     order: 27,
-                //     type: "tab",
-                //     max_access_level: 30
-                // },
+                {
+                    name: "Seeding",
+                    order: 27,
+                    type: "tab",
+                    max_access_level: 30
+                },
                 {
                     name: "Users and Roles",
                     order: 30,
