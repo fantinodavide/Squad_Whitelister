@@ -1,6 +1,6 @@
 <script setup lang="ts">
-	import levenshtein from 'js-levenshtein';
 	import MobileDetect from 'mobile-detect';
+	import levenshtein from 'js-levenshtein';
 
 	import login from './components/login.vue';
 	import registration from './components/registration.vue';
@@ -27,7 +27,7 @@
 	import addNewList from './components/addNewList.vue';
 	import editList from './components/editList.vue';
 	import ConfigTab from './components/configTab.vue';
-	import AdvancedInput from './components/advancedInput.vue';
+	import SeedingTab from './components/seedingTab.vue';
 
 	import bia_logo from './assets/bia_logo.png';
 	import jd_logo from './assets/jd_logo.png';
@@ -315,7 +315,7 @@
 			<button v-if="loginRequired" @click="popups.registration = true">Sign Up</button>
 		</div>
 		<tabBrowser :visible="!loginRequired">
-			<tabBrowserBtn v-for="t in tabBtns" @updateTab="setCurrentTab" :title="t" :currentTab="currentTab" />
+			<tabBrowserBtn v-for="t in tabBtns" :key="t" @updateTab="setCurrentTab" :title="t" :currentTab="currentTab" />
 		</tabBrowser>
 	</header>
 	<main>
@@ -332,7 +332,7 @@
 			<changepassword v-if="popups.changepassword" @cancelBtnClick="popups.changepassword = false" />
 			<AddNewClan v-if="popups.addingNewClan" @cancelBtnClick="popups.addingNewClan = false" @new_clan="appendNewClan" />
 			<AddNewGameGroup v-if="popups.addingNewGameGroup" @cancelBtnClick="popups.addingNewGameGroup = false" @new_game_group="appendNewGroup" />
-			<confirmPopup :ref="(el: any) => { pointers.confirmPopup = el; }" v-show="popups.confirm" @cancelBtnClick="popups.confirm = false" />
+			<confirmPopup :ref="(el:any) => { pointers.confirmPopup = el; }" v-show="popups.confirm" @cancelBtnClick="popups.confirm = false" />
 			<edit-clan v-if="popups.editClan" @cancelBtnClick="popups.editClan = false" :clan_data="clans[inEditingClan]" @clan_edited="clans[inEditingClan] = $event" />
 			<editGameGroup v-if="popups.editGameGroup" @cancelBtnClick="popups.editGameGroup = false" :group_data="game_groups[inEditingGroup]" @edited="game_groups[inEditingGroup] = $event" />
 			<editClanUsers v-if="popups.editClanUsers" :clan_data="clans[inUserEditingClan]" @cancelBtnClick="popups.editClanUsers = false" />
@@ -354,6 +354,7 @@
 			<ClanCard
 				@confirm="removeClan"
 				v-for="c in clans"
+				:key="c"
 				class="clanCard shadow"
 				:clan_data="c"
 				@edit_clan="
@@ -382,6 +383,7 @@
 			<gameGroupCard
 				@confirm="removeGroup"
 				v-for="g in game_groups"
+				:key="g"
 				class="gameGroupCard shadow"
 				:group_data="g"
 				@edit="
@@ -422,8 +424,7 @@
 			<approvalsTab />
 		</tab>
 		<tab v-else-if="currentTab == 'Seeding'" :currentTab="currentTab">
-			<AdvancedInput text="Testone superone" name="tstone" placeholder="Text here" />
-			<AdvancedInput text="Testone 2" name="tst2one" placeholder="Text lool" />
+			<SeedingTab />
 		</tab>
 		<tab
 			v-else-if="currentTab == 'Users and Roles'"
@@ -436,7 +437,7 @@
 			"
 		>
 			<input type="search" placeholder="Search User" name="usrSearch" id="" v-model="tabData.UsersAndRoles.userSearch" />
-			<userCard v-for="u in tabData.UsersAndRoles.users" v-show="u.username.toLowerCase().startsWith(tabData.UsersAndRoles.userSearch.toLowerCase()) || levenshtein(u.username.toLowerCase(), tabData.UsersAndRoles.userSearch.toLowerCase()) <= 2 || tabData.UsersAndRoles.userSearch == ''" :user_data="u" :roles="tabData.UsersAndRoles.roles" @delete-record="removeUser" />
+			<userCard v-for="u in tabData.UsersAndRoles.users" :key="u" v-show="u.username.toLowerCase().startsWith(tabData.UsersAndRoles.userSearch.toLowerCase()) || levenshtein(u.username.toLowerCase(), tabData.UsersAndRoles.userSearch.toLowerCase()) <= 2 || tabData.UsersAndRoles.userSearch == ''" :user_data="u" :roles="tabData.UsersAndRoles.roles" @delete-record="removeUser" />
 		</tab>
 		<tab v-else-if="currentTab == 'Configuration'" :currentTab="currentTab" complex>
 			<ConfigTab @confirm="confirmEvt" />

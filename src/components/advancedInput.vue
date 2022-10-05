@@ -20,14 +20,33 @@
 			},
 			placeholder: {
 				type: String,
+				default: null,
+			},
+			oIdKey: {
+				required: false,
+				type: String,
+				default: null,
+			},
+			oTitleKey: {
+				required: false,
+				type: String,
 				default: '',
+			},
+			options: {
+				default: [] as Array<any>,
 			},
 		},
 	};
 </script>
 
 <template>
-	<label>{{ text }}<input :type="type" :value="value" :placeholder="placeholder" /><select></select></label>
+	<label :class="{ selectVisible: options.length > 0 }"
+		>{{ text }}
+		<input :type="type" :value="value" :placeholder="placeholder" />
+		<select v-if="options.length > 0">
+			<option v-for="o of options" :key="o[oIdKey]" :value="oIdKey && o[oIdKey] ? o[oIdKey] : o">{{ oTitleKey && o[oTitleKey] ? o[oTitleKey] : o }}</option>
+		</select>
+	</label>
 </template>
 
 <style scoped>
@@ -52,5 +71,15 @@
 		border-radius: 0;
 		border-top-right-radius: 10px;
 		border-bottom-right-radius: 10px;
+	}
+	label.selectVisible input {
+		border-radius: 0;
+	}
+	label.selectVisible select {
+		border-radius: 0;
+		border-top-right-radius: 10px;
+		border-bottom-right-radius: 10px;
+		margin: 0;
+		margin-left: 5px;
 	}
 </style>
