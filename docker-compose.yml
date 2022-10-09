@@ -1,0 +1,14 @@
+services:
+  whitelister:
+    image: squadwhitelister
+    container_name: whitelister
+    restart: always
+    ports:
+      - "8080:80"
+    environment: 
+      - MONGODB_CONNECTION_STRING=mongodb://whitelister:asafepassword@mongodb
+  mongodb:
+    image: mongo:latest
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=whitelister
+      - MONGO_INITDB_ROOT_PASSWORD=asafepassword

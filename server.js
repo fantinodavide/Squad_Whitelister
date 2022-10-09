@@ -137,6 +137,8 @@ async function init() {
                 }
             });
             config = JSON.parse(fs.readFileSync("conf.json", "utf-8").toString());
+            console.log("ARGS:", args)
+            console.log("ENV:", process.env)
             console.log(config);
 
             initDBConnection(() => {
@@ -163,7 +165,6 @@ async function init() {
     function main() {
         checkUpdates(config.other.automatic_updates, () => {
             console.log(" > Starting up");
-            console.log("ARGS:", args)
             setInterval(() => { checkUpdates(config.other.automatic_updates) }, config.other.update_check_interval_seconds * 1000);
             discordBot(() => {
                 SquadJSWebSocket(() => {
@@ -2272,7 +2273,9 @@ async function init() {
     function mongoConn(connCallback, override = false) {
         if (!mongodb_global_connection || override) {
             let url;
-            if (config.database.mongo.host.includes("://")) url = config.database.mongo.host;
+            
+            if(process.env.MONGODB_CONNECTION_STRING) url = process.env.MONGODB_CONNECTION_STRING
+            else if (config.database.mongo.host.includes("://")) url = config.database.mongo.host;
             else url = "mongodb://" + config.database.mongo.host + ":" + config.database.mongo.port;
 
             let dbName = config.database.mongo.database;
@@ -2313,7 +2316,7 @@ async function init() {
             },
             database: {
                 mongo: {
-                    host: "127.0.0.1",
+                    host: process.env.MONGODB_CONNECTION_STRING || "127.0.0.1",
                     port: 27017,
                     database: "Whitelister",
                     // username: "",
