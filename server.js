@@ -120,6 +120,9 @@ async function init() {
 
 
     function start() {
+        console.log("ARGS:", args)
+        console.log("ENV:", process.env)
+
         initConfigFile(() => {
             fs.watchFile("conf.json", (curr, prev) => {
                 console.log("Reloading configuration");
@@ -137,8 +140,6 @@ async function init() {
                 }
             });
             config = JSON.parse(fs.readFileSync("conf.json", "utf-8").toString());
-            console.log("ARGS:", args)
-            console.log("ENV:", process.env)
             console.log(config);
 
             initDBConnection(() => {
@@ -513,7 +514,7 @@ async function init() {
                                             }
                                         },
                                         {
-                                            $sort:{
+                                            $sort: {
                                                 id_group: 1,
                                                 username_l: 1,
                                             }
@@ -1514,6 +1515,10 @@ async function init() {
             res.redirect("/");
         });
 
+        function getApiRoutes(){
+            return app._router.stack.filter((e)=>e.route).map((e)=>e.route).map((r)=>r.path).filter((r)=>r.startsWith("/api/") && !r.startsWith("/api/admin"));
+        }
+
         function removeExpiredPlayers(req, res, next) {
             // console.log("Removing expired players");
             mongoConn((dbo) => {
@@ -1760,14 +1765,14 @@ async function init() {
                 let discordBotServers = [];
                 if (client.guilds) for (let g of client.guilds.cache) discordBotServers.push({ id: g[ 1 ].id, name: g[ 1 ].name })
                 if (config.discord_bot.server_id == "" && discordBotServers.length > 0) config.discord_bot.server_id = discordBotServers[ 0 ].id;
-                
+
                 temporizedRoleUpdate();
                 setInterval(temporizedRoleUpdate, 5 * 60 * 1000)
 
-                function temporizedRoleUpdate(){
+                function temporizedRoleUpdate() {
                     mongoConn((dbo) => {
-                        dbo.collection("players").find({ discord_user_id: { $exists: true } }).toArray((err,dbRes)=>{
-                            for(let m of dbRes){
+                        dbo.collection("players").find({ discord_user_id: { $exists: true } }).toArray((err, dbRes) => {
+                            for (let m of dbRes) {
                                 updateUserRoles(m.discord_user_id);
                             }
                         })
@@ -2273,8 +2278,8 @@ async function init() {
     function mongoConn(connCallback, override = false) {
         if (!mongodb_global_connection || override) {
             let url;
-            
-            if(process.env.MONGODB_CONNECTION_STRING) url = process.env.MONGODB_CONNECTION_STRING
+
+            if (process.env.MONGODB_CONNECTION_STRING) url = process.env.MONGODB_CONNECTION_STRING
             else if (config.database.mongo.host.includes("://")) url = config.database.mongo.host;
             else url = "mongodb://" + config.database.mongo.host + ":" + config.database.mongo.port;
 
