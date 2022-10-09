@@ -35,6 +35,52 @@
 			options: {
 				default: [] as Array<any>,
 			},
+			optionPreselect: {
+				required: false,
+				default: null as any,
+			},
+			inputHidden: {
+				required: false,
+				default: false,
+			},
+			selectHidden: {
+				required: false,
+				default: false,
+			},
+		},
+		data() {
+			return {
+				valRet: '' as any,
+				optRet: {} as Object,
+			};
+		},
+		methods: {
+			log: console.log,
+			optionUpdate: function (dt: any) {
+				console.log(dt);
+				this.optRet = dt.target.value;
+				this.emitUpdate();
+			},
+			valueUpdate: function (dt: any) {
+				console.log(dt);
+				this.valRet = dt.target.value;
+				this.emitUpdate();
+			},
+			emitUpdate: function () {
+				const emitData = { value: this.valRet, option: this.optRet };
+				console.log(this.text, 'emitting update', emitData);
+			},
+			preselectProcedure: function () {
+				this.optRet = this.oIdKey && this.options[0][this.oIdKey] ? this.options[0][this.oIdKey] : this.options[0];
+				this.valRet = this.value;
+				this.emitUpdate();
+			},
+		},
+		created() {
+			this.preselectProcedure();
+		},
+		updated() {
+			this.preselectProcedure();
 		},
 	};
 </script>
@@ -42,9 +88,10 @@
 <template>
 	<label :class="{ selectVisible: options.length > 0 }"
 		>{{ text }}
-		<input :type="type" :value="value" :placeholder="placeholder" />
-		<select v-if="options.length > 0">
-			<option v-for="o of options" :key="o[oIdKey]" :value="oIdKey && o[oIdKey] ? o[oIdKey] : o">{{ oTitleKey && o[oTitleKey] ? o[oTitleKey] : o }}</option>
+		<input v-if="!inputHidden" :type="type" :value="value" :placeholder="placeholder" @change="valueUpdate" />
+		<select v-if="!selectHidden && options.length > 0" @change="optionUpdate">
+			<option value="0" selected hidden>Select</option>
+			<option v-for="o of options" :key="o[oIdKey]" :value="oIdKey && o[oIdKey] ? o[oIdKey] : o" :selected="oIdKey && o[oIdKey] ? o[oIdKey] : o == optionPreselect">{{ oTitleKey && o[oTitleKey] ? o[oTitleKey] : o }}</option>
 		</select>
 	</label>
 </template>
@@ -62,6 +109,11 @@
 		padding-left: 10px;
 		/* overflow: hidden; */
 		background: #444;
+		margin-right: 10px;
+		margin-bottom: 10px;
+	}
+	label:last-of-type {
+		/* margin-right: 0px; */
 	}
 	label input {
 		margin: 0;
