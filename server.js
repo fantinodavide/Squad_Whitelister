@@ -52,7 +52,7 @@ async function init() {
     const { mainModule } = await irequire("process");
     const Discord = await irequire("discord.js");
     const { io } = await require("socket.io-client");
-    
+
     (await irequire('dotenv')).config();
 
     const enableServer = true;
@@ -1517,8 +1517,8 @@ async function init() {
             res.redirect("/");
         });
 
-        function getApiRoutes(){
-            return app._router.stack.filter((e)=>e.route).map((e)=>e.route).map((r)=>r.path).filter((r)=>r.startsWith("/api/") && !r.startsWith("/api/admin"));
+        function getApiRoutes() {
+            return app._router.stack.filter((e) => e.route).map((e) => e.route).map((r) => r.path).filter((r) => r.startsWith("/api/") && !r.startsWith("/api/admin"));
         }
 
         function removeExpiredPlayers(req, res, next) {
@@ -2281,17 +2281,17 @@ async function init() {
         if (!mongodb_global_connection || override) {
             let url;
             let dbName// = config.database.mongo.database;
-            
+
             if (process.env.MONGODB_CONNECTION_STRING) url = process.env.MONGODB_CONNECTION_STRING
-            else{
+            else {
                 if (config.database.mongo.host.includes("://")) url = config.database.mongo.host;
                 else url = "mongodb://" + config.database.mongo.host + ":" + config.database.mongo.port;
                 dbName = config.database.mongo.database;
             }
-            
+
             let client = MongoClient.connect(url, function (err, db) {
                 if (err) console.error(err)
-                var dbo = db.db(dbName);
+                var dbo = dbName ? db.db(dbName) : db.db();
                 connCallback(dbo);
             });
         } else {

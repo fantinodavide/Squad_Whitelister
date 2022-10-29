@@ -1,7 +1,11 @@
 FROM node
 
-COPY release ./
+COPY package.json ./package.json
 RUN npm i
+
+RUN npm run build
+
+COPY release ./
 
 RUN echo '{}' > conf.json
 
