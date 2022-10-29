@@ -37,3 +37,5 @@ yarn.lock
 ALTERNATIVE PORTS.txt
 
 docker-image.tar
+
+.env
