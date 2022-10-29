@@ -2280,10 +2280,14 @@ async function init() {
             let url;
 
             if (process.env.MONGODB_CONNECTION_STRING) url = process.env.MONGODB_CONNECTION_STRING
-            else if (config.database.mongo.host.includes("://")) url = config.database.mongo.host;
-            else url = "mongodb://" + config.database.mongo.host + ":" + config.database.mongo.port;
+            else{
+                if (config.database.mongo.host.includes("://")) url = config.database.mongo.host;
+                else url = "mongodb://" + config.database.mongo.host + ":" + config.database.mongo.port;
 
-            let dbName = config.database.mongo.database;
+                let dbName = config.database.mongo.database;
+            }
+            
+
             let client = MongoClient.connect(url, function (err, db) {
                 if (err) console.error(err)
                 var dbo = db.db(dbName);
