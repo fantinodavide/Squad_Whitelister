@@ -18,6 +18,7 @@
     "cookie-parser": "^1.4.6",
     "crypto": "^1.0.1",
     "discord.js": "^14.2.0",
+    "dotenv": "^16.0.3",
     "express": "^4.17.3",
     "express-force-ssl": "^0.3.2",
     "find-free-port": "^2.0.0",

@@ -52,6 +52,8 @@ async function init() {
     const { mainModule } = await irequire("process");
     const Discord = await irequire("discord.js");
     const { io } = await require("socket.io-client");
+    
+    (await irequire('dotenv')).config();
 
     const enableServer = true;
     var errorCount = 0;
@@ -2278,16 +2280,15 @@ async function init() {
     function mongoConn(connCallback, override = false) {
         if (!mongodb_global_connection || override) {
             let url;
-
+            let dbName// = config.database.mongo.database;
+            
             if (process.env.MONGODB_CONNECTION_STRING) url = process.env.MONGODB_CONNECTION_STRING
             else{
                 if (config.database.mongo.host.includes("://")) url = config.database.mongo.host;
                 else url = "mongodb://" + config.database.mongo.host + ":" + config.database.mongo.port;
-
-                let dbName = config.database.mongo.database;
+                dbName = config.database.mongo.database;
             }
             
-
             let client = MongoClient.connect(url, function (err, db) {
                 if (err) console.error(err)
                 var dbo = db.db(dbName);
