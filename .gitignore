@@ -28,7 +28,7 @@ coverage
 *.sw?
 
 release.zip
-release
+!release
 
 conf.json
 yarn.lock
