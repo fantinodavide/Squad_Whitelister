@@ -1515,8 +1515,8 @@ async function init() {
             res.redirect("/");
         });
 
-        function getApiRoutes(){
-            return app._router.stack.filter((e)=>e.route).map((e)=>e.route).map((r)=>r.path).filter((r)=>r.startsWith("/api/") && !r.startsWith("/api/admin"));
+        function getApiRoutes() {
+            return app._router.stack.filter((e) => e.route).map((e) => e.route).map((r) => r.path).filter((r) => r.startsWith("/api/") && !r.startsWith("/api/admin"));
         }
 
         function removeExpiredPlayers(req, res, next) {
@@ -2389,8 +2389,7 @@ async function init() {
         mongoConn((dbo) => {
             dbo.collection("users").findOne({ access_level: 0 }, (err, dbRes) => {
                 if (err) {
-                    if (res) res.sendStatus(500);
-                    console.error(err)
+                    serverError(null, err)
                 } else if (dbRes != null) {
                     // if (callback)
                     //     callback();

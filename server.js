@@ -2389,8 +2389,7 @@ async function init() {
         mongoConn((dbo) => {
             dbo.collection("users").findOne({ access_level: 0 }, (err, dbRes) => {
                 if (err) {
-                    if (res) res.sendStatus(500);
-                    console.error(err)
+                    serverError(null, err)
                 } else if (dbRes != null) {
                     // if (callback)
                     //     callback();
