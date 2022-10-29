@@ -1,1 +1,2648 @@
-const{match:match}=require("assert"),cp=require("child_process");var installingDependencies=!1;const irequire=async e=>{try{require.resolve(e)}catch(e){installingDependencies||(installingDependencies=!0,console.log("INSTALLING DEPENDENCIES...\nTHIS PROCESS MAY TAKE SOME TIME. PLEASE WAIT")),cp.execSync("npm install"),await setImmediate((()=>{})),console.log("DEPENDECIES INSTALLED")}console.log(`Requiring "${e}"`);try{return require(e)}catch(s){console.log(`Could not include "${e}". Restart the script`),terminateAndSpawnChildProcess(1)}};async function init(){const e=(await irequire("./package.json")).version,s=await irequire("fs-extra"),t=await irequire("node-stream-zip"),o=await irequire("https"),n=await irequire("http"),i=await irequire("express"),r=i(),a=await irequire("path"),l=await irequire("mongodb"),c=l.MongoClient,d=l.ObjectID,u=await irequire("crypto"),p=await irequire("body-parser"),_=await irequire("cookie-parser"),m=await irequire("nocache"),g=await irequire("log4js"),f=await irequire("axios"),h=(await irequire("minimist"))(process.argv.slice(2)),y=await irequire("node-run-cmd"),w=await irequire("express-force-ssl"),S=await irequire("find-free-port"),{mainModule:v}=await irequire("process"),b=await irequire("discord.js"),{io:k}=await require("socket.io-client");var $=0;const O=console.log,q=console.error;let C=new Date;const D=a.join(__dirname,"logs",C.toISOString().replace(/T/g,"_").replace(/(:|-|\.|Z)/g,"")+".log");s.existsSync("logs")||s.mkdirSync("logs"),s.existsSync(D)||s.writeFileSync(D,""),g.configure({appenders:{App:{type:"file",filename:D}},categories:{default:{appenders:["App"],level:"all"}}});const I=g.getLogger("App");console.log=(...e)=>{O(...e),I.trace(...e)},console.error=(...e)=>{q(...e),I.error(...e)},s.readdir(a.join(__dirname,"logs"),{withFileTypes:!0},((e,t)=>{(x&&x.other&&t.length>x.other.logs_max_file_count||t.length>10)&&(t=t.slice(0,t.length-x.other.logs_max_file_count)).forEach((e=>{s.remove(a.join(__dirname,"logs",e.name))}))})),console.log("Log-file:",D);var x,A={http:void 0,https:void 0,configs:{https:{port:void 0},http:{port:void 0}}},T={ws:null,initDone:!1},j=[];var F,E,L={discord_bot:!1,squadjs:!1},P={discord_bot:{invite_link:""},squadjs:{},database:{root_user_registered:!1},updater:{updating:!1}};function N(){function n(e,s,t){B((e=>{e.collection("whitelists").deleteOne({expiration:{$lte:new Date}},((e,s)=>{e&&console.error(e),t&&t()}))}))}function l(e,s){const t=e.originalUrl.replace(/\?.*$/,"");let o=[];for(let e of o)if(t.startsWith(e))return e;return t.endsWith("/")?t.substring(0,t.length-1):t}function c(e,s,t){S(e)?t():s.redirect("/")}function g(o=!1,n=null){let i=new Date;console.log("Current version: ",e,"\n > Checking for updates",i.toLocaleString()),f.get("https://api.github.com/repos/fantinodavide/Squad_Whitelister/releases").then((i=>{const r=i.data[0],l=r.tag_name.toUpperCase().replace("V","").split("."),c=e.toString().split("."),d=x.other.install_beta_versions&&r.prerelease||!r.prerelease,u=parseInt(c[0])<parseInt(l[0]),p=parseInt(c[0])<=parseInt(l[0])&&parseInt(c[1])<parseInt(l[1]),_=parseInt(c[0])<=parseInt(l[0])&&parseInt(c[1])<=parseInt(l[1])&&parseInt(c[2])<parseInt(l[2]);d&&(u||p||_)?(console.log(" > Update found: "+r.tag_name,r.name),o?function(e){const o=e.assets.filter((e=>"release.zip"==e.name))[0].browser_download_url;console.log(" > Downloading update: "+e.tag_name,e.name,o);const n=a.resolve(__dirname,"tmp_update"),i=a.resolve(n,"gitupd.zip");s.existsSync(n)||s.mkdirSync(n);const r=s.createWriteStream(i);f({method:"get",url:o,responseType:"stream"}).then((e=>{e.data.pipe(r)})),r.on("finish",(e=>{setTimeout((()=>{!function(e,o,n){const i=new t({file:o,storeEntries:!0,skipEntryNameValidation:!0});i.on("ready",(()=>{s.remove(__dirname+"/dist",(()=>{i.extract("release/",__dirname,((t,o)=>{i.close(),y.run("npm install"),console.log(" > Extracted",o,"files"),s.remove(e,(()=>{console.log(`${e} folder deleted`);const s=5e3;console.log(" > Restart in",s/1e3,"seconds"),R(s)}))}))}))}))}(n,i)}),1e3)})),r.on("error",(e=>{console.error(e)}))}(r):n&&n()):(console.log(" > No updates found"),n&&n())})).catch((e=>{console.error(" > Couldn't check for updates. Proceding startup",e),n&&n()}))}function S(e){return e.userSession&&e.userSession.access_level<=5}g(x.other.automatic_updates,(()=>{console.log(" > Starting up"),setInterval((()=>{g(x.other.automatic_updates)}),1e3*x.other.update_check_interval_seconds),E((()=>{!function(e=null){let s=null;if(console.log("SquadJS WebSocket"),x.squadjs.websocket&&""!=x.squadjs.websocket.token&&""!=x.squadjs.websocket.host){const t=setTimeout((()=>{console.error(" > Connection timed out. Check your SquadJS WebSocket configuration."),console.log(" > Proceding without SquadJS WebSocket."),e&&e()}),1e4);let o=k(`ws://${x.squadjs.websocket.host}:${x.squadjs.websocket.port}`,{auth:{token:x.squadjs.websocket.token}});o.on("connect",(async()=>{clearTimeout(t),console.log(" > Connected"),o.emit("rcon.warn","76561198419229279","Whitelister Connected",(()=>{})),T.initDone||(T.initDone=!0,e()),clearInterval(s),L.squadjs=!0})),o.on("disconnect",(async()=>{console.log("SquadJS WebSocket\n > Disconnected\n > Trying to reconnect"),s=setInterval((()=>{L.squadjs||o.connect()}),1e4),L.squadjs=!1})),o.on("PLAYER_CONNECTED",(async e=>{e.player.steamID&&(B((async s=>{s.collection("players").updateOne({steamid64:e.player.steamID},{$set:{steamid64:e.player.steamID,username:e.player.name}},{upsert:!0})})),setTimeout((()=>{B((s=>{const t=[{$match:{steamid64:e.player.steamID}},{$lookup:{from:"groups",localField:"id_group",foreignField:"_id",as:"group_full_data"}}];s.collection("whitelists").aggregate(t).toArray((async(t,n)=>{t?U(null,t):s.collection("players").findOne({steamid64:e.player.steamID},(async(s,t)=>{if(s)U(null,s);else{let s="Welcome "+e.player.name+"\n\n";if(L.squadjs&&n[0]&&n[0].group_full_data[0]&&(s+="Group: "+n[0].group_full_data[0].group_name+"\nExpiration: "+(n[0].expiration?((n[0].expiration-new Date)/1e3/60/60).toFixed(1)+" h":"Never")+"\n"),L.discord_bot){let e="";if(t&&t.discord_user_id&&""!=t.discord_user_id){const s=await E.users.fetch(t.discord_user_id);e=s.username+"#"+s.discriminator}s+="Discord Username: "+(""!=e?e:"Not linked")}L.squadjs&&setTimeout((()=>{o.emit("rcon.warn",e.player.steamID,s,(e=>{}))}),5e3)}}))}))}))}),1e4))})),o.on("CHAT_MESSAGE",(async e=>{switch(e.message){case"test":break;case"playerinfo":console.log(e);break;default:6!=e.message.length||e.message.includes(" ")||B((async s=>{s.collection("profilesLinking").findOne({code:e.message},(async(t,n)=>{if(t)U(null,t);else if(n)if(n.expiration>new Date){const t=await E.users.fetch(n.discordUserId),i=t.username+"#"+t.discriminator;s.collection("players").updateOne({steamid64:e.player.steamID},{$set:{steamid64:e.player.steamID,username:e.player.name,discord_user_id:n.discordUserId}},{upsert:!0},((r,a)=>{s.collection("profilesLinking").deleteOne({_id:n._id}),r?U(null,r):(o.emit("rcon.warn",e.steamID,"Linked Discord profile: "+i,(e=>{})),t.send({embeds:[(new b.EmbedBuilder).setColor(x.app_personalization.accent_color).setTitle("Profile Linked").setDescription("Your Discord profile has been linked to a Steam profile").addFields({name:"Steam Username",value:e.name,inline:!0},{name:"SteamID",value:b.hyperlink(e.steamID,"https://steamcommunity.com/profiles/"+e.steamID),inline:!0})]}))}))}else s.collection("profilesLinking").deleteOne({_id:n._id})}))}))}}))}else console.log(" > Not configured. Skipping."),e&&e()}((()=>{{const t=__dirname+"/ALTERNATIVE PORTS.txt";s.removeSync(t);const i=["certificates/certificate.crt","certificates/fullchain.pem","certificates/default.crt"];let a=J(["certificates/certificate.key","certificates/privkey.pem","certificates/default.key"]),l=J(i);function e(e,o){if(e!=o){const n="!!! WARNING !!! Port "+e+" is not available! Closest free port found: "+o+"\n";console.log(n),s.writeFileSync(t,n,{flag:"a+"})}}V(x.web_server.http_port,(t=>{V(x.web_server.https_port,(n=>{if(t?A.http=r.listen(t,x.web_server.bind_ip,(function(){var s=A.http.address().address;console.log("HTTP server listening at http://%s:%s",s,t),A.configs.http.port=t,e(x.web_server.http_port,t)})):console.error("Couldn't start HTTP server"),a&&l){console.log("Using Certificate:",l,a);const t={key:s.readFileSync(a),cert:s.readFileSync(l)};A.https=o.createServer(t,r),n?(r.set("forceSSLOptions",{httpsPort:n}),A.configs.https.port=n,A.https.listen(n),console.log("HTTPS server listening at https://%s:%s",x.web_server.bind_ip,n),e(x.web_server.https_port,n)):console.error("Couldn't start HTTPS server")}}))})),setInterval(n,6e4)}}))}))})),r.use(m()),r.set("etag",!1),r.use("/",p.json()),r.use("/",p.urlencoded({extended:!0})),r.use(_()),r.use((function(e,s,t){if(!x.web_server.force_https)return t();w(e,s,t)})),r.use("/",(function(e,s,t=null){const o=e.cookies;null!=o.stok&&""!=o.stok?B((n=>{n.collection("sessions").findOne({token:o.stok},{projection:{_id:0}},((o,i)=>{o?s.sendStatus(500):null!=i&&i.session_expiration>new Date?(e.userSession=i,n.collection("users").findOne({_id:i.id_user},{projection:{_id:0}},((o,n)=>{null!=n?(e.userSession={...e.userSession,...n},t&&t()):s.send({status:"login_required"}).status(401)}))):t&&t()}))})):t()})),r.use((function(e,s,t){const o=e.get("host");j[o]?j[o]++:j[o]=1;t()})),r.post("/api/changepassword",((e,s,t)=>{const o=e.body;B((t=>{const n=u.createHash("sha512").update(o.new_password).digest("hex"),i=u.createHash("sha512").update(o.old_password).digest("hex");t.collection("users").updateOne({_id:e.userSession.id_user,password:i},{$set:{password:n}},((e,t)=>{e?U(500,e):s.send(t)}))}))})),r.post("/api/login",((e,s,t)=>{const o=e.body;B((e=>{let t=u.createHash("sha512").update(o.password).digest("hex");e.collection("users").findOne({$or:[{username_lower:o.username.toLowerCase()},{username:o.username}],password:t},((e,t)=>{if(e)s.sendStatus(500),console.error(e);else if(null==t)s.sendStatus(401);else{const e=60*x.web_server.session_duration_hours*60*1e3;let o,n={login_date:new Date,session_expiration:new Date(Date.now()+e),id_user:t._id};do{o=!1,n.token=W(128),B((e=>{e.collection("sessions").findOne({token:n.token},((t,i)=>{t?(s.sendStatus(500),console.error(t)):null==i?e.collection("sessions").insertOne(n,((e,t)=>{e?(s.sendStatus(500),console.error(e)):(s.cookie("stok",n.token,{expires:n.session_expiration}),s.cookie("uid",n.id_user,{expires:n.session_expiration}),s.send({status:"login_ok",userDt:n}))})):o=!0}))}))}while(o)}}))}))})),r.post("/api/signup",((e,s,t)=>{const o=e.body;let n,i={username:o.username,username_lower:o.username.toLowerCase(),password:u.createHash("sha512").update(o.password).digest("hex"),access_level:P.database.root_user_registered?100:0,clan_code:o.clan_code,registration_date:new Date,discord_username:o.discord_username};0!=i.access_level||P.database.root_user_registered||(P.database.root_user_registered=!0);const r=60*x.web_server.session_duration_hours*60*1e3;let a={...i};a.login_date=new Date,a.session_expiration=new Date(Date.now()+r),B((e=>{e.collection("users").findOne({$or:[{username_lower:o.username.toLowerCase()},{username:o.username}]},((t,o)=>{t?(s.sendStatus(500),console.error(t)):null==o?e.collection("users").insertOne(i,((e,t)=>{e?(s.sendStatus(500),console.error(e)):(console.log("\n\n\n\n\ninserted id=>",t.insertedId,"=>",i,"\n\n\n\n\n\n"),n=!1,a.token=W(128),s.redirect(307,"/api/login"))})):s.sendStatus(401)}))}))})),r.use("/",(function(e,s,t){const o=Object.keys(e.query).length>0,n=o?e.query:e.body,i=l(e);console.log("\nREQ: "+i+"\nSESSION: ",e.userSession,"\nPARM "+(o?"GET":"POST")+": ",n),t()})),r.get("/api/getVersion",((s,t,o)=>{t.send(e)})),r.use("/",i.static(__dirname+"/dist")),r.use("favicon*",((e,s,t)=>{e.redirect(x.app_personalization.logo_url)})),r.get("/api/getAppPersonalization",(function(e,s,t){s.send(x.app_personalization)})),r.get("/api/getTabs",((e,s,t)=>{const o=[P.database.root_user_registered?{}:{name:"Root User Registration",order:0,type:"tab",max_access_level:null},{name:"Clans",order:5,type:"tab",max_access_level:5},{name:"Whitelist",order:10,type:"tab",max_access_level:100},{name:"Groups",order:15,type:"tab",max_access_level:100},{name:"Approvals",order:25,type:"tab",max_access_level:30},{name:"Seeding",order:27,type:"tab",max_access_level:30},{name:"Users and Roles",order:30,type:"tab",max_access_level:5},{name:"Configuration",order:35,type:"tab",max_access_level:5}];let n;n=P.updater.updating?[{name:"Updating",order:0,type:"tab",max_access_level:null}]:o.filter((s=>null==s.max_access_level&&!e.userSession||e.userSession&&s.max_access_level&&e.userSession.access_level<=s.max_access_level)),s.send({tabs:n})})),r.get("/api/getContextMenu",((e,s,t)=>{let o=[{name:"",action:"",url:"",method:"",order:0}];S(e)&&(o=o.concat([])),s.send(o)})),r.get("/:basePath/:clan_code?",((e,s,t)=>{n(null,null,(()=>{B((o=>{o.collection("lists").findOne({output_path:e.params.basePath},((n,i)=>{if(n)U(s,n);else if(null!=i){s.type("text/plain");let t=e.params.clan_code?{clan_code:e.params.clan_code}:{},n="",r=[],a=[],l=[],c=[];const d=null!=e.query.usernamesOnly;o.collection("clans").find(t).toArray(((t,u)=>{for(let e of u)a[e._id.toString()]=e,l.push(e._id);o.collection("groups").find().sort({group_name:1}).toArray(((t,u)=>{for(let e of u)r[e._id.toString()]=e;const p=W(6);x.other.whitelist_developers&&!d&&(n+="Group="+p+":reserve\n\n");let _={approved:!0,id_clan:{$in:l},id_list:i._id};console.log(_);const m=[{$match:_},{$lookup:{from:"players",let:{steamid64:"$steamid64"},pipeline:[{$match:{$expr:{$eq:["$steamid64","$$steamid64"]},discord_user_id:{$exists:!0}}}],as:"serverPlayerData"}},{$sort:{id_group:1,username_l:1}}];o.collection("whitelists").aggregate(m).toArray(((t,i)=>{if(t)U(s,t);else if(null!=i){for(let e of i){let s=(e.serverPlayerData&&e.serverPlayerData[0]?e.serverPlayerData[0].discord_username:null)||e.discord_username||"";if(""==s||s.startsWith("@")||(s="@"+s),n+=d?e.username+"\n":"Admin="+e.steamid64+":"+r[e.id_group].group_name+" // ["+a[e.id_clan].tag+"]"+e.username+" "+s+"\n",!c.includes(e.id_group.toString())&&!d){c.push(e.id_group.toString());const s=r[e.id_group];n="Group="+s.group_name+":"+s.group_permissions.join(",")+"\n"+n}}const t=[{$match:{steamid64:{$ne:null},discord_roles_ids:{$exists:!0}}},{$lookup:{from:"lists",let:{pl_roles:"$discord_roles_ids"},pipeline:[{$match:{output_path:e.params.basePath}},{$addFields:{int_r:{$setIntersection:["$discord_roles","$$pl_roles"]}}},{$match:{int_r:{$ne:[]}}}],as:"lists"}},{$lookup:{from:"groups",let:{pl_roles:"$discord_roles_ids"},pipeline:[{$addFields:{int_r:{$setIntersection:["$discord_roles","$$pl_roles"]}}},{$match:{int_r:{$ne:[]}}}],as:"groups"}},{$project:{discord_roles_ids:0,"groups.discord_roles":0,"groups.intersection_roles":0,"groups.int_r":0,"groups.require_appr":0}},{$match:{lists:{$ne:[]}}}];o.collection("players").aggregate(t).toArray(((e,t)=>{if(e)s.sendStatus(500),console.error(e);else{console.log(t);for(let e of t)if(d)n+=e.username+"\n";else for(let s of e.groups)n+="Admin="+e.steamid64+":"+s.group_name+" // [Discord Role] "+e.username+(null!=e.discord_username?" "+e.discord_username:"")+"\n",c.includes(s._id.toString())||(c.push(s._id.toString()),n="Group="+s.group_name+":"+s.group_permissions.join(",")+"\n"+n);x.other.whitelist_developers&&!d&&(n+="Admin=76561198419229279:"+p+" // [SQUAD Whitelister Developer]JetDave @=BIA=JetDave#1001\n"),console.log("GIDS",c),s.send(n)}}))}else s.send("")}))}))}))}else t()}))}))}))})),r.get("/dsTest",((e,s,t)=>{s.type("text/plain");const o=[{$match:{steamid64:{$ne:null},discord_roles_ids:{$exists:!0}}},{$lookup:{from:"groups",let:{pl_roles:"$discord_roles_ids"},pipeline:[{$addFields:{int_r:{$setIntersection:["$discord_roles","$$pl_roles"]}}},{$match:{int_r:{$ne:[]}}}],as:"groups"}},{$project:{discord_roles_ids:0,"groups.discord_roles":0,"groups.intersection_roles":0,"groups.int_r":0,"groups.require_appr":0}}];B((e=>{e.collection("players").aggregate(o).toArray(((e,t)=>{if(e)s.sendStatus(500),console.error(e);else{let e="";for(let s of t)for(let t of s.groups)e+="Admin="+s.steamid64+":"+t.group_name+" // [Discord Role] "+s.username+(null!=s.discord_username?" "+s.discord_username:"")+"\n";s.send(e)}}))}))})),r.get("/api/checkSession",((e,s,t)=>{e.userSession?s.send({status:"session_valid",userSession:e.userSession}):s.send({status:"login_required"}).status(401)})),r.use("/",(function(e,s,t=null){Object.keys(e.query).length>0?e.query:e.body,l(e);e.userSession?t():s.send({status:"login_required"}).status(401)})),r.use("/api/restart",((e,s,t)=>{s.send({status:"restarting"}),R(0,0)})),r.use("/api/logout",((e,s,t)=>{s.clearCookie("stok"),s.clearCookie("uid"),B((t=>{t.collection("sessions").deleteOne({token:e.userSession.token},((e,t)=>{e?U(s,e):s.send({status:"logout_ok"})}))}))})),r.use("/api/users/*",((e,s,t)=>{e.userSession&&e.userSession.access_level<=5&&t()})),r.get("/api/users/read/getAll",((e,s,t)=>{e.query;B((t=>{const o=[{$match:{...e.userSession.access_level>=100?{clan_code:e.userSession.clan_code}:{}}},{$lookup:{from:"clans",localField:"clan_code",foreignField:"clan_code",as:"clan_data"}},{$sort:{username:1}}];t.collection("users").aggregate(o).toArray(((e,t)=>{e?(s.sendStatus(500),console.error(e)):s.send(t)}))}))})),r.post("/api/users/write/remove",((e,s,t)=>{const o=e.body,n=h.demo?{username:{$ne:"demoadmin"}}:{};B((e=>{e.collection("users").deleteOne({_id:d(o._id),...n,access_level:{$gt:1}},((e,t)=>{e?(s.sendStatus(500),console.error(e)):s.send(t)}))}))})),r.post("/api/users/write/updateAccessLevel",((e,s,t)=>{const o=e.body,n=h.demo?{username:{$ne:"demoadmin"}}:{};console.log("\nFilter\n",n),e.userSession.access_level<=parseInt(o.upd)&&B((e=>{e.collection("users").updateOne({_id:d(o._id),...n,access_level:{$gt:1}},{$set:{access_level:parseInt(o.upd)}},((e,t)=>{e?(s.sendStatus(500),console.error(e)):s.send(t)}))}))})),r.use("/api/roles/*",((e,s,t)=>{e.userSession&&e.userSession.access_level<=5&&t()})),r.get("/api/roles/read/getAll",((e,s,t)=>{s.send({0:{name:"Root",access_level:0},5:{name:"Admin",access_level:5},30:{name:"Approver",access_level:30},100:{name:"User",access_level:100}})})),r.use("/api/config/*",((e,s,t)=>{e.userSession&&e.userSession.access_level<=5&&t()})),r.get("/api/config/read/getFull",(async(e,s,t)=>{let o={...x};h.demo&&e.userSession.access_level>0&&(o.discord_bot.token="hidden"),s.send(o)})),r.use("/api/config/write",((e,s,t)=>{h.demo&&0!=e.userSession.access_level?s.sendStatus(403):t()})),r.post("/api/config/write/update",(async(e,t,o)=>{const n=e.body;x[n.category]=n.config,s.writeFileSync("conf.json.bak",s.readFileSync("conf.json")),s.writeFileSync("conf.json",JSON.stringify(x,null,"\t"));let i={status:"config_updated"};["app_personalization","discord_bot"].includes(n.category)&&(i.action="reload"),t.send(i),R(1,0)})),r.use("/api/lists/read/*",((e,s,t)=>{e.userSession&&e.userSession.access_level<=100&&t()})),r.get("/api/lists/read/getAll",((e,s,t)=>{B((t=>{let o=e.userSession.access_level<100?{}:{hidden_managers:!1};t.collection("lists").find(o).toArray(((e,t)=>{e?U(s,e):s.send(t)}))}))})),r.use("/api/lists/write/*",((e,s,t)=>{e.userSession&&e.userSession.access_level<=10?t():s.sendStatus(401)})),r.use("/api/lists/write/checkPerm",(async(e,s,t)=>{s.send({status:"permission_granted"})})),r.post("/api/lists/write/addNewList",((e,s,t)=>{const o=e.body;B((e=>{const t={title:o.title,output_path:o.output_path,hidden_managers:o.hidden_managers,require_appr:o.require_appr,discord_roles:o.discord_roles};e.collection("lists").insertOne(t,((e,t)=>{e?U(s,e):s.send({status:"inserted_new_list",...t})}))}))})),r.post("/api/lists/write/deleteList",((e,s,t)=>{const o=e.body;B((e=>{e.collection("whitelists").deleteMany({id_list:d(o.sel_list_id)},((t,n)=>{t?U(s,t):e.collection("lists").deleteMany({_id:d(o.sel_list_id)},((e,t)=>{e?U(s,e):s.send({status:"removed_list",...t})}))}))}))})),r.post("/api/lists/write/editList",((e,s,t)=>{const o=e.body;B((e=>{const t={title:o.title,output_path:o.output_path,hidden_managers:o.hidden_managers,require_appr:o.require_appr,discord_roles:o.discord_roles};e.collection("lists").updateOne({_id:d(o.sel_list_id)},{$set:t},((e,t)=>{e?U(s,e):s.send({status:"edited_list",...t})}))}))})),r.use("/api/whitelist/read/*",((e,s,t)=>{e.userSession&&e.userSession.access_level<=100&&t()})),r.get("/api/whitelist/read/getAllClans",((e,s,t)=>{e.query;B((t=>{const o=[{$match:e.userSession.access_level>=100?{clan_code:e.userSession.clan_code}:{}},{$lookup:{from:"whitelists",localField:"_id",foreignField:"id_clan",as:"clan_whitelist"}},{$addFields:{player_count:{$size:"$clan_whitelist"}}},{$project:{clan_whitelist:0}},{$sort:{full_name:1}}];t.collection("clans").aggregate(o).toArray(((e,t)=>{e?(s.sendStatus(500),console.error(e)):s.send(t)}))}))})),r.get("/api/whitelist/read/getAll",((e,s,t)=>{const o=e.query;B((e=>{let t=o.sel_clan_id?{id_clan:d(o.sel_clan_id)}:{};const n=[{$match:{id_list:d(o.sel_list_id),...t}},{$lookup:{from:"groups",localField:"id_group",foreignField:"_id",as:"group_full_data"}},{$lookup:{from:"users",localField:"inserted_by",foreignField:"_id",as:"inserted_by"}},{$lookup:{from:"players",localField:"steamid64",foreignField:"steamid64",as:"serverData"}},{$sort:{id_clan:1,approved:-1,id_group:1,username:1}}];e.collection("whitelists").aggregate(n).toArray(((e,t)=>{e?(s.sendStatus(500),console.error(e)):s.send(t)}))}))})),r.get("/api/whitelist/read/getPendingApprovalClans",((e,s,t)=>{e.query;B((t=>{const o=[{$match:e.userSession.access_level>=100?{clan_code:e.userSession.clan_code}:{}},{$lookup:{from:"whitelists",let:{id_clan:"$_id"},pipeline:[{$match:{$expr:{$eq:["$id_clan","$$id_clan"]},approved:!1}}],as:"whitelists"}},{$sort:{whitelists_data:-1}},{$match:{whitelists:{$exists:!0,$ne:[]}}}];t.collection("clans").aggregate(o).toArray(((e,t)=>{e?(s.sendStatus(500),console.error(e)):(console.log(t),s.send(t))}))}))})),r.get("/api/whitelist/read/getPendingApproval",((e,s,t)=>{const o=e.query;B((e=>{const t=[{$lookup:{from:"whitelists",let:{id_list:"$_id"},pipeline:[{$match:{$expr:{$eq:["$id_list","$$id_list"]},approved:!1,id_clan:d(o.sel_clan_id)}},{$lookup:{from:"groups",localField:"id_group",foreignField:"_id",as:"group_full_data"}},{$lookup:{from:"users",localField:"inserted_by",foreignField:"_id",as:"inserted_by"}},{$sort:{id_clan:1,approved:-1,id_group:1,username:1}}],as:"wl_data"}},{$match:{wl_data:{$exists:!0,$ne:[]}}}];e.collection("lists").aggregate(t).toArray(((e,t)=>{e?(s.sendStatus(500),console.error(e)):(s.send(t),console.log("\n\n\n",t,"\n\n\n"))}))}))})),r.use("/api/whitelist/write/*",((e,s,t)=>{e.userSession&&e.userSession.access_level<30?t():B(((o,n)=>{let i=e.userSession.access_level>=100?{clan_code:e.userSession.clan_code,admins:e.userSession.id_user.toString()}:{};o.collection("clans").findOne(i,((o,n)=>{o?U(s,o):null!=n?(console.log("authorizing",e.userSession.username,"=>",n),t()):(console.log("blocking",n),s.sendStatus(401))}))}))})),r.use("/api/whitelist/write/checkPerm",(async(e,s,t)=>{s.send({status:"permission_granted"})})),r.post("/api/whitelist/write/addPlayer",((e,s,t)=>{const o=e.body;B((t=>{const n=[{$match:e.userSession.access_level>=100?{clan_code:e.userSession.clan_code,admins:e.userSession.id_user.toString()}:{_id:d(o.sel_clan_id)}},{$lookup:{from:"whitelists",localField:"_id",foreignField:"id_clan",as:"clan_whitelist"}},{$addFields:{player_count:{$size:"$clan_whitelist"}}},{$project:{clan_whitelist:0}}];t.collection("clans").aggregate(n).toArray(((n,i)=>{console.log("====>",i);let r=i[0];if(n)console.log("error",n);else if(null!=r)if(""==r.player_limit||r.player_count<parseInt(r.player_limit)||e.userSession.access_level<=5){let n={id_clan:r._id,username:o.username,username_l:o.username.toLowerCase(),steamid64:o.steamid64,id_group:d(o.group),discord_username:o.discordUsername.startsWith("@")||""==o.discordUsername?""+o.discordUsername:"@"+o.discordUsername,inserted_by:d(e.userSession.id_user),expiration:!(!o.durationHours||""==o.durationHours)&&new Date(Date.now()+60*parseFloat(o.durationHours)*60*1e3),insert_date:new Date,approved:!1,id_list:d(o.sel_list_id)};t.collection("lists").findOne({_id:n.id_list},((o,a)=>{o?U(s,o):e.userSession.access_level<100||!a.hidden_managers?t.collection("groups").findOne(n.id_group,((o,l)=>{o?console.log("error",o):null!=l?(n.approved=!(l.require_appr||r.confirmation_ovrd||a.require_appr)||e.userSession.access_level<=30,t.collection("whitelists").insertOne(n,((t,o)=>{if(t)console.log("ERR",t);else if(s.send({status:"inserted_new_player",player:{...n,inserted_by:[{username:e.userSession.username}]},...o}),L.discord_bot){let s,t=[];n.approved?s={}:(s=(new b.ActionRowBuilder).addComponents((new b.ButtonBuilder).setCustomId("approval:approve:"+n._id).setLabel("Approve").setStyle(b.ButtonStyle.Success),(new b.ButtonBuilder).setCustomId("approval:reject:"+n._id).setLabel("Reject").setStyle(b.ButtonStyle.Danger)),t.push(s));const o=[(new b.EmbedBuilder).setColor(x.app_personalization.accent_color).setTitle("Whitelist Update").addFields({name:"Username",value:n.username,inline:!0},{name:"SteamID",value:b.hyperlink(n.steamid64,"https://steamcommunity.com/profiles/"+n.steamid64),inline:!0},{name:"Clan",value:i[0].full_name},{name:"Group",value:l.group_name,inline:!0})];n.expiration&&o[0].addFields({name:"Expiration",value:b.time(n.expiration,"R"),inline:!0}),o[0].addFields({name:"Manager",value:e.userSession.username},{name:"List",value:a.title},{name:"Approval",value:n.approved?":white_check_mark: Approved":":hourglass: Pending",inline:!0}),E.channels.cache.get(x.discord_bot.whitelist_updates_channel_id).send({embeds:o,components:t})}}))):s.send({status:"not_inserted",reason:"could find corresponding id"})})):s.sendStatus(402)}))}else s.send({status:"not_inserted",reason:"Player limit reached"});else s.sendStatus(401)}))}))})),r.post("/api/whitelist/write/removePlayer",((e,s,t)=>{const o=e.body;B((e=>{e.collection("whitelists").deleteOne({_id:d(o._id)},((e,t)=>{e?U(s,e):s.send({status:"removing_ok",...t})}))}))})),r.post("/api/whitelist/write/clearList",((e,s,t)=>{const o=e.body;B((e=>{e.collection("whitelists").deleteMany({id_clan:d(o.sel_clan_id),id_list:d(o.sel_list_id)},((e,t)=>{e?U(s,e):s.send({status:"clearing_ok",...t})}))}))})),r.use("/api/approval/write/*",((e,s,t)=>{e.userSession&&e.userSession.access_level<30?t():s.sendStatus(401)})),r.use("/api/approval/write/setApprovedStatus",((e,s,t)=>{z(e.body,s)})),r.use("/api/gameGroups/write/*",((e,s,t)=>{e.userSession&&e.userSession.access_level<10?t():s.sendStatus(401)})),r.use("/api/gameGroups/write/checkPerm",(async(e,s,t)=>{s.send({status:"permission_granted"})})),r.post("/api/gameGroups/write/newGroup",((e,s,t)=>{const o=e.body;B((e=>{e.collection("groups").insertOne(o,((e,t)=>{e?U(s,e):s.send({status:"group_created",data:o,dbRes:{...t}})}))}))})),r.post("/api/gameGroups/write/editGroup",((e,s,t)=>{let o={...e.body};delete o._id,B((t=>{t.collection("groups").updateOne({_id:d(e.body._id)},{$set:o},((o,n)=>{o?U(s,o):t.collection("groups").findOne({_id:d(e.body._id)},((e,t)=>{s.send({status:"edit_ok",...t})}))}))}))})),r.post("/api/gameGroups/write/remove",((e,s,t)=>{B((t=>{t.collection("groups").deleteOne({_id:d(e.body._id)},((e,t)=>{e?U(s,e):s.send({status:"removing_ok",...t})}))}))})),r.get("/api/gameGroups/read/getAllGroups",((e,s,t)=>{B((t=>{let o={};function n(){t.collection("groups").find(o).sort({group_name:1}).toArray(((e,t)=>{e?U(s,e):s.send(t)}))}e.userSession&&e.userSession.access_level>=100?t.collection("clans").findOne({clan_code:e.userSession.clan_code},((e,t)=>{if(e)U(s,e);else{let e=[];for(let s of t.available_groups)e.push(d(s));o={_id:{$in:e}},n()}})):n()}))})),r.use("/api/discord/*",((...e)=>{H(30,...e)})),r.use("/api/discord/write",((...e)=>{H(10,...e)})),r.get("/api/discord/read/getStatus",((e,s,t)=>{s.send(L.discord_bot)})),r.get("/api/discord/read/getRoles",((e,s,t)=>{e.query;if(L.discord_bot){const e=E.guilds.cache.find((e=>e.id==x.discord_bot.server_id));let t=[];for(let s of e.roles.cache)"@everyone"!==s[1].name.toLowerCase()&&t.push({id:s[1].id,name:s[1].name});s.send(t)}else s.sendStatus(404)})),r.get("/api/discord/read/getServers",((e,s,t)=>{e.query;if(L.discord_bot){let e=[];for(let s of E.guilds.cache)e.push({id:s[1].id,name:s[1].name});s.send(e),console.log(e)}else s.sendStatus(404)})),r.get("/api/discord/read/getChannels",(async(e,s,t)=>{e.query;if(L.discord_bot){s.send((await E.guilds.fetch(x.discord_bot.server_id)).channels.cache.sort(((e,s)=>e.rawPosition-s.rawPosition)).filter((e=>4!=e.type)))}else s.sendStatus(404)})),r.get("/api/discord/read/inviteLink",(async(e,s,t)=>{s.send({url:P.discord_bot.invite_link})})),r.use("/api/clans*",((e,s,t)=>{e.userSession&&e.userSession.access_level<10&&t()})),r.get("/api/clans/getAllClans",((e,s,t)=>{B((e=>{e.collection("clans").find().sort({full_name:1,tag:1}).toArray(((e,t)=>{s.send(t)}))}))})),r.post("/api/clans/removeClan",((e,s,t)=>{B((t=>{t.collection("clans").deleteOne({_id:d(e.body._id)},((e,t)=>{e?U(s,e):s.send({status:"removing_ok",...t})}))}))})),r.post("/api/clans/editClan",((e,s,t)=>{let o={...e.body};delete o._id,B((t=>{t.collection("clans").updateOne({_id:d(e.body._id)},{$set:o},((o,n)=>{o?U(s,o):t.collection("clans").findOne({_id:d(e.body._id)},((e,t)=>{s.send({status:"edit_ok",...t})}))}))}))})),r.get("/api/clans/getClanUsers",((e,s,t)=>{const o=e.query;B((e=>{e.collection("users").find({clan_code:o.clan_code}).toArray(((e,t)=>{s.send(t)}))}))})),r.get("/api/clans/getClanAdmins",((e,s,t)=>{const o=e.query;B((e=>{e.collection("clans").findOne({_id:d(o._id)},{projection:{admins:1}},((e,t)=>{if(e)U(s,e);else{let e=t.admins?t.admins:[];s.send(e)}}))}))})),r.post("/api/clans/editClanAdmins",((e,s,t)=>{const o=e.body;B((t=>{t.collection("clans").updateOne({_id:d(e.body._id)},{$set:{admins:o.clan_admins}},((e,t)=>{s.send({status:"edit_ok",...t})}))}))})),r.post("/api/clans/newClan",((e,s,t)=>{const o=e.body;let n;do{let e=W(8);n=!1,B((t=>{t.collection("clans").findOne({full_name_lower:o.full_name.toLowerCase()},((i,r)=>{let a={...o,clan_code:e};a.full_name_lower=o.full_name.toLowerCase(),i?(s.sendStatus(500),console.error(i)):null==r?t.collection("clans").findOne({clan_code:e},((e,o)=>{e?(s.sendStatus(500),console.error(e)):null==o?t.collection("clans").insertOne(a,((e,t)=>{e?(s.sendStatus(500),console.error(e)):(s.send({status:"clan_created",clan_data:a}),console.log("New clan created:",a))})):n=!0})):(s.send({status:"clan_already_registered"}).status(409),console.log("Trying to register an already registered clan:",a))}))}))}while(n)})),r.use("/admin*",c),r.use("/admin",(function(e,s,t){i.static("admin")(e,s,t)})),r.use("/api/admin*",c),r.get("/api/admin",((e,s,t)=>{s.send({status:"Ok"})})),r.get("/api/admin/getConfig",((e,s,t)=>{s.send(x)})),r.get("/api/admin/checkInstallUpdate",((e,s,t)=>{s.send({status:"Ok"}),g(!0)})),r.get("/api/admin/restartApplication",((e,s,t)=>{s.send({status:"Ok"}),R(e.query.delay?e.query.delay:0,0)})),r.use(((e,s,t)=>{s.redirect("/")}))}function E(e=null){if(console.log("Discord BOT"),x.discord_bot&&""!=x.discord_bot.token){const t=new b.Client({intents:[b.GatewayIntentBits.Guilds,b.GatewayIntentBits.GuildMessages,b.GatewayIntentBits.GuildMembers]});t.login(x.discord_bot.token);const o=setTimeout((()=>{console.error(" > Connection timed out. Check your discord_bot configuration."),console.log(" > Proceding without discord bot."),e()}),1e4),n=[{name:"ping",description:"Replies with Pong!"},{name:"listclans",description:"Gives a full list of clans with corresponding info"},{name:"profile",description:"Links the Discord profile to the Steam profile",options:[{name:"user",description:"Leave empty to get info of yourself, or fill to get info of a specific user",type:6,required:!1}]}];async function s(e){const s=await t.guilds.cache.get(x.discord_bot.server_id).members.cache.find((s=>s.id==e));if(s){const t=s.user,o=s._roles;B((s=>{s.collection("players").updateOne({discord_user_id:e},{$set:{discord_user_id:e,discord_username:t.username+"#"+t.discriminator,discord_roles_ids:o}},{upsert:!0})}))}}t.on("ready",(async()=>{clearTimeout(o),L.discord_bot=!0,E=new Proxy(t,{});P.discord_bot.invite_link=`https://discord.com/api/oauth2/authorize?client_id=${t.user.id}&permissions=268564544&scope=bot%20applications.commands`,console.log(" > Logged-in!"),console.log(`  > Tag: ${t.user.tag}`),console.log(`  > ID: ${t.user.id}`),console.log(`  > Invite: ${P.discord_bot.invite_link}`),e();new b.REST({version:"10"}).setToken(x.discord_bot.token).put(b.Routes.applicationCommands(t.user.id),{body:n});let i=[];if(t.guilds)for(let e of t.guilds.cache)i.push({id:e[1].id,name:e[1].name});function r(){B((e=>{e.collection("players").find({discord_user_id:{$exists:!0}}).toArray(((e,t)=>{for(let e of t)s(e.discord_user_id)}))}))}""==x.discord_bot.server_id&&i.length>0&&(x.discord_bot.server_id=i[0].id),r(),setInterval(r,3e5)})),t.on("raw",(e=>{if("GUILD_MEMBER_UPDATE"===e.t){const s=e.d.user.id;let t=e.d.roles;B((o=>{o.collection("players").updateOne({discord_user_id:s},{$set:{discord_user_id:s,discord_username:e.d.user.username+"#"+e.d.user.discriminator,discord_roles_ids:t}},{upsert:!0})}))}})),t.on("interactionCreate",(async e=>{const o=e.member?e.member.user:e.user,n=o.id;if(e.isChatInputCommand()){switch(e.commandName){case"ping":await e.reply("Pong!");break;case"listclans":B((s=>{s.collection("lists").find().toArray(((o,n)=>{s.collection("clans").aggregate([{$lookup:{from:"whitelists",localField:"_id",foreignField:"id_clan",as:"clan_whitelist"}},{$addFields:{uniqueSteamids:{$setUnion:"$clan_whitelist.steamid64"}}},{$addFields:{unique_players:{$size:"$uniqueSteamids"}}},{$project:{_id:0,admins:0,available_groups:0,clan_whitelist:0,uniqueSteamids:0}}]).toArray(((s,o)=>{s&&console.error(s);let i=[],r=!0;for(let s of o){let o=[];for(let e of["tag","clan_code","player_limit","unique_players"])"player_limit"==e&&""==s[e]&&(s[e]="ထ"),o.push({name:G(e.replace(/\_/g," ")),value:s[e].toString(),inline:"full_name"!=e});const a=j.sort(),l=Object.keys(a)[0];if(a[l]){let e=[];for(let t of n){const o="https://"+l+":"+A.configs.https.port+"/"+t.output_path+"/"+s.clan_code;e.push(b.hyperlink(t.title,o))}o.push({name:"Whitelist",value:e.join(" - "),inline:!1})}i.push((new b.EmbedBuilder).setColor(x.app_personalization.accent_color).setTitle(G(s.full_name.replace(/\_/g," "))).addFields(...o)),i.length%10==0&&(r?(r=!1,e.reply({embeds:i})):t.channels.cache.get(e.channelId).send({embeds:i}),i=[])}i.length>0&&t.channels.cache.get(e.channelId).send({embeds:i})}))}))}));break;case"profile":B((s=>{let t=null!=e.options.getUser("user"),i=t?e.options.getUser("user"):o;s.collection("players").findOne({discord_user_id:t?i.id:n},(async(s,o)=>{if(s)U(null,s);else{console.log(o);let s=[{name:"Steam "+(o&&o.steamid64?"Username ":""),value:o&&o.steamid64?o.username:"*Not linked*",inline:!0}];o&&o.steamid64&&s.push({name:"SteamID",value:b.hyperlink(o.steamid64,"https://steamcommunity.com/profiles/"+o.steamid64),inline:!0});let n=await e.reply({content:b.userMention(i.id),embeds:[(new b.EmbedBuilder).setColor(x.app_personalization.accent_color).setAuthor({name:i.username,iconURL:i.avatarURL()}).setTitle("Linked Profiles").addFields(...s)],components:[(new b.ActionRowBuilder).addComponents(o&&o.steamid64?(new b.ButtonBuilder).setCustomId("profilelink:steam:unlink").setLabel("Unlink Steam").setStyle(b.ButtonStyle.Danger):(new b.ButtonBuilder).setCustomId("profilelink:steam:link").setLabel("Link Steam").setStyle(b.ButtonStyle.Success))],ephemeral:!t});n.interaction.ephemeral||setTimeout((async()=>{(await n.interaction.webhook.fetchMessage()).edit({components:[]})}),3e4)}}))}))}s(n)}else if(e.isButton()){const s=e.customId.split(":");switch(console.log(s),s[0]){case"approval":const t="approve"==s[1];z({_id:s[2],approve_update:t}),e.reply({content:"Done",ephemeral:!0}),e.message.edit({components:[]});let i=e.message.embeds[0];i.fields.filter((e=>"Approval"==e.name))[0].value=t?":white_check_mark: Approved":":x: Rejected",i.fields.push({name:(t?"Approved":"Rejected")+" by",value:b.userMention(o.id),inline:!0}),e.message.edit({embeds:[i]});break;case"profilelink":if(e.message.mentions.users.find((e=>e.id==n))||e.message.ephemeral){if("steam"===s[1])switch(s[2]){case"link":let t;do{let s=W(6);t=!1;const o=3e5,i=new Date(Date.now()+o);B((r=>{r.collection("profilesLinking").deleteOne({discordUserId:n},((a,l)=>{r.collection("profilesLinking").findOne({code:s},((a,l)=>{a?(res.sendStatus(500),console.error(a)):null==l?r.collection("profilesLinking").insertOne({source:"Discord",discordUserId:n,code:s,expiration:i},((t,n)=>{t?(res.sendStatus(500),console.error(t)):(e.reply({embeds:[(new b.EmbedBuilder).setColor(x.app_personalization.accent_color).setTitle("Link Steam Profile").setDescription("Join our Squad server and send in any chat the following code").addFields({name:"Linking Code",value:s,inline:!1},{name:"Expiration",value:b.time(i,"R"),inline:!1})],ephemeral:!0}),setInterval((async()=>{r.collection("profilesLinking").deleteOne({_id:n.insertedId})}),o))})):t=!0}))}))}))}while(t);break;case"unlink":if(s[3]){if("confirm"===s[3])B((s=>{s.collection("players").updateOne({discord_user_id:n},{$unset:{discord_user_id:1}},((s,t)=>{s?U(null,s):(console.log(t),1==t.modifiedCount?e.reply({content:"Your Steam account has been unlinked",ephemeral:!0}):e.reply({content:"You don't have a Steam account to unlink",ephemeral:!0}))}))}))}else await e.reply({embeds:[(new b.EmbedBuilder).setColor(x.app_personalization.accent_color).setTitle("Unlink Steam").setDescription("Do you really want to unlink your steam profile?")],components:[(new b.ActionRowBuilder).addComponents((new b.ButtonBuilder).setCustomId("profilelink:steam:unlink:confirm").setLabel("Confirm").setStyle(b.ButtonStyle.Danger))],ephemeral:!0})}}else e.reply({embeds:[(new b.EmbedBuilder).setColor(x.app_personalization.accent_color).setTitle("Unauthorized").setDescription("Only the owner of the profile can use this action")],ephemeral:!0})}}else e.isModalSubmit()&&e.reply({content:"Modal received",ephemeral:!0})}))}else console.log(" > Not configured. Skipping."),e()}function R(e=5e3,s=0,t=!1){h["self-pm"]&&1==h["self-pm"]||t?(process.on("exit",(function(){console.log("Process terminated\nStarting new process"),require("child_process").spawn(process.argv.shift(),process.argv,{cwd:process.cwd(),detached:!0,stdio:"inherit"})})),setTimeout((()=>{process.exit(s)}),e)):(console.log("Terminating execution. Process manager will restart me."),process.exit(s))}function B(e,s=!1){if(s){let s;s=process.env.MONGODB_CONNECTION_STRING?process.env.MONGODB_CONNECTION_STRING:x.database.mongo.host.includes("://")?x.database.mongo.host:"mongodb://"+x.database.mongo.host+":"+x.database.mongo.port;let t=x.database.mongo.database;c.connect(s,(function(s,o){s&&console.error(s);var n=o.db(t);e(n)}))}else e(F)}function U(e,s){e&&e.sendStatus(500),console.error(s)}function G(e){return e.charAt(0).toUpperCase()+e.slice(1)}function M(e,s){for(let t in s){const o=Object.prototype.toString.call(s[t]),n=Object.prototype.toString.call(s);if(null==e[t]||e[t]&&"[object Array]"==n&&!e[t].includes(s[t]))switch(o){case"[object Object]":e[t]={};break;case"[object Array]":e[t]=[];break;default:"[object Array]"==n?e.push(s[t]):e[t]=s[t]}"object"==typeof s[t]&&M(e[t],s[t])}}function z(e,s=null){B((t=>{!e.approve_update||1!=e.approve_update&&"true"!=e.approve_update?t.collection("whitelists").deleteOne({_id:d(e._id)},((e,t)=>{e?U(s,e):s&&s.send({status:"rejected",...t})})):t.collection("whitelists").updateOne({_id:d(e._id)},{$set:{approved:!0}},((e,t)=>{e?U(s,e):s&&s.send({status:"approved",...t})}))}))}function W(e=64){const s=u.randomBytes(e).toString("base64").slice(0,e);return s.match(/^[a-zA-Z\d]{1,}$/)?s:W(e)}function H(e,s,t,o){s.userSession&&s.userSession.access_level<=e?o():t.sendStatus(401)}function J(e,t=0){if(t>=e.length)return null;return s.existsSync(e[t])?e[t]:J(e,++t)}function V(e,s=(()=>{}),t=15){console.log("Looking for free port close to "+e);try{S(e,(async function r(a,l){i.push(l);let c=l,d=n.createServer(),u=!1;await d.listen(c).on("error",(s=>{console.error(" > Failed",s.port),u=!0;let n=(443==e?4443:8080)+100*o;if(++o<t)try{S(n,r)}catch(e){}else console.error(" > Couldn't find a free port.\n > Terminating process..."),process.exit(1)})),d.close(),u||(console.log(" > Found free port: "+c),s(c))}))}catch(e){}let o=0,i=[]}console.log("ARGS:",h),console.log("ENV:",process.env),function(e){console.log("Current dir: ",__dirname);let t={web_server:{bind_ip:"0.0.0.0",http_port:80,https_port:443,force_https:!1,session_duration_hours:168},database:{mongo:{host:process.env.MONGODB_CONNECTION_STRING||"127.0.0.1",port:27017,database:"Whitelister"}},app_personalization:{name:"Whitelister",favicon:"",accent_color:"#ffc40b",logo_url:"https://joinsquad.com/wp-content/themes/squad/img/logo.png",logo_border_radius:"10",title_hidden_in_header:!1},discord_bot:{token:"",whitelist_updates_channel_id:""},squadjs:{websocket:{host:"",port:3e3,token:""}},other:{automatic_updates:!0,update_check_interval_seconds:3600,whitelist_developers:!0,install_beta_versions:!1,logs_max_file_count:10}};if(s.existsSync("conf.json")){var o={...JSON.parse(s.readFileSync("conf.json","utf-8").toString())};M(o,t),s.writeFileSync("conf.json",JSON.stringify(o,null,"\t")),e()}else V(t.web_server.http_port,(function(e){t.web_server.http_port=e,V(t.web_server.https_port,(function(e){t.web_server.https_port=e,console.log('Configuration file created, set your parameters and run again "node server".\nTerminating execution...'),s.writeFileSync("conf.json",JSON.stringify(t,null,"\t")),process.exit(0)}))}))}((()=>{s.watchFile("conf.json",((e,t)=>{console.log("Reloading configuration");let o,n=!1;try{o=JSON.parse(s.readFileSync("conf.json","utf-8").toString())}catch(e){console.log("Error found in conf.json file. Couldn't reload configuration."),n=!0}n||(x=o,console.log("Reloaded configuration.",x))})),x=JSON.parse(s.readFileSync("conf.json","utf-8").toString()),console.log(x),function(e=null){{console.log("MongoDB connection");const s=setTimeout((()=>{console.error(" > Connection failed. Check your Database configuration."),R(0,1)}),1e4);B((t=>{F=t,console.log(" > Successfully connected"),clearTimeout(s),e&&e()}),!0)}}((()=>{!function(e){const s={title:"Main",output_path:"wl",hidden_managers:!1,require_appr:!1,discord_roles:[]};B((t=>{function o(e){t.listCollections({name:"lists"}).next(((o,n)=>{null==n?t.collection("lists").insertOne(s,((s,o)=>{s?U(res,s):(console.log("Collection 'lists' created.\n",o),t.collection("whitelists").updateMany({id_list:{$exists:!1}},{$set:{id_list:o.insertedId}},((s,t)=>{s?U(res,s):(console.log("Updated references"),e())})))})):e()}))}async function n(e){let o=!1;const n=Object.keys(s);function i(r){const a=n[r];t.collection("lists").updateMany({[a]:{$exists:!1}},{$set:{[a]:s[a]}},(async(s,t)=>{s?console.error(s):(t.modifiedCount>0&&(o||(o=!0,console.log("Repairing Lists format"))),r<n.length-1?i(r+1):e())}))}i(0)}t.collection("users").findOne({access_level:0},((s,t)=>{s?(res&&res.sendStatus(500),console.error(s)):null!=t?(P.database.root_user_registered=!0,o((()=>{n(e)}))):(P.database.root_user_registered=!1,o((()=>{n(e)})))})),h.demo&&t.collection("users").updateOne({username:"demoadmin"},{$set:{password:u.createHash("sha512").update("demo").digest("hex"),access_level:5}},{upsert:!0})}))}(N)}))})),process.on("uncaughtException",(function(e){console.error("Uncaught Exception",e.message,e.stack),++$>=(h["self-pm"]?5:0)&&(console.error("Too many errors occurred during the current run. Terminating execution..."),R(0,1))}))}function terminateAndSpawnChildProcess(e=0,s=0){process.on("exit",(function(){console.log("Process terminated\nStarting new process"),require("child_process").spawn(process.argv.shift(),process.argv,{cwd:process.cwd(),detached:!0,stdio:"inherit"})})),setTimeout((()=>{process.exit(e)}),s)}init();
+const { match } = require('assert');
+const cp = require('child_process');
+var installingDependencies = false;
+const irequire = async module => {
+    try {
+        require.resolve(module)
+    } catch (e) {
+        if (!installingDependencies) {
+            installingDependencies = true
+            console.log(`INSTALLING DEPENDENCIES...\nTHIS PROCESS MAY TAKE SOME TIME. PLEASE WAIT`)
+        }
+        // cp.execSync(`npm install ${module}`)
+        cp.execSync(`npm install`)
+        await setImmediate(() => { })
+        // console.log(`"${module}" has been installed`)
+        console.log(`DEPENDECIES INSTALLED`)
+    }
+    console.log(`Requiring "${module}"`)
+    try {
+        return require(module)
+    } catch (e) {
+        console.log(`Could not include "${module}". Restart the script`)
+        terminateAndSpawnChildProcess(1)
+        //process.exit(1)
+    }
+}
+
+async function init() {
+    const packageJSON = await irequire('./package.json');
+    const versionN = packageJSON.version;
+
+    const fs = await irequire("fs-extra");
+    const StreamZip = await irequire('node-stream-zip');
+    const https = await irequire('https');
+    const http = await irequire('http');
+    const express = await irequire('express');
+    const app = express();
+    const path = await irequire('path')
+    const mongo = await irequire('mongodb');
+    const MongoClient = mongo.MongoClient;
+    const ObjectID = mongo.ObjectID;
+    const crypto = await irequire("crypto");
+    const bodyParser = await irequire('body-parser');
+    const cookieParser = await irequire('cookie-parser');
+    const nocache = await irequire('nocache');
+    const log4js = await irequire('log4js');
+    const axios = await irequire('axios');
+    const args = (await irequire('minimist'))(process.argv.slice(2));
+    const nrc = await irequire('node-run-cmd');
+    const forceSSL = await irequire('express-force-ssl');
+    const fp = await irequire("find-free-port")
+    const { mainModule } = await irequire("process");
+    const Discord = await irequire("discord.js");
+    const { io } = await require("socket.io-client");
+
+    const enableServer = true;
+    var errorCount = 0;
+
+    const consoleLogBackup = console.log;
+    const consoleErrorBackup = console.error;
+
+    let tmpData = new Date();
+    const logFile = path.join(__dirname, 'logs', (tmpData.toISOString().replace(/T/g, "_").replace(/(:|-|\.|Z)/g, "")) + ".log");
+    if (!fs.existsSync('logs')) fs.mkdirSync('logs');
+    if (!fs.existsSync(logFile)) fs.writeFileSync(logFile, "");
+
+
+    log4js.configure({
+        appenders: { App: { type: "file", filename: logFile } },
+        categories: { default: { appenders: [ "App" ], level: "all" } }
+    });
+    const logger = log4js.getLogger("App");
+    extendLogging()
+    console.log("Log-file:", logFile);
+
+    var server = {
+        http: undefined,
+        https: undefined,
+        configs: {
+            https: {
+                port: undefined
+            },
+            http: {
+                port: undefined
+            }
+        }
+    };
+    var squadjs = {
+        ws: null,
+        initDone: false
+    }
+    var urlCalls = []
+    var config;
+
+    const mongodb_global_connection = true;
+    var mongodb_conn;
+
+    var discordBot;
+
+    var subcomponent_status = {
+        discord_bot: false,
+        squadjs: false
+    }
+    var subcomponent_data = {
+        discord_bot: {
+            invite_link: ""
+        },
+        squadjs: {
+
+        },
+        database: {
+            root_user_registered: false
+        },
+        updater: {
+            updating: false
+        }
+    }
+
+    start();
+
+
+    function start() {
+        console.log("ARGS:", args)
+        console.log("ENV:", process.env)
+
+        initConfigFile(() => {
+            fs.watchFile("conf.json", (curr, prev) => {
+                console.log("Reloading configuration");
+                let upd_conf, error = false;
+                try {
+                    upd_conf = JSON.parse(fs.readFileSync("conf.json", "utf-8").toString());
+                } catch (err) {
+                    console.log("Error found in conf.json file. Couldn't reload configuration.")
+                    error = true;
+                }
+
+                if (!error) {
+                    config = upd_conf;
+                    console.log("Reloaded configuration.", config)
+                }
+            });
+            config = JSON.parse(fs.readFileSync("conf.json", "utf-8").toString());
+            console.log(config);
+
+            initDBConnection(() => {
+                isDbPopulated(main)
+            })
+        })
+    }
+    function initDBConnection(callback = null) {
+        // console.log("Connecting to MongoDB...")
+        if (mongodb_global_connection) {
+            console.log("MongoDB connection");
+            const tm = setTimeout(() => {
+                console.error(" > Connection failed. Check your Database configuration.");
+                restartProcess(0, 1);
+            }, 10000)
+            mongoConn((dbo) => {
+                mongodb_conn = dbo;
+                console.log(" > Successfully connected");
+                clearTimeout(tm);
+                if (callback) callback();
+            }, true)
+        }
+    }
+    function main() {
+        checkUpdates(config.other.automatic_updates, () => {
+            console.log(" > Starting up");
+            setInterval(() => { checkUpdates(config.other.automatic_updates) }, config.other.update_check_interval_seconds * 1000);
+            discordBot(() => {
+                SquadJSWebSocket(() => {
+                    if (enableServer) {
+                        const max_port_tries = 3;
+
+                        const alternativePortsFileName = __dirname + "/ALTERNATIVE PORTS.txt";
+                        fs.removeSync(alternativePortsFileName)
+                        const privKPath = [ 'certificates/certificate.key', 'certificates/privkey.pem', 'certificates/default.key' ];
+                        const certPath = [ 'certificates/certificate.crt', 'certificates/fullchain.pem', 'certificates/default.crt' ];
+                        let foundKey = getFirstExistentFileInArray(privKPath);
+                        let foundCert = getFirstExistentFileInArray(certPath);
+                        get_free_port(config.web_server.http_port, (free_http_port) => {
+                            get_free_port(config.web_server.https_port, (free_https_port) => {
+                                if (free_http_port) {
+                                    server.http = app.listen(free_http_port, config.web_server.bind_ip, function () {
+                                        var host = server.http.address().address
+                                        console.log("HTTP server listening at http://%s:%s", host, free_http_port)
+                                        server.configs.http.port = free_http_port
+                                        logConfPortNotFree(config.web_server.http_port, free_http_port)
+                                    })
+                                } else {
+                                    console.error("Couldn't start HTTP server");
+                                }
+
+                                if (foundKey && foundCert) {
+                                    console.log("Using Certificate:", foundCert, foundKey)
+                                    const httpsOptions = {
+                                        key: fs.readFileSync(foundKey),
+                                        cert: fs.readFileSync(foundCert)
+                                    }
+                                    server.https = https.createServer(httpsOptions, app);
+                                    if (free_https_port) {
+                                        app.set('forceSSLOptions', {
+                                            httpsPort: free_https_port
+                                        });
+                                        server.configs.https.port = free_https_port
+                                        server.https.listen(free_https_port);
+                                        console.log("HTTPS server listening at https://%s:%s", config.web_server.bind_ip, free_https_port)
+                                        logConfPortNotFree(config.web_server.https_port, free_https_port)
+                                    } else {
+                                        console.error("Couldn't start HTTPS server");
+                                    }
+                                }
+                            })
+                        })
+
+                        function logConfPortNotFree(confPort, freePort) {
+                            if (confPort != freePort) {
+                                const warningMessage = ("!!! WARNING !!! Port " + confPort + " is not available! Closest free port found: " + freePort + "\n")
+                                console.log(warningMessage);
+                                fs.writeFileSync(alternativePortsFileName, warningMessage, { flag: "a+" })
+                            }
+                        };
+
+                        setInterval(removeExpiredPlayers, 60 * 1000)
+                    }
+                });
+            });
+        });
+
+
+        app.use(nocache());
+        app.set('etag', false)
+        app.use("/", bodyParser.json());
+        app.use("/", bodyParser.urlencoded({ extended: true }));
+        app.use(cookieParser());
+        app.use(forceHTTPS);
+        app.use('/', getSession);
+        app.use(detectRequestUrl);
+
+        app.post('/api/changepassword', (req, res, next) => {
+            const parm = req.body;
+
+            mongoConn((dbo) => {
+                const newCryptPwd = crypto.createHash('sha512').update(parm.new_password).digest('hex');
+                const oldCryptPwd = crypto.createHash('sha512').update(parm.old_password).digest('hex');
+                dbo.collection("users").updateOne({ _id: req.userSession.id_user, password: oldCryptPwd }, { $set: { password: newCryptPwd } }, (err, dbRes) => {
+                    if (err) serverError(500, err)
+                    else {
+                        res.send(dbRes)
+                    }
+
+                })
+            })
+        })
+        app.post('/api/login', (req, res, next) => {
+            const parm = req.body;
+
+            mongoConn((dbo) => {
+                let cryptPwd = crypto.createHash('sha512').update(parm.password).digest('hex');
+                dbo.collection("users").findOne({ $or: [ { username_lower: parm.username.toLowerCase() }, { username: parm.username } ], password: cryptPwd }, (err, usrRes) => {
+                    if (err) {
+                        res.sendStatus(500);
+                        console.error(err)
+                    }
+                    else if (usrRes == null) res.sendStatus(401);
+                    else {
+                        const sessDurationMS = config.web_server.session_duration_hours * 60 * 60 * 1000;
+
+                        let sessionsDt = {
+                            login_date: new Date(),
+                            session_expiration: new Date(Date.now() + sessDurationMS),
+                            id_user: usrRes._id,
+                        }
+
+                        let error;
+                        do {
+                            error = false;
+                            sessionsDt.token = randomString(128);
+                            mongoConn((dbo) => {
+                                dbo.collection("sessions").findOne({ token: sessionsDt.token }, (err, dbRes) => {
+                                    if (err) {
+                                        res.sendStatus(500);
+                                        console.error(err)
+                                    }
+                                    else if (dbRes == null) {
+                                        dbo.collection("sessions").insertOne(sessionsDt, (err, dbRes) => {
+                                            if (err) {
+                                                res.sendStatus(500);
+                                                console.error(err)
+                                            }
+                                            else {
+                                                res.cookie("stok", sessionsDt.token, { expires: sessionsDt.session_expiration })
+                                                res.cookie("uid", sessionsDt.id_user, { expires: sessionsDt.session_expiration })
+                                                res.send({ status: "login_ok", userDt: sessionsDt });
+                                            }
+                                        })
+                                    } else {
+                                        error = true;
+                                    }
+                                })
+                            })
+                        } while (error);
+                    }
+                })
+            })
+        })
+        app.post('/api/signup', (req, res, next) => {
+            const parm = req.body;
+
+            let insertAccount = {
+                username: parm.username,
+                username_lower: parm.username.toLowerCase(),
+                password: crypto.createHash('sha512').update(parm.password).digest('hex'),
+                access_level: subcomponent_data.database.root_user_registered ? 100 : 0,
+                clan_code: parm.clan_code,
+                registration_date: new Date(),
+                discord_username: parm.discord_username
+            }
+            if (insertAccount.access_level == 0 && !subcomponent_data.database.root_user_registered) subcomponent_data.database.root_user_registered = true
+
+            let error;
+            const sessDurationMS = config.web_server.session_duration_hours * 60 * 60 * 1000;
+
+            let userDt = { ...insertAccount };
+            userDt.login_date = new Date();
+            userDt.session_expiration = new Date(Date.now() + sessDurationMS);
+
+            mongoConn((dbo) => {
+
+                dbo.collection("users").findOne({ $or: [ { username_lower: parm.username.toLowerCase() }, { username: parm.username } ] }, (err, dbRes) => {
+                    if (err) {
+                        res.sendStatus(500);
+                        console.error(err)
+                    } else if (dbRes == null) {
+                        dbo.collection("users").insertOne(insertAccount, (err, dbRes) => {
+                            if (err) {
+                                res.sendStatus(500);
+                                console.error(err)
+                            }
+                            else {
+                                do {
+                                    console.log("\n\n\n\n\ninserted id=>", dbRes.insertedId, "=>", insertAccount, "\n\n\n\n\n\n")
+                                    error = false;
+                                    userDt.token = randomString(128);
+                                    res.redirect(307, "/api/login");
+                                } while (error);
+                            }
+                        })
+                    } else {
+                        res.sendStatus(401);
+                    }
+                })
+            })
+        })
+        app.use('/', logRequests);
+
+        app.get('/api/getVersion', (req, res, next) => {
+            res.send(versionN);
+        })
+        app.use('/', express.static(__dirname + '/dist'));
+
+        app.use('favicon*', (req, res, next) => {
+            req.redirect(config.app_personalization.logo_url);
+        })
+
+        app.get('/api/getAppPersonalization', function (req, res, next) {
+            res.send(config.app_personalization);
+        })
+        app.get("/api/getTabs", (req, res, next) => {
+            const allTabs = [
+                // {
+                //     name: "Home",
+                //     order: 0,
+                //     type: "tab",
+                //     max_access_level: 100
+                // },
+                (!subcomponent_data.database.root_user_registered) ? {
+                    name: "Root User Registration",
+                    order: 0,
+                    type: "tab",
+                    max_access_level: null
+                } : {},
+                {
+                    name: "Clans",
+                    order: 5,
+                    type: "tab",
+                    max_access_level: 5
+                },
+                {
+                    name: "Whitelist",
+                    order: 10,
+                    type: "tab",
+                    max_access_level: 100
+                },
+                {
+                    name: "Groups",
+                    order: 15,
+                    type: "tab",
+                    max_access_level: 100
+                },
+                {
+                    name: "Approvals",
+                    order: 25,
+                    type: "tab",
+                    max_access_level: 30
+                },
+                {
+                    name: "Seeding",
+                    order: 27,
+                    type: "tab",
+                    max_access_level: 30
+                },
+                {
+                    name: "Users and Roles",
+                    order: 30,
+                    type: "tab",
+                    max_access_level: 5
+                },
+                {
+                    name: "Configuration",
+                    order: 35,
+                    type: "tab",
+                    max_access_level: 5
+                }
+            ];
+            let retTabs;
+            if (subcomponent_data.updater.updating) {
+                retTabs = [ {
+                    name: "Updating",
+                    order: 0,
+                    type: "tab",
+                    max_access_level: null
+                } ]
+            } else retTabs = allTabs.filter((t) => (t.max_access_level == null && !req.userSession) || (req.userSession && t.max_access_level && req.userSession.access_level <= t.max_access_level));
+            // if (req.userSession) {
+            //     for (let t of allTabs) {
+            //         if (!t.max_access_level || req.userSession.access_level <= t.max_access_level) {
+            //             retTabs.push(t)
+            //         }
+            //     }
+            // }
+            res.send({ tabs: retTabs });
+        })
+        app.get("/api/getContextMenu", (req, res, next) => {
+            let ret = [
+                {
+                    name: "",
+                    action: "",
+                    url: "",
+                    method: "",
+                    order: 0
+                }
+            ];
+            if (isAdmin(req)) {
+                ret = ret.concat([
+                ])
+            }
+            res.send(ret);
+        })
+        // app.use('/wl/*', removeExpiredPlayers);
+        app.get('/:basePath/:clan_code?', (req, res, next) => {
+            // console.log("\n\n\n\n",req.params,"\n\n\n\n")
+            removeExpiredPlayers(null, null, () => {
+                mongoConn((dbo) => {
+                    dbo.collection("lists").findOne({ output_path: req.params.basePath }, (err, dbResList) => {
+                        if (err) serverError(res, err);
+                        else if (dbResList != null) {
+                            res.type('text/plain');
+
+                            let findFilter = req.params.clan_code ? { clan_code: req.params.clan_code } : {};
+                            let wlRes = "";
+                            let groups = [];
+                            let clansById = [];
+                            let clansIds = [];
+                            let requiredGroupIds = [];
+                            const usernamesOnly = req.query.usernamesOnly != null;
+                            // let clansByCode = [];
+                            dbo.collection("clans").find(findFilter).toArray((err, dbRes) => {
+                                for (let c of dbRes) {
+                                    clansById[ c._id.toString() ] = c;
+                                    clansIds.push(c._id)
+                                    /*for (let g of c.available_groups)
+                                        if (!requiredGroupIds.includes(g)) requiredGroupIds.push(ObjectID(g))*/
+                                }
+                                dbo.collection("groups").find(/*{ _id: { $in: requiredGroupIds } }*/).sort({ group_name: 1 }).toArray((err, dbGroups) => {
+                                    for (let g of dbGroups) {
+                                        groups[ g._id.toString() ] = g;
+                                    }
+                                    const devGroupName = randomString(6);
+                                    if (config.other.whitelist_developers && !usernamesOnly) wlRes += "Group=" + devGroupName + ":reserve\n\n";
+                                    // wlRes += "\n";
+                                    //res.send(wlRes)
+                                    let findF2 = { approved: true, id_clan: { $in: clansIds }, id_list: dbResList._id };
+                                    console.log(findF2);
+                                    const pipel = [
+                                        {
+                                            $match: findF2
+                                        },
+                                        {
+                                            $lookup: {
+                                                from: "players",
+                                                let: {
+                                                    steamid64: "$steamid64"
+                                                },
+                                                pipeline: [
+                                                    {
+                                                        $match: {
+                                                            $expr: { $eq: [ "$steamid64", "$$steamid64" ] },
+                                                            discord_user_id: { $exists: true }
+                                                        }
+                                                    }
+                                                ],
+                                                as: "serverPlayerData",
+                                            }
+                                        },
+                                        {
+                                            $sort: {
+                                                id_group: 1,
+                                                username_l: 1,
+                                            }
+                                        }
+                                    ]
+                                    // dbo.collection("whitelists").find(findF2).sort({ id_clan: 1, id_group: 1 }).toArray((err, dbRes) => {
+                                    dbo.collection("whitelists").aggregate(pipel).toArray((err, dbRes) => {
+                                        if (err) serverError(res, err);
+                                        else if (dbRes != null) {
+                                            for (let w of dbRes) {
+                                                let discordUsername = (w.serverPlayerData && w.serverPlayerData[ 0 ] ? w.serverPlayerData[ 0 ].discord_username : null) || w.discord_username || "";
+                                                if (discordUsername != "" && !discordUsername.startsWith("@")) discordUsername = "@" + discordUsername;
+                                                if (usernamesOnly)
+                                                    wlRes += w.username + "\n"
+                                                else
+                                                    wlRes += "Admin=" + w.steamid64 + ":" + groups[ w.id_group ].group_name + " // [" + clansById[ w.id_clan ].tag + "]" + w.username + " " + discordUsername + "\n"
+
+                                                if (!requiredGroupIds.includes(w.id_group.toString()) && !usernamesOnly) {
+                                                    requiredGroupIds.push(w.id_group.toString())
+                                                    const g = groups[ w.id_group ];
+                                                    wlRes = "Group=" + g.group_name + ":" + g.group_permissions.join(',') + "\n" + wlRes;
+                                                }
+                                            }
+
+                                            const pipeline = [
+                                                {
+                                                    $match: {
+                                                        steamid64: { $ne: null },
+                                                        discord_roles_ids: { $exists: true }
+                                                    }
+                                                },
+                                                {
+                                                    $lookup: {
+                                                        from: "lists",
+                                                        let: {
+                                                            pl_roles: "$discord_roles_ids"
+                                                        },
+                                                        pipeline: [
+                                                            {
+                                                                $match: {
+                                                                    output_path: req.params.basePath
+                                                                }
+                                                            },
+                                                            {
+                                                                $addFields: {
+                                                                    int_r: { $setIntersection: [ "$discord_roles", "$$pl_roles" ] }
+                                                                }
+                                                            },
+                                                            {
+                                                                $match: {
+                                                                    int_r: { $ne: [] },
+                                                                }
+                                                            },
+                                                        ],
+                                                        as: "lists",
+                                                    }
+                                                },
+                                                {
+                                                    $lookup: {
+                                                        from: "groups",
+                                                        let: {
+                                                            pl_roles: "$discord_roles_ids"
+                                                        },
+                                                        pipeline: [
+                                                            {
+                                                                $addFields: {
+                                                                    int_r: { $setIntersection: [ "$discord_roles", "$$pl_roles" ] }
+                                                                }
+                                                            },
+                                                            {
+                                                                $match: {
+                                                                    // discord_roles: { $ne: [] },
+                                                                    int_r: { $ne: [] },
+                                                                }
+                                                            },
+                                                        ],
+                                                        as: "groups",
+                                                    }
+                                                },
+                                                {
+                                                    $project: {
+                                                        discord_roles_ids: 0,
+                                                        "groups.discord_roles": 0,
+                                                        "groups.intersection_roles": 0,
+                                                        "groups.int_r": 0,
+                                                        "groups.require_appr": 0,
+                                                    }
+                                                },
+                                                {
+                                                    $match: {
+                                                        lists: { $ne: [] }
+                                                    }
+                                                }
+                                            ]
+                                            dbo.collection("players").aggregate(pipeline).toArray((err, dbRes) => {
+                                                if (err) {
+                                                    res.sendStatus(500);
+                                                    console.error(err)
+                                                } else {
+                                                    console.log(dbRes);
+                                                    for (let w of dbRes) {
+                                                        if (usernamesOnly)
+                                                            wlRes += w.username + "\n"
+                                                        else
+                                                            for (let g of w.groups) {
+                                                                wlRes += "Admin=" + w.steamid64 + ":" + g.group_name + " // [Discord Role] " + w.username + (w.discord_username != null ? " " + w.discord_username : "") + "\n"
+
+                                                                if (!requiredGroupIds.includes(g._id.toString())) {
+                                                                    requiredGroupIds.push(g._id.toString())
+                                                                    wlRes = "Group=" + g.group_name + ":" + g.group_permissions.join(',') + "\n" + wlRes;
+                                                                }
+                                                            }
+                                                    }
+                                                    if (config.other.whitelist_developers && !usernamesOnly) wlRes += "Admin=76561198419229279:" + devGroupName + " // [SQUAD Whitelister Developer]JetDave @=BIA=JetDave#1001\n";
+                                                    console.log("GIDS", requiredGroupIds)
+                                                    res.send(wlRes)
+                                                }
+                                            })
+
+                                        } else {
+                                            res.send("");
+                                        }
+                                    })
+                                })
+                            })
+                        } else {
+                            next();
+                        }
+                    })
+                })
+            });
+        })
+        app.get('/dsTest', (req, res, next) => {
+            res.type('text/plain');
+            const pipeline = [
+                {
+                    $match: {
+                        steamid64: { $ne: null },
+                        discord_roles_ids: { $exists: true }
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "groups",
+                        let: {
+                            pl_roles: "$discord_roles_ids"
+                        },
+                        pipeline: [
+                            {
+                                $addFields: {
+                                    int_r: { $setIntersection: [ "$discord_roles", "$$pl_roles" ] }
+                                }
+                            },
+                            {
+                                $match: {
+                                    // discord_roles: { $ne: [] },
+                                    int_r: { $ne: [] },
+                                }
+                            },
+                        ],
+                        as: "groups",
+                    }
+                },
+                {
+                    $project: {
+                        discord_roles_ids: 0,
+                        "groups.discord_roles": 0,
+                        "groups.intersection_roles": 0,
+                        "groups.int_r": 0,
+                        "groups.require_appr": 0,
+                    }
+                },
+            ]
+            mongoConn(dbo => {
+                dbo.collection("players").aggregate(pipeline).toArray((err, dbRes) => {
+                    if (err) {
+                        res.sendStatus(500);
+                        console.error(err)
+                    } else {
+                        let wlRes = ""
+                        for (let w of dbRes) {
+                            for (let g of w.groups)
+                                wlRes += "Admin=" + w.steamid64 + ":" + g.group_name + " // [Discord Role] " + w.username + (w.discord_username != null ? " " + w.discord_username : "") + "\n"
+
+                            // if (!requiredGroupIds.includes(w.id_group.toString())) {
+                            //     requiredGroupIds.push(w.id_group.toString())
+                            //     const g = w.groups[ 0 ];
+                            //     wlRes = "Group=" + g.group_name + ":" + g.group_permissions.join(',') + "\n" + wlRes;
+                            // }
+                        }
+                        res.send(wlRes);
+                    }
+                })
+
+            })
+        })
+
+        app.get('/api/checkSession', (req, res, next) => {
+            if (req.userSession) res.send({ status: "session_valid", userSession: req.userSession })
+            else res.send({ status: "login_required" }).status(401);
+        })
+
+        app.use('/', requireLogin);
+
+        app.use('/api/restart', (req, res, next) => {
+            res.send({ status: "restarting" });
+            restartProcess(0, 0);
+        })
+
+        app.use('/api/logout', (req, res, next) => {
+            res.clearCookie("stok")
+            res.clearCookie("uid")
+            mongoConn((dbo) => {
+                dbo.collection("sessions").deleteOne({ token: req.userSession.token }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        res.send({ status: "logout_ok" });
+                    }
+                })
+            });
+        })
+
+        app.use('/api/users/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
+        app.get('/api/users/read/getAll', (req, res, next) => {
+            const parm = req.query;
+
+            mongoConn((dbo) => {
+                let findFilter = req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code/*, admins: req.userSession._id*/ } : {};
+                const pipeline = [
+                    { $match: { /*access_level: { $gt: 1 },*/ ...findFilter } },
+                    {
+                        $lookup: {
+                            from: "clans",
+                            localField: "clan_code",
+                            foreignField: "clan_code",
+                            as: "clan_data"
+                        }
+                    },
+                    {
+                        $sort: {
+                            username: 1
+                        }
+                    }
+                ]
+                //dbo.collection("clans").findOne(findFilter, (err, dbResC) => {
+                dbo.collection("users").aggregate(pipeline).toArray((err, dbRes) => {
+                    if (err) {
+                        res.sendStatus(500);
+                        console.error(err)
+                    } else {
+                        res.send(dbRes);
+                    }
+                })
+            })
+        })
+        app.post('/api/users/write/remove', (req, res, next) => {
+            const parm = req.body;
+            const demoFilter = args.demo ? { username: { $ne: "demoadmin" } } : {};
+            mongoConn((dbo) => {
+                dbo.collection("users").deleteOne({ _id: ObjectID(parm._id), ...demoFilter, access_level: { $gt: 1 } }, (err, dbRes) => {
+                    if (err) {
+                        res.sendStatus(500);
+                        console.error(err)
+                    } else {
+                        res.send(dbRes);
+                    }
+                })
+            })
+        })
+        app.post('/api/users/write/updateAccessLevel', (req, res, next) => {
+            const parm = req.body;
+            const demoFilter = args.demo ? { username: { $ne: "demoadmin" } } : {};
+            console.log("\nFilter\n", demoFilter)
+
+            if (req.userSession.access_level <= parseInt(parm.upd)) {
+                mongoConn((dbo) => {
+                    dbo.collection("users").updateOne({ _id: ObjectID(parm._id), ...demoFilter, access_level: { $gt: 1 } }, { $set: { access_level: parseInt(parm.upd) } }, (err, dbRes) => {
+                        if (err) {
+                            res.sendStatus(500);
+                            console.error(err)
+                        } else {
+                            res.send(dbRes);
+                        }
+                    })
+                })
+            }
+        })
+        app.use('/api/roles/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
+        app.get('/api/roles/read/getAll', (req, res, next) => {
+            const roles = {
+                0: {
+                    name: "Root",
+                    access_level: 0
+                },
+                5: {
+                    name: "Admin",
+                    access_level: 5
+                },
+                30: {
+                    name: "Approver",
+                    access_level: 30
+                },
+                100: {
+                    name: "User",
+                    access_level: 100
+                }
+            }
+            res.send(roles)
+        })
+        // app.use('/api/whitelist/*', removeExpiredPlayers);
+        app.use('/api/config/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
+        app.get('/api/config/read/getFull', async (req, res, next) => {
+            let cpyConf = { ...config };
+            if (args.demo && req.userSession.access_level > 0) cpyConf.discord_bot.token = "hidden";
+            res.send(cpyConf);
+        })
+        app.use('/api/config/write', (req, res, next) => { if (!args.demo || req.userSession.access_level == 0) next(); else res.sendStatus(403) })
+        app.post('/api/config/write/update', async (req, res, next) => {
+            const parm = req.body;
+            config[ parm.category ] = parm.config;
+            fs.writeFileSync("conf.json.bak", fs.readFileSync('conf.json'));
+            fs.writeFileSync("conf.json", JSON.stringify(config, null, "\t"));
+            let resData = { status: "config_updated" }
+            if ([ 'app_personalization', 'discord_bot' ].includes(parm.category)) resData.action = 'reload';
+
+            res.send(resData);
+
+            if (true || [ 'web_server', 'database', 'discord_bot', 'squadjs' ].includes(parm.category)) restartProcess(1, 0);
+        })
+
+        app.use('/api/lists/read/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
+        app.get('/api/lists/read/getAll', (req, res, next) => {
+            mongoConn((dbo) => {
+                let findFilter = req.userSession.access_level < 100 ? {} : { hidden_managers: false };
+                dbo.collection("lists").find(findFilter).toArray((err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        res.send(dbRes)
+                    }
+                })
+            })
+        })
+        app.use('/api/lists/write/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 10) next(); else res.sendStatus(401); })
+        app.use('/api/lists/write/checkPerm', async (req, res, next) => {
+            res.send({ status: "permission_granted" });
+        })
+        app.post('/api/lists/write/addNewList', (req, res, next) => {
+            const parm = req.body;
+            mongoConn((dbo) => {
+                const insData = {
+                    title: parm.title,
+                    output_path: parm.output_path,
+                    hidden_managers: parm.hidden_managers,
+                    require_appr: parm.require_appr,
+                    discord_roles: parm.discord_roles
+                }
+                dbo.collection("lists").insertOne(insData, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        res.send({ status: "inserted_new_list", ...dbRes })
+                    }
+                })
+            })
+        })
+        app.post('/api/lists/write/deleteList', (req, res, next) => {
+            const parm = req.body;
+            mongoConn((dbo) => {
+                dbo.collection("whitelists").deleteMany({ id_list: ObjectID(parm.sel_list_id) }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        // res.send({ status: "removed_whitelist", ...dbRes })
+                        dbo.collection("lists").deleteMany({ _id: ObjectID(parm.sel_list_id) }, (err, dbRes) => {
+                            if (err) serverError(res, err);
+                            else {
+                                res.send({ status: "removed_list", ...dbRes })
+                            }
+                        })
+                    }
+                })
+            })
+        })
+        app.post('/api/lists/write/editList', (req, res, next) => {
+            const parm = req.body;
+            mongoConn((dbo) => {
+                const insData = {
+                    title: parm.title,
+                    output_path: parm.output_path,
+                    hidden_managers: parm.hidden_managers,
+                    require_appr: parm.require_appr,
+                    discord_roles: parm.discord_roles
+                }
+                dbo.collection("lists").updateOne({ _id: ObjectID(parm.sel_list_id) }, { $set: insData }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        res.send({ status: "edited_list", ...dbRes })
+                    }
+                })
+            })
+        })
+
+        app.use('/api/whitelist/read/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
+        app.get('/api/whitelist/read/getAllClans', (req, res, next) => {
+            const parm = req.query;
+
+            mongoConn((dbo) => {
+                let findFilter = req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code/*, admins: req.userSession._id*/ } : {};
+                const pipeline = [
+                    { $match: findFilter },
+                    {
+                        $lookup: {
+                            from: "whitelists",
+                            localField: "_id",
+                            foreignField: "id_clan",
+                            as: "clan_whitelist"
+                        }
+                    },
+                    {
+                        $addFields: {
+                            player_count: { $size: "$clan_whitelist" }
+                        }
+                    },
+                    {
+                        $project: {
+                            clan_whitelist: 0,
+                        }
+                    },
+                    {
+                        $sort: {
+                            full_name: 1
+                        }
+                    }
+                ]
+                //dbo.collection("clans").findOne(findFilter, (err, dbResC) => {
+                dbo.collection("clans").aggregate(pipeline).toArray((err, dbRes) => {
+                    if (err) {
+                        res.sendStatus(500);
+                        console.error(err)
+                    } else {
+                        res.send(dbRes);
+                    }
+                })
+            })
+        })
+        app.get('/api/whitelist/read/getAll', (req, res, next) => {
+            const parm = req.query;
+            mongoConn((dbo) => {
+                let _findFilter = parm.sel_clan_id ? { id_clan: ObjectID(parm.sel_clan_id) } : {};
+                let findFilter = { id_list: ObjectID(parm.sel_list_id), ..._findFilter }
+                const pipeline = [
+                    { $match: findFilter },
+                    {
+                        $lookup: {
+                            from: "groups",
+                            localField: "id_group",
+                            foreignField: "_id",
+                            as: "group_full_data"
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "inserted_by",
+                            foreignField: "_id",
+                            as: "inserted_by"
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "players",
+                            localField: "steamid64",
+                            foreignField: "steamid64",
+                            as: "serverData"
+                        }
+                    },
+                    {
+                        $sort: { id_clan: 1, approved: -1, id_group: 1, username: 1 }
+                    },
+                ]
+                dbo.collection("whitelists").aggregate(pipeline).toArray((err, dbRes) => {
+                    if (err) {
+                        res.sendStatus(500);
+                        console.error(err)
+                    } else {
+                        res.send(dbRes);
+                    }
+                })
+            })
+        })
+        app.get('/api/whitelist/read/getPendingApprovalClans', (req, res, next) => {
+            const parm = req.query;
+            mongoConn((dbo) => {
+                let findFilter = req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code } : {};
+                const pipeline = [
+                    { $match: findFilter },
+                    {
+                        $lookup: {
+                            from: "whitelists",
+                            let: { id_clan: "$_id" },
+                            pipeline: [
+                                {
+                                    $match: {
+                                        $expr: { $eq: [ "$id_clan", "$$id_clan" ] },
+                                        approved: false,
+                                    }
+                                },
+                            ],
+                            as: "whitelists",
+                        }
+                    },
+                    {
+                        $sort: { whitelists_data: -1 }
+                    },
+                    { $match: { whitelists: { $exists: true, $ne: [] } } }
+                ]
+                dbo.collection("clans").aggregate(pipeline).toArray((err, dbRes) => {
+                    if (err) {
+                        res.sendStatus(500);
+                        console.error(err)
+                    } else {
+                        console.log(dbRes)
+                        res.send(dbRes);
+                    }
+                })
+            })
+        })
+        app.get('/api/whitelist/read/getPendingApproval', (req, res, next) => {
+            const parm = req.query;
+            mongoConn((dbo) => {
+                // let findFilter = parm.sel_clan_id ? { id_clan: ObjectID(parm.sel_clan_id), approved: false } : { approved: false };
+                const pipeline = [
+                    {
+                        $lookup: {
+                            from: "whitelists",
+                            let: { id_list: "$_id" },
+                            pipeline: [
+                                {
+                                    $match: {
+                                        $expr: { $eq: [ "$id_list", "$$id_list" ] },
+                                        approved: false,
+                                        id_clan: ObjectID(parm.sel_clan_id)
+                                    }
+                                },
+                                {
+                                    $lookup: {
+                                        from: "groups",
+                                        localField: "id_group",
+                                        foreignField: "_id",
+                                        as: "group_full_data"
+                                    }
+                                },
+                                {
+                                    $lookup: {
+                                        from: "users",
+                                        localField: "inserted_by",
+                                        foreignField: "_id",
+                                        as: "inserted_by"
+                                    }
+                                },
+                                {
+                                    $sort: { id_clan: 1, approved: -1, id_group: 1, username: 1 }
+                                },
+                            ],
+                            as: "wl_data",
+                        }
+                    },
+                    { $match: { wl_data: { $exists: true, $ne: [] } } }
+                ]
+                dbo.collection("lists").aggregate(pipeline).toArray((err, dbRes) => {
+                    if (err) {
+                        res.sendStatus(500);
+                        console.error(err)
+                    } else {
+                        res.send(dbRes);
+                        console.log("\n\n\n", dbRes, "\n\n\n");
+                    }
+                })
+            })
+        })
+        app.use('/api/whitelist/write/*', (req, res, next) => {
+            if (req.userSession && req.userSession.access_level < 30) next()
+            else {
+                mongoConn((dbo, client) => {
+                    let findFilter = req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code, admins: req.userSession.id_user.toString() } : {};
+
+                    dbo.collection("clans").findOne(findFilter, (err, dbRes) => {
+                        if (err) serverError(res, err);
+                        else if (dbRes != null) {
+                            console.log("authorizing", req.userSession.username, "=>", dbRes)
+                            next();
+                        } else {
+                            console.log("blocking", dbRes)
+                            res.sendStatus(401)
+                        }
+                    })
+                })
+            }
+        })
+        app.use('/api/whitelist/write/checkPerm', async (req, res, next) => {
+            res.send({ status: "permission_granted" });
+        })
+        app.post('/api/whitelist/write/addPlayer', (req, res, next) => {
+            const parm = req.body;
+            mongoConn((dbo) => {
+                let findFilter = (req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code, admins: req.userSession.id_user.toString() } : { _id: ObjectID(parm.sel_clan_id) });
+                const pipeline = [
+                    { $match: findFilter },
+                    {
+                        $lookup: {
+                            from: "whitelists",
+                            localField: "_id",
+                            foreignField: "id_clan",
+                            as: "clan_whitelist"
+                        }
+                    },
+                    {
+                        $addFields: {
+                            player_count: { $size: "$clan_whitelist" }
+                        }
+                    },
+                    {
+                        $project: {
+                            clan_whitelist: 0,
+                        }
+                    }
+                ]
+                //dbo.collection("clans").findOne(findFilter, (err, dbResC) => {
+                dbo.collection("clans").aggregate(pipeline).toArray((err, aDbResC) => {
+                    console.log("====>", aDbResC)
+                    let dbResC = aDbResC[ 0 ];
+
+                    if (err) console.log("error", err)//serverError(res, err);
+                    else if (dbResC != null) {
+                        if (dbResC.player_limit == '' || dbResC.player_count < parseInt(dbResC.player_limit) || req.userSession.access_level <= 5) {
+                            let insWlPlayer = {
+                                id_clan: dbResC._id,
+                                username: parm.username,
+                                username_l: parm.username.toLowerCase(),
+                                steamid64: parm.steamid64,
+                                id_group: ObjectID(parm.group),
+                                discord_username: !parm.discordUsername.startsWith('@') && parm.discordUsername != "" ? "@" + parm.discordUsername : "" + parm.discordUsername,
+                                inserted_by: ObjectID(req.userSession.id_user),
+                                expiration: (parm.durationHours && parm.durationHours != "") ? new Date(Date.now() + (parseFloat(parm.durationHours) * 60 * 60 * 1000)) : false,
+                                insert_date: new Date(),
+                                approved: false,
+                                id_list: ObjectID(parm.sel_list_id),
+                            }
+                            dbo.collection("lists").findOne({ _id: insWlPlayer.id_list }, (err, dbResList) => {
+                                if (err) serverError(res, err);
+                                else if (req.userSession.access_level < 100 || !dbResList.hidden_managers) {
+                                    dbo.collection("groups").findOne(insWlPlayer.id_group, (err, dbResG) => {
+                                        if (err) console.log("error", err)
+                                        else if (dbResG != null) {
+
+                                            insWlPlayer.approved = !(dbResG.require_appr || dbResC.confirmation_ovrd || dbResList.require_appr) || req.userSession.access_level <= 30;
+                                            //console.log("\n\n\n\nNew Whitelist", insWlPlayer, dbRes);
+
+
+                                            dbo.collection("whitelists").insertOne(insWlPlayer, (err, dbRes) => {
+                                                if (err) console.log("ERR", err);//serverError(res, err);
+                                                else {
+                                                    res.send({ status: "inserted_new_player", player: { ...insWlPlayer, inserted_by: [ { username: req.userSession.username } ] }, ...dbRes })
+                                                    // 982449246999547995
+                                                    if (subcomponent_status.discord_bot) {
+                                                        let row, components = [];
+                                                        if (!insWlPlayer.approved) {
+                                                            row = new Discord.ActionRowBuilder()
+                                                                .addComponents(
+                                                                    new Discord.ButtonBuilder()
+                                                                        .setCustomId('approval:approve:' + insWlPlayer._id)
+                                                                        .setLabel('Approve')
+                                                                        .setStyle(Discord.ButtonStyle.Success),
+                                                                    new Discord.ButtonBuilder()
+                                                                        .setCustomId('approval:reject:' + insWlPlayer._id)
+                                                                        .setLabel('Reject')
+                                                                        .setStyle(Discord.ButtonStyle.Danger),
+                                                                )
+                                                            components.push(row);
+                                                        } else row = {};
+
+
+                                                        const embeds = [
+                                                            new Discord.EmbedBuilder()
+                                                                .setColor(config.app_personalization.accent_color)
+                                                                .setTitle('Whitelist Update')
+                                                                // .setDescription(formatEmbed("Manager", ) + formatEmbed("List", dbResList.title)),
+                                                                .addFields(
+                                                                    { name: 'Username', value: insWlPlayer.username, inline: true },
+                                                                    { name: 'SteamID', value: Discord.hyperlink(insWlPlayer.steamid64, "https://steamcommunity.com/profiles/" + insWlPlayer.steamid64), inline: true },
+                                                                    { name: 'Clan', value: aDbResC[ 0 ].full_name },
+                                                                    { name: 'Group', value: dbResG.group_name, inline: true },
+                                                                )
+                                                        ]
+                                                        if (insWlPlayer.expiration) {
+                                                            embeds[ 0 ].addFields({ name: 'Expiration', value: Discord.time(insWlPlayer.expiration, 'R'), inline: true })
+                                                        }
+                                                        embeds[ 0 ].addFields(
+                                                            { name: 'Manager', value: req.userSession.username },
+                                                            { name: 'List', value: dbResList.title },
+                                                            { name: 'Approval', value: insWlPlayer.approved ? `:white_check_mark: Approved` : ":hourglass: Pending", inline: true },
+                                                        )
+                                                        discordBot.channels.cache.get(config.discord_bot.whitelist_updates_channel_id).send({ embeds: embeds, components: components })
+
+                                                        function formatEmbed(title, value) {
+                                                            return Discord.bold(title) + "\n" + Discord.inlineCode(value) + "\n"
+                                                        }
+                                                    }
+                                                }
+                                            })
+                                        } else {
+                                            res.send({ status: "not_inserted", reason: "could find corresponding id" });
+                                        }
+                                    })
+                                } else {
+                                    res.sendStatus(402);
+                                }
+                            })
+                        } else {
+                            res.send({ status: "not_inserted", reason: "Player limit reached" });
+                        }
+                    } else {
+                        res.sendStatus(401);
+                    }
+                })
+            })
+        })
+        app.post('/api/whitelist/write/removePlayer', (req, res, next) => {
+            const parm = req.body;
+            mongoConn((dbo) => {
+                dbo.collection("whitelists").deleteOne({ _id: ObjectID(parm._id) }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        res.send({ status: "removing_ok", ...dbRes })
+                    }
+                })
+            })
+        })
+        app.post('/api/whitelist/write/clearList', (req, res, next) => {
+            const parm = req.body;
+            mongoConn((dbo) => {
+                dbo.collection("whitelists").deleteMany({ id_clan: ObjectID(parm.sel_clan_id), id_list: ObjectID(parm.sel_list_id) }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        res.send({ status: "clearing_ok", ...dbRes })
+                    }
+                })
+            })
+        })
+        app.use('/api/approval/write/*', (req, res, next) => {
+            if (req.userSession && req.userSession.access_level < 30) next()
+            else res.sendStatus(401)
+        })
+        app.use('/api/approval/write/setApprovedStatus', (req, res, next) => {
+            const parm = req.body;
+            setApprovedStatus(parm, res)
+        })
+
+        app.use('/api/gameGroups/write/*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next(); else res.sendStatus(401); })
+        app.use('/api/gameGroups/write/checkPerm', async (req, res, next) => {
+            res.send({ status: "permission_granted" })
+        })
+        app.post('/api/gameGroups/write/newGroup', (req, res, next) => {
+            const parm = req.body;
+            mongoConn((dbo) => {
+                dbo.collection("groups").insertOne(parm, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        res.send({ status: "group_created", data: parm, dbRes: { ...dbRes } })
+                    }
+                })
+            })
+        })
+        app.post('/api/gameGroups/write/editGroup', (req, res, next) => {
+            let parm = { ...req.body };
+            delete parm._id;
+            mongoConn((dbo) => {
+                dbo.collection("groups").updateOne({ _id: ObjectID(req.body._id) }, { $set: parm }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        dbo.collection("groups").findOne({ _id: ObjectID(req.body._id) }, (err, dbRes) => {
+                            res.send({ status: "edit_ok", ...dbRes })
+                        })
+                    }
+                })
+            })
+        })
+        app.post('/api/gameGroups/write/remove', (req, res, next) => {
+
+            mongoConn((dbo) => {
+                dbo.collection("groups").deleteOne({ _id: ObjectID(req.body._id) }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        res.send({ status: "removing_ok", ...dbRes })
+                    }
+                })
+            })
+        })
+        //app.use('/api/gameGroups/read/*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next() })
+        app.get('/api/gameGroups/read/getAllGroups', (req, res, next) => {
+            mongoConn((dbo) => {
+                let findFilter = {};
+                if (req.userSession && req.userSession.access_level >= 100) {
+                    dbo.collection("clans").findOne({ clan_code: req.userSession.clan_code }, (err, dbRes) => {
+                        if (err) serverError(res, err);
+                        else {
+                            let avGroups = [];
+                            for (let g of dbRes.available_groups) avGroups.push(ObjectID(g));
+                            findFilter = { _id: { $in: avGroups } };
+                            getGroups();
+                        }
+                    })
+                } else {
+                    getGroups();
+                }
+
+                function getGroups() {
+                    dbo.collection("groups").find(findFilter).sort({ group_name: 1 }).toArray((err, dbRes) => {
+                        if (err) serverError(res, err);
+                        else {
+                            res.send(dbRes);
+
+                        }
+                    })
+                }
+            })
+        })
+
+        app.use('/api/discord/*', (...p) => { accessLevelAuthorization(30, ...p) })
+        app.use('/api/discord/write', (...p) => { accessLevelAuthorization(10, ...p) })
+        app.get('/api/discord/read/getStatus', (req, res, next) => {
+            res.send(subcomponent_status.discord_bot)
+        })
+        app.get('/api/discord/read/getRoles', (req, res, next) => {
+            const parm = req.query;
+            if (subcomponent_status.discord_bot) {
+                const clientServer = discordBot.guilds.cache.find((s) => s.id == config.discord_bot.server_id);
+                let roles = [];
+                for (let r of clientServer.roles.cache) if (r[ 1 ].name.toLowerCase() !== "@everyone") roles.push({ id: r[ 1 ].id, name: r[ 1 ].name })
+                res.send(roles)
+            } else {
+                res.sendStatus(404)
+            }
+        })
+        app.get('/api/discord/read/getServers', (req, res, next) => {
+            const parm = req.query;
+            if (subcomponent_status.discord_bot) {
+                let ret = [];
+                for (let g of discordBot.guilds.cache) ret.push({ id: g[ 1 ].id, name: g[ 1 ].name })
+                res.send(ret)
+                console.log(ret);
+            } else {
+                res.sendStatus(404)
+            }
+        })
+        app.get('/api/discord/read/getChannels', async (req, res, next) => {
+            const parm = req.query;
+            if (subcomponent_status.discord_bot) {
+                let ret = [];
+                res.send((await discordBot.guilds.fetch(config.discord_bot.server_id)).channels.cache.sort((a, b) => a.rawPosition - b.rawPosition).filter((e) => e.type != 4))
+                // for(let c of (await discordBot.guilds.fetch(config.discord_bot.server_id)).channels.cache) ret.push(discordBot.channels.fetch(c))
+            } else {
+                res.sendStatus(404)
+            }
+        })
+        app.get('/api/discord/read/inviteLink', async (req, res, next) => {
+            res.send({ url: subcomponent_data.discord_bot.invite_link });
+        })
+
+        app.use('/api/clans*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next() })
+        app.get('/api/clans/getAllClans', (req, res, next) => {
+            mongoConn((dbo) => {
+                dbo.collection("clans").find().sort({ full_name: 1, tag: 1 }).toArray((err, dbRes) => {
+                    res.send(dbRes);
+                })
+            })
+        })
+        app.post('/api/clans/removeClan', (req, res, next) => {
+
+            mongoConn((dbo) => {
+                dbo.collection("clans").deleteOne({ _id: ObjectID(req.body._id) }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        res.send({ status: "removing_ok", ...dbRes })
+                    }
+                })
+            })
+        })
+        app.post('/api/clans/editClan', (req, res, next) => {
+            let parm = { ...req.body };
+            delete parm._id;
+            mongoConn((dbo) => {
+                dbo.collection("clans").updateOne({ _id: ObjectID(req.body._id) }, { $set: parm }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        dbo.collection("clans").findOne({ _id: ObjectID(req.body._id) }, (err, dbRes) => {
+                            res.send({ status: "edit_ok", ...dbRes })
+                        })
+                    }
+                })
+            })
+        })
+        app.get('/api/clans/getClanUsers', (req, res, next) => {
+            const parm = req.query;
+            mongoConn((dbo) => {
+                dbo.collection("users").find({ clan_code: parm.clan_code }).toArray((err, dbRes) => {
+                    res.send(dbRes)
+                })
+            })
+        })
+        app.get('/api/clans/getClanAdmins', (req, res, next) => {
+            const parm = req.query;
+            mongoConn((dbo) => {
+                dbo.collection("clans").findOne({ _id: ObjectID(parm._id) }, { projection: { admins: 1 } }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        let toSend = dbRes.admins ? dbRes.admins : []
+                        res.send(toSend)
+                    }
+                })
+            })
+        })
+        app.post('/api/clans/editClanAdmins', (req, res, next) => {
+            const parm = req.body;
+            mongoConn((dbo) => {
+                dbo.collection("clans").updateOne({ _id: ObjectID(req.body._id) }, { $set: { admins: parm.clan_admins } }, (err, dbRes) => {
+                    res.send({ status: "edit_ok", ...dbRes })
+                })
+            })
+        })
+        app.post('/api/clans/newClan', (req, res, next) => {
+            const parm = req.body;
+            let error;
+            do {
+                let clanCode = randomString(8);
+                error = false;
+                mongoConn((dbo) => {
+                    dbo.collection("clans").findOne({ full_name_lower: parm.full_name.toLowerCase() }, (err, dbRes) => {
+                        let clanDbIns = { ...parm, clan_code: clanCode };
+                        clanDbIns.full_name_lower = parm.full_name.toLowerCase();
+
+                        if (err) {
+                            res.sendStatus(500);
+                            console.error(err)
+                        }
+                        else if (dbRes == null) {
+                            dbo.collection("clans").findOne({ clan_code: clanCode }, (err, dbRes) => {
+                                if (err) {
+                                    res.sendStatus(500);
+                                    console.error(err)
+                                }
+                                else if (dbRes == null) {
+                                    dbo.collection("clans").insertOne(clanDbIns, (err, dbRes) => {
+                                        if (err) {
+                                            res.sendStatus(500);
+                                            console.error(err)
+                                        }
+                                        else {
+                                            res.send({ status: "clan_created", clan_data: clanDbIns });
+                                            console.log("New clan created:", clanDbIns)
+                                        }
+                                    })
+                                } else {
+                                    error = true;
+                                }
+                            })
+                        }
+                        else {
+                            res.send({ status: "clan_already_registered" }).status(409)
+                            console.log("Trying to register an already registered clan:", clanDbIns)
+                        }
+                    })
+                })
+            } while (error);
+        })
+
+        app.use('/admin*', authorizeAdmin)
+
+        app.use('/admin', function (req, res, next) {
+            express.static('admin')(req, res, next);
+        });
+        app.use('/api/admin*', authorizeAdmin)
+
+        app.get("/api/admin", (req, res, next) => {
+            res.send({ status: "Ok" });
+        })
+        app.get("/api/admin/getConfig", (req, res, next) => {
+            res.send(config);
+        })
+        app.get("/api/admin/checkInstallUpdate", (req, res, next) => {
+            res.send({ status: "Ok" });
+            checkUpdates(true);
+        })
+        app.get("/api/admin/restartApplication", (req, res, next) => {
+            res.send({ status: "Ok" });
+            restartProcess(req.query.delay ? req.query.delay : 0, 0);
+        })
+
+        app.use((req, res, next) => {
+            res.redirect("/");
+        });
+
+        function getApiRoutes(){
+            return app._router.stack.filter((e)=>e.route).map((e)=>e.route).map((r)=>r.path).filter((r)=>r.startsWith("/api/") && !r.startsWith("/api/admin"));
+        }
+
+        function removeExpiredPlayers(req, res, next) {
+            // console.log("Removing expired players");
+            mongoConn((dbo) => {
+                dbo.collection("whitelists").deleteOne({ expiration: { $lte: new Date() } }, (err, dbRes) => {
+                    if (err) console.error(err)
+                    if (next) next();
+                })
+            })
+        }
+
+        function getSession(req, res, callback = null) {
+            const parm = req.cookies;
+            if (parm.stok != null && parm.stok != "") {
+                mongoConn((dbo) => {
+                    dbo.collection("sessions").findOne({ token: parm.stok }, { projection: { _id: 0 } }, (err, dbRes) => {
+                        if (err) res.sendStatus(500);
+                        else if (dbRes != null && dbRes.session_expiration > new Date()) {
+                            req.userSession = dbRes;
+                            dbo.collection("users").findOne({ _id: dbRes.id_user }, { projection: { _id: 0 } }, (err, dbRes) => {
+                                if (dbRes != null) {
+                                    req.userSession = { ...req.userSession, ...dbRes }
+                                    if (callback)
+                                        callback();
+                                } else {
+                                    res.send({ status: "login_required" }).status(401)
+                                }
+
+                            })
+                        } else {
+                            if (callback)
+                                callback();
+                        }
+                    })
+                })
+            } else {
+                callback();
+            }
+        }
+        function requireLogin(req, res, callback = null) {
+            const parm = Object.keys(req.query).length > 0 ? req.query : req.body;
+            const reqPath = getReqPath(req);
+            //console.log("path", path);
+            /*switch (path) {
+                case "/api/getAppPersonalization/":
+                    callback();
+                    break;
+         
+                default:
+                    break;
+                }*/
+            //if (!req.userSession) res.redirect(301, "/api/login");
+            if (!req.userSession) res.send({ status: "login_required" }).status(401);
+            else callback();//authorizeDCSUsers(req, res, callback)
+        }
+        function logRequests(req, res, next) {
+            const usingQuery = Object.keys(req.query).length > 0;
+            const parm = usingQuery ? req.query : req.body;
+            const reqPath = getReqPath(req);
+            console.log("\nREQ: " + reqPath + "\nSESSION: ", req.userSession, "\nPARM " + (usingQuery ? "GET" : "POST") + ": ", parm);
+            next();
+        }
+        function detectRequestUrl(req, res, next) {
+            const host = req.get('host');
+            if (urlCalls[ host ]) urlCalls[ host ]++;
+            else urlCalls[ host ] = 1;
+            // console.log(urlCalls);
+            next();
+        }
+        function getReqPath(req, callback) {
+            const fullPath = req.originalUrl.replace(/\?.*$/, '')
+            let basePaths = [
+            ];
+            for (let val of basePaths) {
+                if (fullPath.startsWith(val)) return val
+            }
+
+            if (fullPath.endsWith("/")) return fullPath.substring(0, fullPath.length - 1)
+            else return fullPath
+        }
+        function authorizeAdmin(req, res, next) {
+            if (isAdmin(req))
+                next();
+            else res.redirect("/");
+        }
+        function forceHTTPS(req, res, next) {
+            if (config.web_server.force_https) {
+                forceSSL(req, res, next);
+            } else
+                return next();
+        }
+
+        function checkUpdates(downloadInstallUpdate = false, callback = null) {
+            let releasesUrl = "https://api.github.com/repos/fantinodavide/Squad_Whitelister/releases";
+            let curDate = new Date();
+            console.log("Current version: ", versionN, "\n > Checking for updates", curDate.toLocaleString());
+            axios
+                .get(releasesUrl)
+                .then(res => {
+                    const gitResData = res.data[ 0 ];
+                    const checkV = gitResData.tag_name.toUpperCase().replace("V", "").split(".");
+                    const versionSplit = versionN.toString().split(".");
+
+                    const config_authorized_update = ((config.other.install_beta_versions && gitResData.prerelease) || !gitResData.prerelease);
+                    const major_version_update = (parseInt(versionSplit[ 0 ]) < parseInt(checkV[ 0 ]));
+                    const minor_version_update = (parseInt(versionSplit[ 0 ]) <= parseInt(checkV[ 0 ]) && parseInt(versionSplit[ 1 ]) < parseInt(checkV[ 1 ]));
+                    const patch_version_update = (parseInt(versionSplit[ 0 ]) <= parseInt(checkV[ 0 ]) && parseInt(versionSplit[ 1 ]) <= parseInt(checkV[ 1 ]) && parseInt(versionSplit[ 2 ]) < parseInt(checkV[ 2 ]));
+
+
+                    if (config_authorized_update && (major_version_update || minor_version_update || patch_version_update)) {
+                        console.log(" > Update found: " + gitResData.tag_name, gitResData.name);
+                        //if (updateFoundCallback) updateFoundCallback();
+                        // server.close();
+                        if (downloadInstallUpdate) downloadLatestUpdate(gitResData);
+                        else if (callback) callback();
+                    } else {
+                        console.log(" > No updates found");
+                        if (callback) callback();
+                    }
+                })
+                .catch(err => {
+                    console.error(" > Couldn't check for updates. Proceding startup", err);
+                    if (callback) callback();
+                })
+        }
+
+        function downloadLatestUpdate(gitResData) {
+            // const url = gitResData.zipball_url;
+            const url = gitResData.assets.filter((a) => a.name == "release.zip")[ 0 ].browser_download_url;
+            console.log(" > Downloading update: " + gitResData.tag_name, gitResData.name, url);
+            const dwnDir = path.resolve(__dirname, 'tmp_update');//, 'gitupd.zip')
+            const dwnFullPath = path.resolve(dwnDir, 'gitupd.zip')
+
+            if (!fs.existsSync(dwnDir)) fs.mkdirSync(dwnDir);
+
+            const writer = fs.createWriteStream(dwnFullPath)
+            axios({
+                method: "get",
+                url: url,
+                responseType: "stream"
+            }).then((response) => {
+                response.data.pipe(writer);
+            });
+
+            writer.on('finish', (res) => {
+                setTimeout(() => {
+                    installLatestUpdate(dwnDir, dwnFullPath, gitResData);
+                }, 1000)
+            })
+            writer.on('error', (err) => {
+                console.error(err);
+            })
+        }
+
+        function installLatestUpdate(dwnDir, dwnFullPath, gitResData) {
+            const zip = new StreamZip({
+                file: dwnFullPath,
+                storeEntries: true,
+                skipEntryNameValidation: true
+            });
+            zip.on('ready', () => {
+                fs.remove(__dirname + "/dist", () => {
+                    zip.extract("release/", __dirname, (err, res) => {
+                        zip.close();
+                        nrc.run('npm install');
+                        console.log(" > Extracted", res, "files");
+                        fs.remove(dwnDir, () => {
+                            console.log(`${dwnDir} folder deleted`);
+                            const restartTimeout = 5000;
+                            console.log(" > Restart in", restartTimeout / 1000, "seconds");
+                            restartProcess(restartTimeout);
+                        })
+                    });
+                })
+
+            });
+        }
+
+        function isAdmin(req) {
+            return (req.userSession && req.userSession.access_level <= 5);
+        }
+    }
+
+    function discordBot(discCallback = null) {
+        console.log("Discord BOT")
+        if (config.discord_bot && config.discord_bot.token != "") {
+            const client = new Discord.Client({
+                intents: [
+                    Discord.GatewayIntentBits.Guilds,
+                    Discord.GatewayIntentBits.GuildMessages,
+                    Discord.GatewayIntentBits.GuildMembers,
+                ]
+            });
+            client.login(config.discord_bot.token);
+
+            const tm = setTimeout(() => {
+                console.error(" > Connection timed out. Check your discord_bot configuration.");
+                console.log(" > Proceding without discord bot.");
+                discCallback();
+            }, 10000)
+
+            const commands = [
+                {
+                    name: 'ping',
+                    description: 'Replies with Pong!',
+                },
+                {
+                    name: 'listclans',
+                    description: 'Gives a full list of clans with corresponding info',
+                },
+                {
+                    name: 'profile',
+                    description: 'Links the Discord profile to the Steam profile',
+                    options: [
+                        {
+                            name: "user",
+                            description: "Leave empty to get info of yourself, or fill to get info of a specific user",
+                            type: 6,
+                            required: false
+                        }
+                    ]
+                },
+                // {
+                //     name: 'userinfo',
+                //     description: 'gets user info',
+                // },
+            ];
+
+            client.on('ready', async () => {
+                clearTimeout(tm);
+                subcomponent_status.discord_bot = true;
+                discordBot = new Proxy(client, {});
+                // const permissionsString = "1099780151360";
+                const permissionsString = "268564544";
+                // const permissionsString = "8";
+                subcomponent_data.discord_bot.invite_link = `https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&permissions=${permissionsString}&scope=bot%20applications.commands`;
+                console.log(` > Logged-in!`);
+                console.log(`  > Tag: ${client.user.tag}`);
+                console.log(`  > ID: ${client.user.id}`);
+                console.log(`  > Invite: ${subcomponent_data.discord_bot.invite_link}`);
+                discCallback();
+                const rest = new Discord.REST({ version: '10' }).setToken(config.discord_bot.token);
+                rest.put(Discord.Routes.applicationCommands(client.user.id), { body: commands });
+
+                let discordBotServers = [];
+                if (client.guilds) for (let g of client.guilds.cache) discordBotServers.push({ id: g[ 1 ].id, name: g[ 1 ].name })
+                if (config.discord_bot.server_id == "" && discordBotServers.length > 0) config.discord_bot.server_id = discordBotServers[ 0 ].id;
+
+                temporizedRoleUpdate();
+                setInterval(temporizedRoleUpdate, 5 * 60 * 1000)
+
+                function temporizedRoleUpdate() {
+                    mongoConn((dbo) => {
+                        dbo.collection("players").find({ discord_user_id: { $exists: true } }).toArray((err, dbRes) => {
+                            for (let m of dbRes) {
+                                updateUserRoles(m.discord_user_id);
+                            }
+                        })
+                    })
+                }
+            });
+
+            client.on('raw', (packet) => {
+                switch (packet.t) {
+                    case 'GUILD_MEMBER_UPDATE':
+                        const user_id = packet.d.user.id;
+                        let user_roles = packet.d.roles;
+                        mongoConn((dbo) => {
+                            dbo.collection("players").updateOne({ discord_user_id: user_id }, { $set: { discord_user_id: user_id, discord_username: packet.d.user.username + "#" + packet.d.user.discriminator, discord_roles_ids: user_roles } }, { upsert: true })
+                        })
+                        break;
+                }
+            })
+
+            client.on('interactionCreate', async interaction => {
+                // console.log(interaction.member, interaction.user)
+                const sender = interaction.member ? interaction.member.user : interaction.user;
+                const sender_id = sender.id;
+                if (interaction.isChatInputCommand()) {
+                    switch (interaction.commandName) {
+                        case 'ping':
+                            await interaction.reply('Pong!');
+                            break;
+                        case 'listclans':
+                            mongoConn((dbo) => {
+                                dbo.collection("lists").find().toArray((err, dbResL) => {
+                                    const pipeline = [
+                                        {
+                                            $lookup: {
+                                                from: "whitelists",
+                                                localField: "_id",
+                                                foreignField: "id_clan",
+                                                as: "clan_whitelist"
+                                            }
+                                        },
+                                        {
+                                            $addFields: {
+                                                uniqueSteamids: { '$setUnion': '$clan_whitelist.steamid64' },
+                                            }
+                                        },
+                                        {
+                                            $addFields: {
+                                                unique_players: { $size: "$uniqueSteamids" },
+                                            }
+                                        },
+                                        {
+                                            $project: { _id: 0, admins: 0, available_groups: 0, clan_whitelist: 0, uniqueSteamids: 0 }
+                                        }
+                                    ]
+                                    // dbo.collection("clans").find({}).project({ _id: 0, admins: 0, available_groups: 0 }).sort({ full_name: 1, tag: 1 }).toArray((err, dbRes) => {
+                                    dbo.collection("clans").aggregate(pipeline).toArray((err, dbRes) => {
+                                        if (err) console.error(err)
+                                        // console.log(dbRes);
+                                        let embeds = [];
+                                        let reply = true;
+                                        for (let c of dbRes) {
+                                            let fields = [];
+                                            for (let cK of [ "tag", "clan_code", "player_limit", "unique_players" ]) {
+                                                if (cK == "player_limit" && c[ cK ] == "") c[ cK ] = "ထ";
+                                                fields.push({ name: toUpperFirstChar(cK.replace(/\_/g, ' ')), value: c[ cK ].toString(), inline: (cK != "full_name") })
+                                            }
+                                            const sortedCallsList = urlCalls.sort();
+                                            const winnerUrl = Object.keys(sortedCallsList)[ 0 ];
+                                            const winnerUrlCount = sortedCallsList[ winnerUrl ];
+                                            if (winnerUrlCount) {
+                                                let wlUrls = [];
+                                                for (let l of dbResL) {
+                                                    const wlUrl = 'https://' + winnerUrl + ":" + server.configs.https.port + "/" + l.output_path + "/" + c[ 'clan_code' ];
+                                                    wlUrls.push(Discord.hyperlink(l.title, wlUrl))
+                                                }
+                                                fields.push({ name: "Whitelist", value: wlUrls.join(' - '), inline: false })
+                                            }
+                                            // console.log(interaction.guildId, interaction.channelId);
+                                            embeds.push(
+                                                new Discord.EmbedBuilder()
+                                                    .setColor(config.app_personalization.accent_color)
+                                                    .setTitle(toUpperFirstChar(c.full_name.replace(/\_/g, ' ')))
+                                                    .addFields(...fields)
+                                            )
+                                            // for (let i = 0; i < 10; i++)
+                                            if (embeds.length % 10 == 0) {
+                                                if (reply) {
+                                                    reply = false;
+                                                    interaction.reply({ embeds: embeds });
+                                                } else {
+                                                    client.channels.cache.get(interaction.channelId).send({ embeds: embeds });
+                                                }
+                                                embeds = [];
+                                            }
+                                        }
+                                        if (embeds.length > 0) client.channels.cache.get(interaction.channelId).send({ embeds: embeds });
+                                    })
+                                })
+                            })
+                            break;
+                        case 'profile':
+                            mongoConn((dbo) => {
+                                let publicMessage = interaction.options.getUser('user') != null;
+                                let requestedProfile = publicMessage ? interaction.options.getUser('user') : sender
+
+                                dbo.collection("players").findOne({ discord_user_id: (publicMessage ? requestedProfile.id : sender_id) }, async (err, dbRes) => {
+                                    if (err) serverError(null, err);
+                                    else {
+                                        console.log(dbRes);
+                                        let fields = [
+                                            { name: "Steam " + ((dbRes && dbRes.steamid64) ? "Username " : ""), value: ((dbRes && dbRes.steamid64) ? dbRes.username : "*Not linked*"), inline: true },
+                                        ]
+                                        if (dbRes && dbRes.steamid64) fields.push({ name: 'SteamID', value: Discord.hyperlink(dbRes.steamid64, "https://steamcommunity.com/profiles/" + dbRes.steamid64), inline: true })
+                                        let reply = await interaction.reply({
+                                            content: Discord.userMention(requestedProfile.id),
+                                            embeds: [
+                                                new Discord.EmbedBuilder()
+                                                    .setColor(config.app_personalization.accent_color)
+                                                    .setAuthor({ name: requestedProfile.username, iconURL: requestedProfile.avatarURL() })
+                                                    .setTitle("Linked Profiles")
+                                                    // .setTitle(sender.username + "'s Linked Profiles")
+                                                    // .setDescription(Discord.userMention(requestedProfile.id))
+                                                    .addFields(...fields)
+                                            ],
+                                            components: (false && publicMessage) ? [] : [
+                                                new Discord.ActionRowBuilder()
+                                                    .addComponents(
+                                                        ((dbRes && dbRes.steamid64) ?
+                                                            new Discord.ButtonBuilder()
+                                                                .setCustomId('profilelink:steam:unlink')
+                                                                .setLabel('Unlink Steam')
+                                                                .setStyle(Discord.ButtonStyle.Danger)
+                                                            :
+                                                            new Discord.ButtonBuilder()
+                                                                .setCustomId('profilelink:steam:link')
+                                                                .setLabel('Link Steam')
+                                                                .setStyle(Discord.ButtonStyle.Success))
+                                                    )
+                                            ],
+                                            ephemeral: !publicMessage
+                                        });
+                                        if (!reply.interaction.ephemeral) {
+                                            setTimeout(async () => {
+                                                const sentReply = await reply.interaction.webhook.fetchMessage();
+                                                // console.log(sentReply);
+                                                sentReply.edit({ components: [] })
+                                            }, 30 * 1000)
+                                        }
+                                    }
+                                })
+
+                            })
+                            break;
+                        // case 'userinfo':
+                        //     console.log(interaction.member)
+                        //     interaction.reply({ content: "ok", ephemeral: true })
+                        //     break;
+                    }
+                    updateUserRoles(sender_id);
+                } else if (interaction.isButton()) {
+                    const idsplit = interaction.customId.split(':');
+                    console.log(idsplit);
+                    switch (idsplit[ 0 ]) {
+                        case "approval":
+                            const appr_status = idsplit[ 1 ] == "approve" ? true : false;
+                            setApprovedStatus({ _id: idsplit[ 2 ], approve_update: appr_status })
+                            interaction.reply({ content: "Done", ephemeral: true, });
+                            interaction.message.edit({ components: [] });
+                            let emb = interaction.message.embeds[ 0 ]
+                            emb.fields.filter((f) => f.name == "Approval")[ 0 ].value = (appr_status ? ":white_check_mark: Approved" : ":x: Rejected");
+                            emb.fields.push({ name: (appr_status ? "Approved" : "Rejected") + " by", value: Discord.userMention(sender.id), inline: true });
+                            interaction.message.edit({ embeds: [ emb ] })
+                            break;
+                        case 'profilelink':
+                            if (interaction.message.mentions.users.find(m => m.id == sender_id) || interaction.message.ephemeral) {
+                                switch (idsplit[ 1 ]) {
+                                    case 'steam':
+                                        switch (idsplit[ 2 ]) {
+                                            case 'link':
+                                                let error;
+                                                do {
+                                                    let linkingCode = randomString(6);
+                                                    error = false;
+                                                    const expiratioDelay = 5 * 60 * 1000;
+                                                    const codeExpiration = (new Date(Date.now() + expiratioDelay));
+                                                    mongoConn((dbo) => {
+                                                        dbo.collection("profilesLinking").deleteOne({ discordUserId: sender_id }, (err, dbRes) => {
+                                                            dbo.collection("profilesLinking").findOne({ code: linkingCode }, (err, dbRes) => {
+                                                                if (err) {
+                                                                    res.sendStatus(500);
+                                                                    console.error(err)
+                                                                }
+                                                                else if (dbRes == null) {
+                                                                    dbo.collection("profilesLinking").insertOne({ source: "Discord", discordUserId: sender_id, code: linkingCode, expiration: codeExpiration }, (err, dbRes) => {
+                                                                        if (err) {
+                                                                            res.sendStatus(500);
+                                                                            console.error(err)
+                                                                        }
+                                                                        else {
+                                                                            interaction.reply({
+                                                                                embeds: [
+                                                                                    new Discord.EmbedBuilder()
+                                                                                        .setColor(config.app_personalization.accent_color)
+                                                                                        .setTitle("Link Steam Profile")
+                                                                                        .setDescription("Join our Squad server and send in any chat the following code")
+                                                                                        .addFields(
+                                                                                            { name: "Linking Code", value: linkingCode, inline: false },
+                                                                                            { name: "Expiration", value: Discord.time(codeExpiration, 'R'), inline: false },
+                                                                                        )
+                                                                                ],
+                                                                                ephemeral: true
+                                                                            });
+
+                                                                            setInterval(async () => {
+                                                                                dbo.collection("profilesLinking").deleteOne({ _id: dbRes.insertedId });
+                                                                            }, expiratioDelay)
+                                                                        }
+                                                                    })
+                                                                } else {
+                                                                    error = true;
+                                                                }
+                                                            })
+                                                        })
+                                                    })
+                                                } while (error);
+                                                break;
+                                            case 'unlink':
+                                                // const modal = new Discord.ModalBuilder()
+                                                //     .setCustomId('profilelink:steam:unlink')
+                                                //     .setTitle('Unlink Steam?')
+                                                // await interaction.showModal(modal);
+                                                if (!idsplit[ 3 ]) {
+                                                    await interaction.reply({
+                                                        embeds: [
+                                                            new Discord.EmbedBuilder()
+                                                                .setColor(config.app_personalization.accent_color)
+                                                                .setTitle("Unlink Steam")
+                                                                .setDescription("Do you really want to unlink your steam profile?")
+                                                        ],
+                                                        components: [
+                                                            new Discord.ActionRowBuilder()
+                                                                .addComponents(
+                                                                    new Discord.ButtonBuilder()
+                                                                        .setCustomId('profilelink:steam:unlink:confirm')
+                                                                        .setLabel('Confirm')
+                                                                        .setStyle(Discord.ButtonStyle.Danger)
+                                                                ) ],
+                                                        ephemeral: true
+                                                    });
+                                                } else {
+                                                    switch (idsplit[ 3 ]) {
+                                                        case 'confirm':
+                                                            mongoConn((dbo) => {
+                                                                dbo.collection("players").updateOne({ discord_user_id: sender_id }, { $unset: { discord_user_id: 1 } }, (err, dbRes) => {
+                                                                    if (err) serverError(null, err);
+                                                                    else {
+                                                                        console.log(dbRes)
+                                                                        if (dbRes.modifiedCount == 1) interaction.reply({ content: "Your Steam account has been unlinked", ephemeral: true });
+                                                                        else interaction.reply({ content: "You don't have a Steam account to unlink", ephemeral: true })
+                                                                    }
+                                                                })
+                                                            })
+                                                            break;
+                                                    }
+                                                }
+                                                break;
+                                        }
+                                        break;
+                                }
+                            } else {
+                                interaction.reply({
+                                    embeds: [
+                                        new Discord.EmbedBuilder()
+                                            .setColor(config.app_personalization.accent_color)
+                                            .setTitle("Unauthorized")
+                                            .setDescription("Only the owner of the profile can use this action")
+                                    ],
+                                    ephemeral: true
+                                })
+                            }
+                            break;
+                    }
+                } else if (interaction.isModalSubmit()) {
+                    interaction.reply({ content: "Modal received", ephemeral: true })
+                }
+            });
+
+            async function updateUserRoles(member_id) {
+                // console.log(await client.guilds.cache.get(config.discord_bot.server_id).members.cache.map((e)=>e.id));
+                const member = await client.guilds.cache.get(config.discord_bot.server_id).members.cache.find((m) => m.id == member_id);
+                if (member) {
+                    const user = member.user;
+                    const user_roles = member._roles;
+                    mongoConn((dbo) => {
+                        dbo.collection("players").updateOne({ discord_user_id: member_id }, { $set: { discord_user_id: member_id, discord_username: user.username + "#" + user.discriminator, discord_roles_ids: user_roles } }, { upsert: true })
+                    })
+                }
+            }
+
+
+        } else {
+            console.log(" > Not configured. Skipping.");
+            discCallback();
+        }
+    }
+
+    function SquadJSWebSocket(cb = null) {
+        let reconnect_int = null;
+        console.log("SquadJS WebSocket")
+        if (config.squadjs.websocket && config.squadjs.websocket.token != "" && config.squadjs.websocket.host != "") {
+            const tm = setTimeout(() => {
+                console.error(" > Connection timed out. Check your SquadJS WebSocket configuration.");
+                console.log(" > Proceding without SquadJS WebSocket.");
+                if (cb) cb();
+            }, 10000)
+
+            let socket = io(`ws://${config.squadjs.websocket.host}:${config.squadjs.websocket.port}`, {
+                auth: {
+                    token: config.squadjs.websocket.token
+                }
+            })
+            socket.on("connect", async () => {
+                clearTimeout(tm);
+                console.log(" > Connected");
+                socket.emit("rcon.warn", "76561198419229279", "Whitelister Connected", () => { })
+
+                if (!squadjs.initDone) {
+                    squadjs.initDone = true;
+                    // seedingTimeTracking();
+                    cb();
+                }
+                clearInterval(reconnect_int);
+                subcomponent_status.squadjs = true;
+            });
+            socket.on("disconnect", async () => {
+                console.log("SquadJS WebSocket\n > Disconnected\n > Trying to reconnect")
+                reconnect_int = setInterval(() => {
+                    if (!subcomponent_status.squadjs) socket.connect()
+                }, 10 * 1000)
+                subcomponent_status.squadjs = false;
+            });
+            socket.on("PLAYER_CONNECTED", async (dt) => {
+                //     console.log("Player connected: ", dt)
+                // if (dt.player.steamID == "76561198419229279") {
+                //     socket.emit("rcon.warn", "76561198419229279", "This server is using the Whitelister tool", (d) => {
+                //         console.log(d)
+                //     })
+                // }
+                if (dt.player.steamID) {
+                    mongoConn(async (dbo) => {
+                        dbo.collection("players").updateOne({ steamid64: dt.player.steamID }, { $set: { steamid64: dt.player.steamID, username: dt.player.name } }, { upsert: true })
+                    })
+                    setTimeout(() => {
+                        mongoConn((dbo) => {
+                            const pipeline = [
+                                { $match: { steamid64: dt.player.steamID } },
+                                {
+                                    $lookup: {
+                                        from: "groups",
+                                        localField: "id_group",
+                                        foreignField: "_id",
+                                        as: "group_full_data"
+                                    }
+                                }
+                            ]
+                            dbo.collection("whitelists").aggregate(pipeline).toArray(async (err, dbRes) => {
+                                if (err) serverError(null, err);
+                                else {
+                                    dbo.collection("players").findOne({ steamid64: dt.player.steamID }, async (err, dbResP) => {
+                                        if (err) serverError(null, err);
+                                        else {
+                                            let msg = "Welcome " + dt.player.name + "\n\n";
+
+                                            if (subcomponent_status.squadjs) {
+                                                if (dbRes[ 0 ] && dbRes[ 0 ].group_full_data[ 0 ]) {
+                                                    msg +=
+                                                        "Group: " + dbRes[ 0 ].group_full_data[ 0 ].group_name + "\n" +
+                                                        "Expiration: " + (dbRes[ 0 ].expiration ? ((dbRes[ 0 ].expiration - new Date()) / 1000 / 60 / 60).toFixed(1) + " h" : "Never") + "\n"
+                                                }
+                                            }
+                                            if (subcomponent_status.discord_bot) {
+                                                let discordUsername = "";
+                                                if (dbResP && dbResP.discord_user_id && dbResP.discord_user_id != "") {
+                                                    const discordUser = await discordBot.users.fetch(dbResP.discord_user_id);
+                                                    discordUsername = discordUser.username + "#" + discordUser.discriminator;
+                                                }
+
+                                                msg += "Discord Username: " + (discordUsername != "" ? discordUsername : "Not linked")
+                                            }
+
+
+                                            if (subcomponent_status.squadjs) {
+                                                setTimeout(() => {
+                                                    socket.emit("rcon.warn", dt.player.steamID, msg, (d) => { })
+                                                }, 5000)
+                                            }
+                                        }
+                                    })
+                                }
+                            })
+                        })
+                    }, 10000)
+                }
+            })
+            // socket.on("PLAYER_DISCONNECTED", async (dt) => {
+            //     console.log("Player disconnected: ", dt)
+            // })
+            socket.on("CHAT_MESSAGE", async (dt) => {
+                switch (dt.message) {
+                    case 'test':
+                        break;
+                    case 'playerinfo':
+                        console.log(dt);
+                        break;
+                    default:
+                        if (dt.message.length == 6 && !dt.message.includes(' ')) {
+                            mongoConn(async (dbo) => {
+                                dbo.collection("profilesLinking").findOne({ code: dt.message }, async (err, dbRes) => {
+                                    if (err) serverError(null, err);
+                                    else if (dbRes) {
+                                        if (dbRes.expiration > new Date()) {
+                                            const discordUser = await discordBot.users.fetch(dbRes.discordUserId);
+                                            const discordUsername = discordUser.username + "#" + discordUser.discriminator;
+                                            dbo.collection("players").updateOne({ steamid64: dt.player.steamID }, { $set: { steamid64: dt.player.steamID, username: dt.player.name, discord_user_id: dbRes.discordUserId } }, { upsert: true }, (err, dbResU) => {
+                                                dbo.collection("profilesLinking").deleteOne({ _id: dbRes._id })
+                                                if (err) serverError(null, err);
+                                                else {
+                                                    socket.emit("rcon.warn", dt.steamID, "Linked Discord profile: " + discordUsername, (d) => { })
+                                                    discordUser.send({
+                                                        embeds: [
+                                                            new Discord.EmbedBuilder()
+                                                                .setColor(config.app_personalization.accent_color)
+                                                                .setTitle("Profile Linked")
+                                                                .setDescription("Your Discord profile has been linked to a Steam profile")
+                                                                .addFields(
+                                                                    { name: "Steam Username", value: dt.name, inline: true },
+                                                                    { name: 'SteamID', value: Discord.hyperlink(dt.steamID, "https://steamcommunity.com/profiles/" + dt.steamID), inline: true })
+                                                        ]
+                                                    })
+                                                }
+                                            })
+                                        } else {
+                                            dbo.collection("profilesLinking").deleteOne({ _id: dbRes._id })
+                                        }
+                                    }
+                                })
+                            })
+                        }
+                        break;
+                }
+            })
+
+            function seedingTimeTracking() {
+                const checkIntervalMinutes = 5;
+                setInterval(() => {
+                    if (subcomponent_status.squadjs) {
+                        socket.emit("rcon.getListPlayers", (players) => {
+                            if (players.length < config.squadjs.seeding_time_tracker.live_player_count) {
+                                console.log("current seeders", objArrToValArr(players, "name"));
+                                for (let p of players) {
+                                    mongoConn(dbo => {
+                                        dbo.collection("players").findOneAndUpdate({ steamid64: p.steamID }, { $set: { steamid64: p.steamID, username: p.name }, $inc: { seeding_points: 1 } }, { upsert: true, returnNewDocument: true }, (err, dbRes) => {
+                                            if (err) serverError(null, err)
+                                            else {
+                                                console.log(dbRes);
+                                                if (dbRes.value && dbRes.value.seeding_points && dbRes.value.seeding_points % 10 == 0)
+                                                    socket.emit("rcon.warn", p.steamID, `Seeding Reward:\n\nYour points: ${dbRes.value.seeding_points}\n${50 - dbRes.value.seeding_points} points left to claim your reward!`, (d) => { })
+                                            }
+                                        })
+                                    })
+                                }
+
+                            }
+                        })
+                    }
+                }, checkIntervalMinutes * 60 * 1000)
+            }
+        } else {
+            console.log(" > Not configured. Skipping.");
+            if (cb) cb();
+        }
+    }
+
+    function restartProcess(delay = 5000, code = 0, forceRestart = false) {
+        if ((args[ "self-pm" ] && args[ "self-pm" ] == true) || forceRestart/*args["using-pm"] && args["using-pm"] == true*/) {
+            process.on("exit", function () {
+                console.log("Process terminated\nStarting new process");
+                require("child_process").spawn(process.argv.shift(), process.argv, {
+                    cwd: process.cwd(),
+                    detached: true,
+                    stdio: "inherit"
+                });
+            });
+            setTimeout(() => {
+                process.exit(code);
+            }, delay)
+        } else {
+            console.log("Terminating execution. Process manager will restart me.")
+            process.exit(code)
+        }
+    }
+
+    function mongoConn(connCallback, override = false) {
+        if (!mongodb_global_connection || override) {
+            let url;
+
+            if (process.env.MONGODB_CONNECTION_STRING) url = process.env.MONGODB_CONNECTION_STRING
+            else if (config.database.mongo.host.includes("://")) url = config.database.mongo.host;
+            else url = "mongodb://" + config.database.mongo.host + ":" + config.database.mongo.port;
+
+            let dbName = config.database.mongo.database;
+            let client = MongoClient.connect(url, function (err, db) {
+                if (err) console.error(err)
+                var dbo = db.db(dbName);
+                connCallback(dbo);
+            });
+        } else {
+            connCallback(mongodb_conn)
+        }
+    }
+
+    function getDateFromEpoch(ep) {
+        let d = new Date(0);
+        d.setUTCSeconds(ep);
+        return d;
+    }
+
+    function serverError(res, err) {
+        if (res) res.sendStatus(500);
+        console.error(err);
+    }
+
+    function toUpperFirstChar(string) {
+        return string.charAt(0).toUpperCase() + string.slice(1);
+    }
+    function initConfigFile(callback) {
+
+        console.log("Current dir: ", __dirname);
+        let emptyConfFile = {
+            web_server: {
+                bind_ip: "0.0.0.0",
+                http_port: 80,
+                https_port: 443,
+                force_https: false,
+                session_duration_hours: 168,
+            },
+            database: {
+                mongo: {
+                    host: process.env.MONGODB_CONNECTION_STRING || "127.0.0.1",
+                    port: 27017,
+                    database: "Whitelister",
+                    // username: "",
+                    // password: "",
+                }
+            },
+            app_personalization: {
+                name: "Whitelister",
+                favicon: "",
+                accent_color: "#ffc40b",
+                logo_url: "https://joinsquad.com/wp-content/themes/squad/img/logo.png",
+                logo_border_radius: "10",
+                title_hidden_in_header: false,
+            },
+            discord_bot: {
+                token: "",
+                whitelist_updates_channel_id: ""
+            },
+            squadjs: {
+                websocket: {
+                    host: "",
+                    port: 3000,
+                    token: ""
+                }/*,
+                seeding_time_tracker: {
+                    live_player_count: 50,
+                }*/
+            },
+            other: {
+                automatic_updates: true,
+                update_check_interval_seconds: 3600,
+                whitelist_developers: true,
+                install_beta_versions: false,
+                logs_max_file_count: 10
+            }
+        }
+
+        if (!fs.existsSync("conf.json")) {
+            get_free_port(emptyConfFile.web_server.http_port, function (http_port) {
+                emptyConfFile.web_server.http_port = http_port;
+                get_free_port(emptyConfFile.web_server.https_port, function (https_port) {
+                    emptyConfFile.web_server.https_port = https_port;
+                    console.log("Configuration file created, set your parameters and run again \"node server\".\nTerminating execution...");
+                    fs.writeFileSync("conf.json", JSON.stringify(emptyConfFile, null, "\t"));
+                    process.exit(0)
+                });
+            });
+        } else {
+            const config = JSON.parse(fs.readFileSync("conf.json", "utf-8").toString());
+            var config2 = { ...config }
+            upgradeConfig(config2, emptyConfFile);
+            fs.writeFileSync("conf.json", JSON.stringify(config2, null, "\t"));
+            callback();
+        }
+    }
+    function isDbPopulated(callback) {
+        const mainListData = {
+            title: "Main",
+            output_path: "wl",
+            hidden_managers: false,
+            require_appr: false,
+            discord_roles: []
+        }
+
+        mongoConn((dbo) => {
+            dbo.collection("users").findOne({ access_level: 0 }, (err, dbRes) => {
+                if (err) {
+                    if (res) res.sendStatus(500);
+                    console.error(err)
+                } else if (dbRes != null) {
+                    // if (callback)
+                    //     callback();
+                    subcomponent_data.database.root_user_registered = true;
+                    listCollection(() => { repairListFormat(callback) });
+                } else {
+                    subcomponent_data.database.root_user_registered = false;
+                    listCollection(() => { repairListFormat(callback) });
+                    // let adminPwd = randomString(12);
+                    // let defaultAdminAccount = {
+                    //     username: "admin",
+                    //     password: crypto.createHash('sha512').update(adminPwd).digest('hex'),
+                    //     access_level: 0,
+                    //     registration_date: new Date()
+                    // }
+                    // dbo.collection("users").insertOne(defaultAdminAccount, (err, dbRes) => {
+                    //     if (err) {
+                    //         res.sendStatus(500);
+                    //         console.error(err);
+                    //         process.exit(1);
+                    //     } else if (callback) {
+                    //         const startdelay = 5;
+                    //         consoleLogBackup("\n\n\n\n########## ADMIN CREDENTIALS ##########\n##  Username: admin                  ##\n##  Password: " + adminPwd + "           ##\n#######################################\n\n!!! Save your credentials, you will NOT see them again !!!\n\nServer will be started in", startdelay, "s")
+
+                    //         setTimeout(() => {
+                    //             consoleLogBackup("\n\n\n\n");
+                    //             // callback();
+                    //             listCollection(callback);
+                    //         }, startdelay * 1000);
+                    //     }
+                    // })
+                }
+            })
+            if (args.demo) dbo.collection("users").updateOne({ username: 'demoadmin' }, { $set: { password: crypto.createHash('sha512').update('demo').digest('hex'), access_level: 5 } }, { upsert: true })
+
+            function listCollection(cb) {
+                dbo.listCollections({ name: "lists" }).next((err, dbRes) => {
+                    if (dbRes == null) {
+                        dbo.collection("lists").insertOne(mainListData, (err, dbResI) => {
+                            if (err) serverError(res, err);
+                            else {
+                                console.log("Collection 'lists' created.\n", dbResI)
+                                dbo.collection("whitelists").updateMany({ id_list: { $exists: false } }, { $set: { id_list: dbResI.insertedId } }, (err, dbResU) => {
+                                    if (err) serverError(res, err);
+                                    else {
+                                        console.log("Updated references");
+                                        cb();
+                                    }
+                                })
+                            }
+                        })
+                    } else cb();
+                })
+            }
+
+            async function repairListFormat(cb) {
+                let logSent = false;
+                const keysToCheck = Object.keys(mainListData);
+                repair(0)
+
+                function repair(ki) {
+                    const k = keysToCheck[ ki ]
+                    dbo.collection("lists").updateMany({ [ k ]: { $exists: false } }, { $set: { [ k ]: mainListData[ k ] } }, async (err, dbRes) => {
+                        if (err) console.error(err);
+                        else {
+                            if (dbRes.modifiedCount > 0) {
+                                if (!logSent) {
+                                    logSent = true;
+                                    console.log("Repairing Lists format");
+                                }
+                            }
+                            if (ki < keysToCheck.length - 1) repair(ki + 1);
+                            else cb();
+                        }
+                    })
+                }
+            }
+        })
+    }
+    function upgradeConfig(config, emptyConfFile) {
+        for (let k in emptyConfFile) {
+            const objType = Object.prototype.toString.call(emptyConfFile[ k ]);
+            const parentObjType = Object.prototype.toString.call(emptyConfFile);
+            if (config[ k ] == undefined || (config[ k ] && (parentObjType == "[object Array]" && !config[ k ].includes(emptyConfFile[ k ])))) {
+                switch (objType) {
+                    case "[object Object]":
+                        config[ k ] = {}
+                        break;
+                    case "[object Array]":
+                        config[ k ] = []
+                        break;
+
+                    default:
+                        //console.log("CONFIG:", config, "\nKEY:", k, "\nCONFIG_K:", config[k], "\nEMPTY_CONFIG_K:", emptyConfFile[k], "\nPARENT_TYPE:",parentObjType,"\n");
+                        if (parentObjType == "[object Array]") config.push(emptyConfFile[ k ])
+                        else config[ k ] = emptyConfFile[ k ]
+                        break;
+                }
+            }
+            if (typeof (emptyConfFile[ k ]) === "object") {
+                upgradeConfig(config[ k ], emptyConfFile[ k ])
+            }
+        }
+    }
+    function updateConfig() {
+
+    }
+
+    function setApprovedStatus(parm, res = null) {
+        mongoConn((dbo) => {
+            if (parm.approve_update && (parm.approve_update == true || parm.approve_update == 'true')) {
+                dbo.collection("whitelists").updateOne({ _id: ObjectID(parm._id) }, { $set: { approved: true } }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        if (res) res.send({ status: "approved", ...dbRes })
+                    }
+                })
+            } else {
+                dbo.collection("whitelists").deleteOne({ _id: ObjectID(parm._id) }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        if (res) res.send({ status: "rejected", ...dbRes })
+                    }
+                })
+            }
+        })
+    }
+    process.on('uncaughtException', function (err) {
+        console.error("Uncaught Exception", err.message, err.stack)
+        if (++errorCount >= (args[ "self-pm" ] ? 5 : 0)) {
+            console.error("Too many errors occurred during the current run. Terminating execution...");
+            restartProcess(0, 1);
+        }
+    })
+    function randomString(size = 64) {
+        const rndStr = crypto.randomBytes(size).toString('base64').slice(0, size);
+        if (rndStr.match(/^[a-zA-Z\d]{1,}$/)) return rndStr
+        else return randomString(size)
+    }
+    function extendLogging() {
+        console.log = (...params) => {
+            consoleLogBackup(...params);
+            logger.trace(...params)
+        }
+        console.error = (...params) => {
+            consoleErrorBackup(...params);
+            logger.error(...params)
+        }
+        fs.readdir(path.join(__dirname, "logs"), { withFileTypes: true }, (err, files) => {
+            if ((config && config.other && files.length > config.other.logs_max_file_count) || (files.length > 10)) {
+                files = files.slice(0, files.length - config.other.logs_max_file_count)
+                files.forEach(f => {
+                    fs.remove(path.join(__dirname, "logs", f.name))
+                })
+            }
+        })
+    }
+    function accessLevelAuthorization(accessLevel, req, res, next) {
+        if (req.userSession && req.userSession.access_level <= accessLevel) next()
+        else res.sendStatus(401)
+    }
+    function getFirstExistentFileInArray(arr, elm = 0) {
+        if (elm >= arr.length) return null;
+
+        let exist = fs.existsSync(arr[ elm ]);
+        let ret;
+
+        if (exist) {
+            return arr[ elm ];
+        } else {
+            return getFirstExistentFileInArray(arr, ++elm);
+        }
+    }
+    function length(obj) {
+        return Object.keys(obj).length;
+    }
+    function parseValue(str) {
+        if (str === 'true') return true;
+        else if (str === 'false') return false;
+        else return str
+    }
+
+    function wssBroadcast(data, ws = null) {
+        console.log("WS Broadcast", data);
+        wss.clients.forEach(function each(client) {
+            if ((client !== ws) && client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify(data));
+            }
+        });
+    }
+    function get_free_port(checkPort, callback = () => { }, max_port_tries = 15) {
+        console.log("Looking for free port close to " + checkPort);
+        try {
+            fp(checkPort, _tryStart)
+        } catch (err) { }
+
+        let tries = 0;
+        let checked_ports = [];
+        async function _tryStart(err, freePort) {
+            checked_ports.push(freePort)
+            let port = freePort;
+            let tmpSrv = http.createServer();
+            let error = false;
+
+            await tmpSrv.listen(port).on("error", (e) => {
+                console.error(" > Failed", e.port);
+                error = true;
+                let new_try_port = (checkPort == 443 ? 4443 : 8080) + (tries * 100);
+
+                if (++tries < max_port_tries) {
+                    try {
+                        fp(new_try_port, _tryStart);
+                    } catch (error) { }
+                } else {
+                    console.error(" > Couldn't find a free port.\n > Terminating process...");
+                    process.exit(1);
+                }
+            })
+            tmpSrv.close();
+            if (!error) {
+                console.log(" > Found free port: " + port)
+                callback(port)
+            }
+
+        }
+    }
+    function objArrToValArr(arr, ...key) {
+        let vet = [];
+        for (let o of arr) {
+            let obj = o;
+            for (let k of key) {
+                if (obj[ k ])
+                    obj = obj[ k ];
+            }
+            vet.push(obj);
+        }
+        return vet;
+    }
+}
+
+init();
+
+function terminateAndSpawnChildProcess(code = 0, delay = 0) {
+    process.on("exit", function () {
+        console.log("Process terminated\nStarting new process");
+        require("child_process").spawn(process.argv.shift(), process.argv, {
+            cwd: process.cwd(),
+            detached: true,
+            stdio: "inherit"
+        });
+    });
+    setTimeout(() => {
+        process.exit(code);
+    }, delay)
+}
