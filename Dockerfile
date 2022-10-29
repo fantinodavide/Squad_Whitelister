@@ -3,7 +3,7 @@ FROM node
 COPY release ./
 RUN npm i
 
-RUN touch conf.json
+RUN echo '{}' > conf.json
 
 EXPOSE 80
 
