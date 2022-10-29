@@ -4,8 +4,7 @@ COPY package.json ./package.json
 RUN npm i
 
 RUN npm run build
-
-COPY release ./
+RUN npm run release
 
 RUN echo '{}' > conf.json
 
