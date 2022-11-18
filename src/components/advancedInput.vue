@@ -1,6 +1,7 @@
 <script setup lang="ts"></script>
 
 <script lang="ts">
+	import { emit } from 'process';
 	export default {
 		props: {
 			text: {
@@ -16,7 +17,7 @@
 				default: 'text',
 			},
 			value: {
-				default: '',
+				default: '' as any,
 			},
 			placeholder: {
 				type: String,
@@ -69,9 +70,10 @@
 			emitUpdate: function () {
 				const emitData = { value: this.valRet, option: this.optRet };
 				console.log(this.text, 'emitting update', emitData);
+				this.$emit('valueChanged', emitData);
 			},
 			preselectProcedure: function () {
-				this.optRet = this.oIdKey && this.options[0][this.oIdKey] ? this.options[0][this.oIdKey] : this.options[0];
+				this.optRet = this.oIdKey && this.options[0] && this.options[0][this.oIdKey] ? this.options.find((o) => o[this.oIdKey] == this.optionPreselect)[this.oIdKey] : this.options.find((o) => o == this.optionPreselect);
 				this.valRet = this.value;
 				this.emitUpdate();
 			},
@@ -91,7 +93,7 @@
 		<input v-if="!inputHidden" :type="type" :value="value" :placeholder="placeholder" @change="valueUpdate" />
 		<select v-if="!selectHidden && options.length > 0" @change="optionUpdate">
 			<option value="0" selected hidden>Select</option>
-			<option v-for="o of options" :key="o[oIdKey]" :value="oIdKey && o[oIdKey] ? o[oIdKey] : o" :selected="oIdKey && o[oIdKey] ? o[oIdKey] : o == optionPreselect">{{ oTitleKey && o[oTitleKey] ? o[oTitleKey] : o }}</option>
+			<option v-for="o of options" :key="o[oIdKey]" :value="oIdKey && o[oIdKey] ? o[oIdKey] : o" :selected="(oIdKey && o[oIdKey] ? o[oIdKey] : o) == optRet">{{ oTitleKey && o[oTitleKey] ? o[oTitleKey] : o }}</option>
 		</select>
 	</label>
 </template>

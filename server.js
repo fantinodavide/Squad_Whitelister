@@ -169,6 +169,9 @@ async function init() {
         checkUpdates(config.other.automatic_updates, () => {
             console.log(" > Starting up");
             setInterval(() => { checkUpdates(config.other.automatic_updates) }, config.other.update_check_interval_seconds * 1000);
+
+            resetSeedingTime();
+
             discordBot(() => {
                 SquadJSWebSocket(() => {
                     if (enableServer) {
@@ -228,6 +231,23 @@ async function init() {
                 });
             });
         });
+
+        function resetSeedingTime() {
+            _reset();
+            // setInterval(_reset, 1 * 60 * 1000);
+            setInterval(_reset, 20);
+
+            function _reset() {
+                mongoConn(async dbo => {
+                    const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
+                    const stConf = st.config;
+                    if (stConf.next_reset && new Date() > new Date(stConf.next_reset)) {
+                        dbo.collection('players').updateMany({}, { $set: { seeding_points: 0 } });
+                        dbo.collection('configs').updateOne({ category: 'seeding_tracker' }, { $set: { "config.next_reset": new Date(new Date().valueOf() + (stConf.reset_seeding_time.value * stConf.reset_seeding_time.option)).toISOString().split('T')[ 0 ] } })
+                    }
+                })
+            }
+        }
 
 
         app.use(nocache());
@@ -845,6 +865,31 @@ async function init() {
             res.send(resData);
 
             if (true || [ 'web_server', 'database', 'discord_bot', 'squadjs' ].includes(parm.category)) restartProcess(1, 0);
+        })
+        app.use('/api/dbconfig/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
+        app.get('/api/dbconfig/read/:category', async (req, res, next) => {
+            const parm = req.body;
+            mongoConn(dbo => {
+                dbo.collection('configs').findOne({ category: req.params.category }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else if (dbRes) {
+                        console.log(dbRes.config);
+                        res.send(dbRes.config)
+                    }
+                })
+            })
+        })
+        app.use('/api/dbconfig/write', (req, res, next) => { if (!args.demo || req.userSession.access_level == 0) next(); else res.sendStatus(403) })
+        app.post('/api/dbconfig/write/update', async (req, res, next) => {
+            const parm = req.body;
+            mongoConn(dbo => {
+                dbo.collection('configs').updateOne({ category: parm.category }, { $set: { config: parm.config } }, { upsert: true }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        res.send(dbRes)
+                    }
+                })
+            })
         })
 
         app.use('/api/lists/read/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
@@ -2091,6 +2136,8 @@ async function init() {
                 if (cb) cb();
             }, 10000)
 
+            seedingTimeTracking();
+
             let socket = io(`ws://${config.squadjs.websocket.host}:${config.squadjs.websocket.port}`, {
                 auth: {
                     token: config.squadjs.websocket.token
@@ -2228,26 +2275,32 @@ async function init() {
             })
 
             function seedingTimeTracking() {
-                const checkIntervalMinutes = 5;
+                const checkIntervalMinutes = 1;
                 setInterval(() => {
                     if (subcomponent_status.squadjs) {
-                        socket.emit("rcon.getListPlayers", (players) => {
-                            if (players.length < config.squadjs.seeding_time_tracker.live_player_count) {
-                                console.log("current seeders", objArrToValArr(players, "name"));
-                                for (let p of players) {
-                                    mongoConn(dbo => {
+                        mongoConn(async dbo => {
+                            const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
+                            const stConf = st.config;
+
+                            const requiredPoints = stConf.reset_seeding_time.value * (stConf.reset_seeding_time.option / 1000 / 60)
+
+                            socket.emit("rcon.getListPlayers", (players) => {
+                                if (players.length < config.squadjs.seeding_time_tracker.live_player_count) {
+                                    console.log("current seeders", objArrToValArr(players, "name"));
+                                    for (let p of players) {
                                         dbo.collection("players").findOneAndUpdate({ steamid64: p.steamID }, { $set: { steamid64: p.steamID, username: p.name }, $inc: { seeding_points: 1 } }, { upsert: true, returnNewDocument: true }, (err, dbRes) => {
                                             if (err) serverError(null, err)
                                             else {
                                                 console.log(dbRes);
-                                                if (dbRes.value && dbRes.value.seeding_points && dbRes.value.seeding_points % 10 == 0)
+                                                const percentageCompleted = Math.round(100 * dbRes.value.seeding_points / requiredPoints);
+                                                if (dbRes.value && dbRes.value.seeding_points && percentageCompleted % 10 == 0)
                                                     socket.emit("rcon.warn", p.steamID, `Seeding Reward:\n\nYour points: ${dbRes.value.seeding_points}\n${50 - dbRes.value.seeding_points} points left to claim your reward!`, (d) => { })
                                             }
                                         })
-                                    })
-                                }
+                                    }
 
-                            }
+                                }
+                            })
                         })
                     }
                 }, checkIntervalMinutes * 60 * 1000)
