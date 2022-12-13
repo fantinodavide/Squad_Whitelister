@@ -1,8 +1,8 @@
 <script setup lang="ts">
 	import { anyTypeAnnotation, assertExpressionStatement } from '@babel/types';
 	import $ from 'jquery';
-	import bin_icon from '@/assets/bin.svg';
-	import crown_icon from '@/assets/crown.svg';
+	import bin_icon from '../assets/bin.svg';
+	import crown_icon from '../assets/crown.svg';
 </script>
 
 <script lang="ts">

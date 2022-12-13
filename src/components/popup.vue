@@ -1,7 +1,6 @@
 <script setup lang="ts">
 	import $ from 'jquery';
 	import blackoutBackground from './blackoutBackground.vue';
-	import { log } from 'console';
 </script>
 
 <script lang="ts">

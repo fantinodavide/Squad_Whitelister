@@ -1,5 +1,4 @@
 <script setup lang="ts">
-	import MobileDetect from 'mobile-detect';
 	import levenshtein from 'js-levenshtein';
 
 	import login from './components/login.vue';
@@ -35,6 +34,7 @@
 </script>
 
 <script lang="ts">
+	import MobileDetect from 'mobile-detect';
 	var md = new MobileDetect(window.navigator.userAgent);
 	export default {
 		data() {

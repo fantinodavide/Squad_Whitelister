@@ -4,7 +4,6 @@
 	import { anyTypeAnnotation } from '@babel/types';
 	import { stringifyStyle } from '@vue/shared';
 	import $ from 'jquery';
-	import { type } from 'os';
 	import SideMenu from './sideMenu.vue';
 	import tab from './tab.vue';
 	import confLabelInput from './confLabelInput.vue';
