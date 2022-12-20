@@ -9,7 +9,7 @@
     "app": "vue-tsc --noEmit && vite build && node server",
     "releasezipold": "npm run build && powershell Compress-Archive dist release.zip -Force && powershell Compress-Archive server.js release.zip -Update && powershell Compress-Archive package-lock.json release.zip -Update && powershell Compress-Archive package.json release.zip -Update",
     "releasezip": "npm run build && npm run release && powershell Compress-Archive release release.zip -Force",
-    "release": "rmdir /S /Q release && xcopy /E /I /Y dist release\\dist && terser --compress --mangle -o release/server.js -- server.js && xcopy /I /Y certificates release\\certificates && node packageInfoFilter.js",
+    "release": "rmdir /S /Q release && xcopy /E /I /Y dist release\\dist && terser --compress --mangle -o release/server.js -- server.js && xcopy /I /Y docker-compose.yml release && xcopy /I /Y certificates release\\certificates && node packageInfoFilter.js",
     "releasedocker": "npm run release && docker build . && docker save squadwhitelister > docker-image.tar"
   },
   "dependencies": {

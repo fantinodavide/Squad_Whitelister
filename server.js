@@ -240,6 +240,7 @@ async function init() {
             function _reset() {
                 mongoConn(async dbo => {
                     const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
+                    if (!st) return;
                     const stConf = st.config;
                     if (stConf.next_reset && new Date() > new Date(stConf.next_reset)) {
                         dbo.collection('players').updateMany({}, { $set: { seeding_points: 0 } });
