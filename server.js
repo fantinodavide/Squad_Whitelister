@@ -20,7 +20,7 @@ const irequire = async module => {
         return require(module)
     } catch (e) {
         console.log(`Could not include "${module}". Restart the script`)
-        terminateAndSpawnChildProcess(1)
+        restartProcess(0, 1)
         //process.exit(1)
     }
 }
@@ -51,9 +51,13 @@ async function init() {
     const fp = await irequire("find-free-port")
     const { mainModule } = await irequire("process");
     const Discord = await irequire("discord.js");
-    const { io } = await require("socket.io-client");
+    const { io } = await irequire("socket.io-client");
 
-    (await irequire('dotenv')).config();
+    try {
+        (await irequire('dotenv')).config();
+    } catch (error) {
+        console.error(error)
+    }
 
     const enableServer = true;
     var errorCount = 0;
@@ -1310,6 +1314,21 @@ async function init() {
                 })
             })
         })
+        app.use('/api/seeding/read/*', (req, res, next) => {
+            if (req.userSession && req.userSession.access_level < 30) next()
+            else res.sendStatus(401)
+        })
+        app.get('/api/seeding/read/getPlayers', (req, res, next) => {
+            mongoConn((dbo) => {
+                dbo.collection("players").find({ seeding_points: { $gte: 1 }, username: { $ne: null } }).toArray((err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        res.send(dbRes);
+
+                    }
+                })
+            })
+        })
         app.use('/api/approval/write/*', (req, res, next) => {
             if (req.userSession && req.userSession.access_level < 30) next()
             else res.sendStatus(401)
@@ -1368,7 +1387,7 @@ async function init() {
                         if (err) serverError(res, err);
                         else {
                             let avGroups = [];
-                            for (let g of dbRes.available_groups) avGroups.push(ObjectID(g));
+                            if (dbRes) for (let g of dbRes.available_groups) avGroups.push(ObjectID(g));
                             findFilter = { _id: { $in: avGroups } };
                             getGroups();
                         }
@@ -2110,13 +2129,17 @@ async function init() {
 
             async function updateUserRoles(member_id) {
                 // console.log(await client.guilds.cache.get(config.discord_bot.server_id).members.cache.map((e)=>e.id));
-                const member = await client.guilds.cache.get(config.discord_bot.server_id).members.cache.find((m) => m.id == member_id);
-                if (member) {
-                    const user = member.user;
-                    const user_roles = member._roles;
-                    mongoConn((dbo) => {
-                        dbo.collection("players").updateOne({ discord_user_id: member_id }, { $set: { discord_user_id: member_id, discord_username: user.username + "#" + user.discriminator, discord_roles_ids: user_roles } }, { upsert: true })
-                    })
+                try {
+                    const member = await client.guilds.cache.get(config.discord_bot.server_id).members.cache.find((m) => m.id == member_id);
+                    if (member) {
+                        const user = member.user;
+                        const user_roles = member._roles;
+                        mongoConn((dbo) => {
+                            dbo.collection("players").updateOne({ discord_user_id: member_id }, { $set: { discord_user_id: member_id, discord_username: user.username + "#" + user.discriminator, discord_roles_ids: user_roles } }, { upsert: true })
+                        })
+                    }
+                } catch (error) {
+                    console.error(error)
                 }
             }
 
@@ -2312,24 +2335,6 @@ async function init() {
         }
     }
 
-    function restartProcess(delay = 5000, code = 0, forceRestart = false) {
-        if ((args[ "self-pm" ] && args[ "self-pm" ] == true) || forceRestart/*args["using-pm"] && args["using-pm"] == true*/) {
-            process.on("exit", function () {
-                console.log("Process terminated\nStarting new process");
-                require("child_process").spawn(process.argv.shift(), process.argv, {
-                    cwd: process.cwd(),
-                    detached: true,
-                    stdio: "inherit"
-                });
-            });
-            setTimeout(() => {
-                process.exit(code);
-            }, delay)
-        } else {
-            console.log("Terminating execution. Process manager will restart me.")
-            process.exit(code)
-        }
-    }
 
     function mongoConn(connCallback, override = false) {
         if (!mongodb_global_connection || override) {
@@ -2690,6 +2695,25 @@ async function init() {
 }
 
 init();
+
+function restartProcess(delay = 5000, code = 0, forceRestart = false) {
+    if ((args[ "self-pm" ] && args[ "self-pm" ] == true) || forceRestart/*args["using-pm"] && args["using-pm"] == true*/) {
+        process.on("exit", function () {
+            console.log("Process terminated\nStarting new process");
+            require("child_process").spawn(process.argv.shift(), process.argv, {
+                cwd: process.cwd(),
+                detached: true,
+                stdio: "inherit"
+            });
+        });
+        setTimeout(() => {
+            process.exit(code);
+        }, delay)
+    } else {
+        console.log("Terminating execution. Process manager will restart me.")
+        process.exit(code)
+    }
+}
 
 function terminateAndSpawnChildProcess(code = 0, delay = 0) {
     process.on("exit", function () {

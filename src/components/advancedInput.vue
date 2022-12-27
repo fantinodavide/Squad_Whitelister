@@ -73,7 +73,9 @@
 				this.$emit('valueChanged', emitData);
 			},
 			preselectProcedure: function () {
-				this.optRet = this.oIdKey && this.options[0] && this.options[0][this.oIdKey] ? this.options.find((o) => o[this.oIdKey] == this.optionPreselect)[this.oIdKey] : this.options.find((o) => o == this.optionPreselect);
+				try {
+					this.optRet = this.oIdKey && this.options[0] && this.options[0][this.oIdKey] ? this.options.find((o) => o[this.oIdKey] == this.optionPreselect)[this.oIdKey] : this.options.find((o) => o == this.optionPreselect);
+				} catch (error) {}
 				this.valRet = this.value;
 				this.emitUpdate();
 			},

@@ -93,12 +93,12 @@
 		<!--<div class="clanTag"></div>-->
 		<div class="mainGroupContainer" @scroll="updateHoverMenuLeft">
 			<!-- <marquee-text :duration="10" :paused="false"></marquee-text> -->
-			<span class="tag">{{ wl_data.group_full_data[0].group_name }}</span>
+			<span class="tag" v-if="wl_data.group_full_data">{{ wl_data.group_full_data[0].group_name }}</span>
 			<span class="tag noBg redTrans" style="color: #ddd !important"
 				><a target="__blank" :href="'https://steamcommunity.com/profiles/' + wl_data.steamid64">{{ wl_data.steamid64 }}</a></span
 			>
-			<span class="tag noBg redTrans" v-if="wl_data.discord_username || (wl_data.serverData && wl_data.serverData[0] && wl_data.serverData[0]?.discord_username)">{{ wl_data.serverData && wl_data.serverData[0] && wl_data.serverData[0]?.discord_username ? '@' + wl_data.serverData[0]?.discord_username : wl_data.discord_username }}</span>
-			<span class="tag"><img :src="managerIcon" />{{ wl_data.inserted_by[0].username }}</span>
+			<span class="tag noBg redTrans" v-if="wl_data.discord_username || (wl_data.serverData && wl_data.serverData[0] && wl_data.serverData[0]?.discord_username)">{{ '@' + (wl_data.serverData && wl_data.serverData[0] && wl_data.serverData[0]?.discord_username ? wl_data.serverData[0]?.discord_username : wl_data.discord_username).replace(/^\@/, '') }}</span>
+			<span class="tag" v-if="wl_data.inserted_by"><img :src="managerIcon" />{{ wl_data.inserted_by[0].username }}</span>
 			<span class="tag" v-if="wl_data.expiration">{{ expirationTime }}</span>
 			<!-- <span class="steamid64">{{ wl_data.steamid64 }}</span> -->
 			<div v-if="hoverMenuVisible" class="hoverMenu" :class="{ vis: onHover }">

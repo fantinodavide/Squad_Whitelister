@@ -49,7 +49,7 @@
 		<input name="username" type="text" placeholder="Username" />
 		<input name="password" type="password" placeholder="Password" />
 		<input name="conf_password" type="password" placeholder="Confirm Password" />
-		<input v-if="!root_user_registration" name="clan_code" type="text" placeholder="Clan Code" />
+		<input v-if="!root_user_registration" name="clan_code" type="text" placeholder="Clan Code" optional />
 		<input v-if="!root_user_registration" name="discord_username" type="text" placeholder="Discord Username" optional regex="^.{3,32}#[0-9]{4}$" />
 	</popup>
 </template>

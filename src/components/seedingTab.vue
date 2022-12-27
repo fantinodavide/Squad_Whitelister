@@ -5,6 +5,7 @@
 <script lang="ts">
 	import $ from 'jquery';
 	import AdvancedInput from './advancedInput.vue';
+	import whitelistUserCard from './whitelistUserCard.vue';
 
 	export default {
 		data() {
@@ -82,10 +83,23 @@
 					},
 				});
 			},
+			getPlayers: async function () {
+				await fetch('/api/seeding/read/getPlayers')
+					.then((res) => res.json())
+					.then((dt) => {
+						dt = dt.map((original: any) => ({
+							...original,
+							approved: true,
+						}));
+						console.log(dt);
+						return (this.wl_players = dt);
+					});
+			},
 		},
 		async created() {
 			await this.getGameGroups();
 			await this.getConfig();
+			await this.getPlayers();
 		},
 		components: { AdvancedInput },
 	};
@@ -128,6 +142,10 @@
 		<AdvancedInput text="Seeding Players Threshold" name="seeding_player_threshold" type="number" @valueChanged="seeding_config.seeding_player_threshold = $event.value" :value="seeding_config.seeding_player_threshold" />
 		<AdvancedInput text="Next Reset" name="next_reset" type="date" @valueChanged="seeding_config.next_reset = $event.value" :value="seeding_config.next_reset" />
 		<button @click="pushConfigToDb">Save</button>
+	</div>
+	<div class="flex column">
+		<input type="search" placeholder="Search Player" name="plrSearch" v-model="models.searchPlayer" />
+		<whitelistUserCard v-for="w of wl_players" :key="w" v-show="w.username.toLowerCase().startsWith(models.searchPlayer.toLowerCase()) || w.username.toLowerCase().includes(models.searchPlayer.toLowerCase()) || levenshtein(w.username.toLowerCase(), models.searchPlayer.toLowerCase()) <= 2 || models.searchPlayer == ''" :ref="(r:any)=>{record_refs.push(r)}" :wl_data="w" :hoverMenuVisible="false" />
 	</div>
 </template>
 
