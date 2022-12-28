@@ -545,6 +545,7 @@ async function init() {
                                         },
                                         {
                                             $sort: {
+                                                id_clan: 1,
                                                 id_group: 1,
                                                 username_l: 1,
                                             }
