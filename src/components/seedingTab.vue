@@ -89,7 +89,7 @@
 					.then((dt) => {
 						dt = dt.map((original: any) => ({
 							...original,
-							approved: true,
+							approved: original.seeding_points >= (this.seeding_config.reward_needed_time.value * this.seeding_config.reward_needed_time.option) / 1000 / 60,
 						}));
 						console.log(dt);
 						return (this.wl_players = dt);

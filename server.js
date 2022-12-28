@@ -865,11 +865,13 @@ async function init() {
             fs.writeFileSync("conf.json.bak", fs.readFileSync('conf.json'));
             fs.writeFileSync("conf.json", JSON.stringify(config, null, "\t"));
             let resData = { status: "config_updated" }
-            if ([ 'app_personalization', 'discord_bot' ].includes(parm.category)) resData.action = 'reload';
+            // if ([ 'app_personalization', 'discord_bot' ].includes(parm.category)) resData.action = 'reload';
+            resData.action = 'reload';
 
             res.send(resData);
 
-            if (true || [ 'web_server', 'database', 'discord_bot', 'squadjs' ].includes(parm.category)) restartProcess(1, 0);
+            // if (true || [ 'web_server', 'database', 'discord_bot', 'squadjs' ].includes(parm.category)) restartProcess(0, 0);
+            restartProcess(0, 0);
         })
         app.use('/api/dbconfig/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
         app.get('/api/dbconfig/read/:category', async (req, res, next) => {
