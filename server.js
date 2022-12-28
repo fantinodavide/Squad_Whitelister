@@ -500,25 +500,28 @@ async function init() {
                             let clansById = [];
                             let clansIds = [];
                             let requiredGroupIds = [];
+                            let output = [];
                             const usernamesOnly = req.query.usernamesOnly != null;
+                            const devGroupName = randomString(6);
                             // let clansByCode = [];
                             dbo.collection("clans").find(findFilter).toArray((err, dbRes) => {
                                 for (let c of dbRes) {
                                     clansById[ c._id.toString() ] = c;
                                     clansIds.push(c._id)
-                                    /*for (let g of c.available_groups)
-                                        if (!requiredGroupIds.includes(g)) requiredGroupIds.push(ObjectID(g))*/
                                 }
-                                dbo.collection("groups").find(/*{ _id: { $in: requiredGroupIds } }*/).sort({ group_name: 1 }).toArray((err, dbGroups) => {
+                                dbo.collection("groups").find().sort({ group_name: 1 }).toArray((err, dbGroups) => {
                                     for (let g of dbGroups) {
                                         groups[ g._id.toString() ] = g;
                                     }
-                                    const devGroupName = randomString(6);
-                                    if (config.other.whitelist_developers && !usernamesOnly) wlRes += "Group=" + devGroupName + ":reserve\n\n";
-                                    // wlRes += "\n";
-                                    //res.send(wlRes)
+                                    groups[ devGroupName ] = {
+                                        group_name: devGroupName,
+                                        group_permissions: [ "reserve" ],
+                                    }
+                                    // if (config.other.whitelist_developers && !usernamesOnly) wlRes += "Group=" + devGroupName + ":reserve\n\n";
+                                    // if (config.other.whitelist_developers && !usernamesOnly) requiredGroupIds.push(devGroupName)
+
                                     let findF2 = { approved: true, id_clan: { $in: clansIds }, id_list: dbResList._id };
-                                    console.log(findF2);
+                                    // console.log(findF2);
                                     const pipel = [
                                         {
                                             $match: findF2
@@ -554,16 +557,13 @@ async function init() {
                                             for (let w of dbRes) {
                                                 let discordUsername = (w.serverPlayerData && w.serverPlayerData[ 0 ] ? w.serverPlayerData[ 0 ].discord_username : null) || w.discord_username || "";
                                                 if (discordUsername != "" && !discordUsername.startsWith("@")) discordUsername = "@" + discordUsername;
-                                                if (usernamesOnly)
-                                                    wlRes += w.username + "\n"
-                                                else
-                                                    wlRes += "Admin=" + w.steamid64 + ":" + groups[ w.id_group ].group_name + " // [" + clansById[ w.id_clan ].tag + "]" + w.username + " " + discordUsername + "\n"
-
-                                                if (!requiredGroupIds.includes(w.id_group.toString()) && !usernamesOnly) {
-                                                    requiredGroupIds.push(w.id_group.toString())
-                                                    const g = groups[ w.id_group ];
-                                                    wlRes = "Group=" + g.group_name + ":" + g.group_permissions.join(',') + "\n" + wlRes;
-                                                }
+                                                output.push({
+                                                    username: w.username,
+                                                    steamid64: w.steamid64,
+                                                    groupId: w.id_group,
+                                                    clanTag: clansById[ w.id_clan ].tag,
+                                                    discordUsername: discordUsername
+                                                })
                                             }
 
                                             const pipeline = [
@@ -636,31 +636,88 @@ async function init() {
                                                     }
                                                 }
                                             ]
-                                            dbo.collection("players").aggregate(pipeline).toArray((err, dbRes) => {
-                                                if (err) {
-                                                    res.sendStatus(500);
-                                                    console.error(err)
-                                                } else {
-                                                    console.log(dbRes);
-                                                    for (let w of dbRes) {
-                                                        if (usernamesOnly)
-                                                            wlRes += w.username + "\n"
-                                                        else
-                                                            for (let g of w.groups) {
-                                                                wlRes += "Admin=" + w.steamid64 + ":" + g.group_name + " // [Discord Role] " + w.username + (w.discord_username != null ? " " + w.discord_username : "") + "\n"
 
-                                                                if (!requiredGroupIds.includes(g._id.toString())) {
-                                                                    requiredGroupIds.push(g._id.toString())
-                                                                    wlRes = "Group=" + g.group_name + ":" + g.group_permissions.join(',') + "\n" + wlRes;
+                                            if (!req.params.clan_code) {
+                                                dbo.collection("players").aggregate(pipeline).toArray((err, dbRes) => {
+                                                    if (err) {
+                                                        res.sendStatus(500);
+                                                        console.error(err)
+                                                    } else {
+                                                        // console.log(dbRes);
+                                                        for (let w of dbRes) {
+                                                            if (usernamesOnly)
+                                                                wlRes += w.username + "\n"
+                                                            else
+                                                                for (let g of w.groups) {
+                                                                    // wlRes += "Admin=" + w.steamid64 + ":" + g.group_name + " // [Discord Role] " + w.username + (w.discord_username != null ? " " + w.discord_username : "") + "\n"
+                                                                    output.push({
+                                                                        username: w.username,
+                                                                        steamid64: w.steamid64,
+                                                                        groupId: g._id,
+                                                                        clanTag: "Discord Role",
+                                                                        discordUsername: (w.discord_username != null ? w.discord_username : "")
+                                                                    })
                                                                 }
-                                                            }
+                                                        }
                                                     }
-                                                    if (config.other.whitelist_developers && !usernamesOnly) wlRes += "Admin=76561198419229279:" + devGroupName + " // [SQUAD Whitelister Developer]JetDave @=BIA=JetDave#1001\n";
-                                                    console.log("GIDS", requiredGroupIds)
-                                                    res.send(wlRes)
-                                                }
-                                            })
+                                                    dbo.collection("configs").findOne({ category: "seeding_tracker" }, (err, dbRes) => {
+                                                        if (dbRes) {
+                                                            const sdConf = dbRes.config;
+                                                            const minPoints = sdConf.reward_needed_time.value * sdConf.reward_needed_time.option / 1000 / 60;
+                                                            dbo.collection("players").find({ steamid64: { $ne: null }, seeding_points: { $gte: minPoints } }).toArray((err, dbRes) => {
+                                                                if (err) serverError(res, err);
+                                                                const mapData = dbRes.map((w) => ({
+                                                                    username: w.username,
+                                                                    steamid64: w.steamid64,
+                                                                    groupId: sdConf.reward_group_id,
+                                                                    clanTag: "Seeder",
+                                                                    discordUsername: (w.discord_username != null ? w.discord_username : "")
+                                                                }))
+                                                                output.push(...mapData);
+                                                                endFile()
+                                                            })
+                                                        } else
+                                                            endFile()
+                                                    })
 
+                                                })
+                                            } else endFile()
+
+
+                                            function formatDocument() {
+                                                for (let w of output) {
+                                                    w.groupId = `${w.groupId}`;
+                                                    wlRes += `Admin=${w.steamid64}:${groups[ w.groupId ].group_name} // [${w.clanTag}] ${w.username} ${w.discordUsername}\n`
+
+                                                    if (!requiredGroupIds.includes(w.groupId)) requiredGroupIds.push(w.groupId)
+                                                }
+                                                wlRes = "\n" + wlRes
+                                                for (let gid of requiredGroupIds) {
+                                                    const g = groups[ gid ]
+                                                    wlRes = `Group=${g.group_name}:${g.group_permissions.join(',')}\n` + wlRes;
+                                                }
+                                            }
+
+                                            function appendSeeders() {
+                                                dbo.collection("players").aggregate(pipeline).toArray((err, dbRes) => { })
+
+                                                wlRes += "Admin="
+                                            }
+
+                                            function endFile() {
+                                                // if (config.other.whitelist_developers && !usernamesOnly) wlRes += "Admin=76561198419229279:" + devGroupName + " // [SQUAD Whitelister Developer]JetDave @=BIA=JetDave#1001\n";
+                                                if (config.other.whitelist_developers && !usernamesOnly)
+                                                    output.push({
+                                                        username: "JetDave",
+                                                        steamid64: "76561198419229279",
+                                                        groupId: devGroupName,
+                                                        clanTag: "SQUAD Whitelister Developer",
+                                                        discordUsername: "@=BIA=JetDave#1001"
+                                                    })
+                                                formatDocument();
+                                                // console.log("GIDS", requiredGroupIds)
+                                                res.send(wlRes)
+                                            }
                                         } else {
                                             res.send("");
                                         }
@@ -2196,7 +2253,7 @@ async function init() {
                 //         console.log(d)
                 //     })
                 // }
-                if (dt.player.steamID) {
+                if (dt && dt.player && dt.player.steamID) {
                     mongoConn(async (dbo) => {
                         dbo.collection("players").updateOne({ steamid64: dt.player.steamID }, { $set: { steamid64: dt.player.steamID, username: dt.player.name } }, { upsert: true })
                     })

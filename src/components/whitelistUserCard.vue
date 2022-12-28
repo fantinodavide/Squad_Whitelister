@@ -25,6 +25,10 @@
 				type: Boolean,
 				default: true,
 			},
+			extraTags: {
+				required: false,
+				default: [] as Array<any>,
+			},
 		},
 		methods: {
 			deleteRecord: function (successCB: any, skipConfirmation = false) {
@@ -100,6 +104,7 @@
 			<span class="tag noBg redTrans" v-if="wl_data.discord_username || (wl_data.serverData && wl_data.serverData[0] && wl_data.serverData[0]?.discord_username)">{{ '@' + (wl_data.serverData && wl_data.serverData[0] && wl_data.serverData[0]?.discord_username ? wl_data.serverData[0]?.discord_username : wl_data.discord_username).replace(/^\@/, '') }}</span>
 			<span class="tag" v-if="wl_data.inserted_by"><img :src="managerIcon" />{{ wl_data.inserted_by[0].username }}</span>
 			<span class="tag" v-if="wl_data.expiration">{{ expirationTime }}</span>
+			<span class="tag" v-for="t of extraTags" :key="t">{{ t }}</span>
 			<!-- <span class="steamid64">{{ wl_data.steamid64 }}</span> -->
 			<div v-if="hoverMenuVisible" class="hoverMenu" :class="{ vis: onHover }">
 				<button @click="$emit('confirm', { wl_data: wl_data, callback: deleteRecord })">Delete</button>

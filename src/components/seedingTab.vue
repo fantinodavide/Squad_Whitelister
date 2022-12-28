@@ -77,6 +77,7 @@
 					timeout: 60000,
 					success: (dt) => {
 						console.log(dt);
+						location.reload();
 					},
 					error: (err) => {
 						console.error(err);
@@ -90,6 +91,7 @@
 						dt = dt.map((original: any) => ({
 							...original,
 							approved: original.seeding_points >= (this.seeding_config.reward_needed_time.value * this.seeding_config.reward_needed_time.option) / 1000 / 60,
+							percentageCompleted: (original.seeding_points * 100) / ((this.seeding_config.reward_needed_time.value * this.seeding_config.reward_needed_time.option) / 1000 / 60),
 						}));
 						console.log(dt);
 						return (this.wl_players = dt);
@@ -145,7 +147,7 @@
 	</div>
 	<div class="flex column">
 		<input type="search" placeholder="Search Player" name="plrSearch" v-model="models.searchPlayer" />
-		<whitelistUserCard v-for="w of wl_players" :key="w" v-show="w.username.toLowerCase().startsWith(models.searchPlayer.toLowerCase()) || w.username.toLowerCase().includes(models.searchPlayer.toLowerCase()) || levenshtein(w.username.toLowerCase(), models.searchPlayer.toLowerCase()) <= 2 || models.searchPlayer == ''" :ref="(r:any)=>{record_refs.push(r)}" :wl_data="w" :hoverMenuVisible="false" />
+		<whitelistUserCard v-for="w of wl_players" :key="w" v-show="w.username.toLowerCase().startsWith(models.searchPlayer.toLowerCase()) || w.username.toLowerCase().includes(models.searchPlayer.toLowerCase()) || levenshtein(w.username.toLowerCase(), models.searchPlayer.toLowerCase()) <= 2 || models.searchPlayer == ''" :ref="(r:any)=>{record_refs.push(r)}" :wl_data="w" :hoverMenuVisible="false" :extra-tags="[`${w.percentageCompleted}%`]" />
 	</div>
 </template>
 
