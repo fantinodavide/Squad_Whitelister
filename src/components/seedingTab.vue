@@ -30,6 +30,7 @@
 					reward_group_id: null as any,
 					seeding_player_threshold: 40 as number,
 					next_reset: null as any,
+					reward_enabled: null as any,
 				},
 				game_groups: [] as Array<any>,
 			};
@@ -46,8 +47,9 @@
 				await fetch('/api/gameGroups/read/getAllGroups')
 					.then((res) => res.json())
 					.then((dt) => {
-						console.log(this.game_groups);
+						console.log(dt);
 						return (this.game_groups = dt);
+						// return (this.game_groups = [{ _id: '', group_name: 'None', group_permissions: [], require_appr: false }, ...dt]);
 					});
 			},
 			getConfig: async function () {
@@ -88,11 +90,13 @@
 				await fetch('/api/seeding/read/getPlayers')
 					.then((res) => res.json())
 					.then((dt) => {
-						dt = dt.map((original: any) => ({
-							...original,
-							approved: original.seeding_points >= (this.seeding_config.reward_needed_time.value * this.seeding_config.reward_needed_time.option) / 1000 / 60,
-							percentageCompleted: (original.seeding_points * 100) / ((this.seeding_config.reward_needed_time.value * this.seeding_config.reward_needed_time.option) / 1000 / 60),
-						}));
+						dt = dt
+							.map((original: any) => ({
+								...original,
+								approved: this.seeding_config.reward_enabled == 'true' && original.seeding_points >= (this.seeding_config.reward_needed_time.value * this.seeding_config.reward_needed_time.option) / 1000 / 60,
+								percentageCompleted: Math.min(100, Math.round((original.seeding_points * 100) / ((this.seeding_config.reward_needed_time.value * this.seeding_config.reward_needed_time.option) / 1000 / 60))),
+							}))
+							.sort((a: any, b: any) => b.percentageCompleted - a.percentageCompleted);
 						console.log(dt);
 						return (this.wl_players = dt);
 					});
@@ -109,6 +113,19 @@
 
 <template>
 	<div class="flex row wrap">
+		<AdvancedInput
+			text="Reward Enabled"
+			name="reward_enabled"
+			oTitleKey="title"
+			oIdKey="id"
+			:inputHidden="true"
+			:options="[
+				{ id: 'true', title: 'Yes' },
+				{ id: 'false', title: 'No' },
+			]"
+			:optionPreselect="seeding_config.reward_enabled"
+			@valueChanged="seeding_config.reward_enabled = $event.option"
+		/>
 		<AdvancedInput
 			text="Reset seeding time every"
 			name="resetseedingtime"
