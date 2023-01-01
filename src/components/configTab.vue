@@ -1,4 +1,6 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+	import AdvancedInput from './advancedInput.vue';
+</script>
 
 <script lang="ts">
 	import { anyTypeAnnotation } from '@babel/types';
@@ -14,9 +16,11 @@
 				currentConfigMenu: {} as any,
 				selectedMenu: '' as string,
 				config_tr: {} as any,
+				currentConfigType: '' as string,
 				discord_servers: [] as Array<any>,
 				discord_channels: [] as Array<any>,
 				discord_invite_link: '' as string,
+				game_groups: [] as Array<any>,
 			};
 		},
 		methods: {
@@ -30,9 +34,10 @@
 				return o.toString().startsWith('#') ? 'color' : tmpType[typeof o];
 			},
 			configMenuChanged: function (e: any) {
-				let cpe = { ...e.config };
+				let cpe = { ...e.config.config };
 				delete cpe.selected;
 				this.selectedMenu = e.menu;
+				this.currentConfigType = e.config.type;
 
 				this.currentConfigMenu = cpe;
 			},
@@ -50,9 +55,23 @@
 			},
 			sendConfigToServer: function (popup: any) {
 				const dt = { category: this.selectedMenu, config: this.currentConfigMenu };
-				console.log('Saving_config:', this.selectedMenu, this.currentConfigMenu);
+				console.log('Saving_config:', this.selectedMenu, this.currentConfigType, this.currentConfigMenu);
+				let rp = {};
+				switch (this.currentConfigType) {
+					case 'file':
+						rp = {
+							url: '/api/config/write/update',
+						};
+						break;
+					case 'db':
+						rp = {
+							url: '/api/dbconfig/write/update',
+						};
+						break;
+				}
+				console.log('sending update to:', rp);
 				$.ajax({
-					url: '/api/config/write/update',
+					...rp,
 					type: 'post',
 					data: JSON.stringify(dt),
 					dataType: 'json',
@@ -96,14 +115,24 @@
 						this.discord_invite_link = dt.url;
 					});
 			},
+			getGameGroups: async function () {
+				await fetch('/api/gameGroups/read/getAllGroups')
+					.then((res) => res.json())
+					.then((dt) => {
+						console.log(dt);
+						return (this.game_groups = dt);
+						// return (this.game_groups = [{ _id: '', group_name: 'None', group_permissions: [], require_appr: false }, ...dt]);
+					});
+			},
 			openNewTab: function (url: string) {
 				window.open(url, '_blank');
 			},
 		},
-		created() {
+		async created() {
 			this.getDiscordServers();
 			this.getDiscordChannels();
 			this.getDiscordInviteLink();
+			this.getGameGroups();
 		},
 		components: { SideMenu, tab, confLabelInput },
 	};
@@ -112,12 +141,12 @@
 <template>
 	<SideMenu @menuChanged="configMenuChanged" />
 	<tab>
-		<div v-if="selectedMenu != 'discord_bot'" class="ct">
+		<div v-if="!['discord_bot', 'seeding_tracker'].includes(selectedMenu)" class="ct">
 			<!-- <label v-for="k of Object.keys(currentConfigMenu)">{{ getTranslation(k) }}<input :type="getInputType(currentConfigMenu[k])" v-model="currentConfigMenu[k]" /></label> -->
 			<confLabelInput v-for="k of Object.keys(currentConfigMenu)" :key="k" :confKey="k" :modelValue="currentConfigMenu[k]" @update:modelValue="(nv) => (currentConfigMenu[k] = nv)" />
 			<button style="float: right; width: 100px" @click="$emit('confirm', { title: 'Save server configuration?', text: 'Are you sure you want to change the server configuration? Bad configuration may result into multiple failures or temporary data loss.', callback: sendConfigToServer })">Save</button>
 		</div>
-		<div v-else class="ct">
+		<div v-else-if="selectedMenu == 'discord_bot'" class="ct">
 			<confLabelInput confKey="token" :modelValue="currentConfigMenu.token" @update:modelValue="(nv) => (currentConfigMenu.token = nv)" />
 			<!-- <label>Token<input :type="getInputType(currentConfigMenu.token)" :v-bind="currentConfigMenu.token" placeholder="Token" /> </label> -->
 			<label>
@@ -140,6 +169,56 @@
 			<!-- {{ JSON.stringify(currentConfigMenu) }} -->
 			<button style="float: right; padding-left: 30px; padding-right: 30px" @click="$emit('confirm', { title: 'Save server configuration?', text: 'Are you sure you want to change the server configuration? Bad configuration may result into multiple failures or temporary data loss.', callback: sendConfigToServer })">Save</button>
 			<button :disabled="discord_invite_link == ''" @click="openNewTab(discord_invite_link)" style="background: #5865f2; color: #fff; float: right; padding-left: 30px; padding-right: 30px">Invite to Server</button>
+		</div>
+		<div v-else-if="selectedMenu == 'seeding_tracker'" class="ct">
+			<AdvancedInput
+				text="Reward Enabled"
+				name="reward_enabled"
+				oTitleKey="title"
+				oIdKey="id"
+				:inputHidden="true"
+				:options="[
+					{ id: 'true', title: 'Yes' },
+					{ id: 'false', title: 'No' },
+				]"
+				:optionPreselect="currentConfigMenu.reward_enabled"
+				@valueChanged="currentConfigMenu.reward_enabled = $event.option"
+			/>
+			<AdvancedInput
+				text="Reset seeding time every"
+				name="resetseedingtime"
+				type="number"
+				placeholder="Time"
+				oTitleKey="title"
+				oIdKey="value"
+				:options="[
+					{ title: 'Days', value: 24 * 60 * 60 * 1000 },
+					{ title: 'Weeks', value: 7 * 24 * 60 * 60 * 1000 },
+					{ title: 'Months', value: 30 * 24 * 60 * 60 * 1000 },
+				]"
+				:value="currentConfigMenu.reset_seeding_time.value"
+				:optionPreselect="currentConfigMenu.reset_seeding_time.option"
+				@valueChanged="currentConfigMenu.reset_seeding_time = { value: +$event.value, option: $event.option }"
+			/>
+			<AdvancedInput
+				text="Reward needed time"
+				name="resetseedingtime"
+				type="number"
+				placeholder="Time"
+				oTitleKey="title"
+				oIdKey="value"
+				:value="currentConfigMenu.reward_needed_time.value"
+				:optionPreselect="currentConfigMenu.reward_needed_time.option"
+				:options="[
+					{ title: 'Hours', value: 60 * 60 * 1000 },
+					{ title: 'Days', value: 24 * 60 * 60 * 1000 },
+				]"
+				@valueChanged="currentConfigMenu.reward_needed_time = { value: +$event.value, option: $event.option }"
+			/>
+			<AdvancedInput text="Reward Group" name="rewardgroup" oTitleKey="group_name" oIdKey="_id" :inputHidden="true" :options="game_groups" @valueChanged="currentConfigMenu.reward_group_id = $event.option" :optionPreselect="currentConfigMenu.reward_group_id" />
+			<AdvancedInput text="Seeding Players Threshold" name="seeding_player_threshold" type="number" @valueChanged="currentConfigMenu.seeding_player_threshold = $event.value" :value="currentConfigMenu.seeding_player_threshold" />
+			<AdvancedInput text="Next Reset" name="next_reset" type="date" @valueChanged="currentConfigMenu.next_reset = $event.value" :value="currentConfigMenu.next_reset" />
+			<button style="float: right; padding-left: 30px; padding-right: 30px" @click="$emit('confirm', { title: 'Save server configuration?', text: 'Are you sure you want to change the server configuration? Bad configuration may result into multiple failures or temporary data loss.', callback: sendConfigToServer })">Save</button>
 		</div>
 	</tab>
 </template>

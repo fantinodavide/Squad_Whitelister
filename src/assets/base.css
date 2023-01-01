@@ -351,6 +351,24 @@ button.round {
 	flex-direction: column;
 }
 
-.flex.wrap{
+.flex.wrap {
 	flex-wrap: wrap;
+}
+
+.flex.grow {
+	flex-grow: 1;
+}
+
+.flex.shrink {
+	flex-shrink: 1;
+}
+
+fieldset {
+	margin-bottom: 10px;
+	border: 2px solid #fff2;
+	border-radius: 10px;
+	transition: all 100ms ease-in-out;
+}
+fieldset:hover {
+	border-color: #fff4;
 }

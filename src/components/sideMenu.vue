@@ -20,16 +20,29 @@
 			buttons: [] as Array<any>,
 		},
 		methods: {
-			getConfig: function () {
-				fetch('/api/config/read/getFull')
+			getConfig: async function () {
+				await fetch('/api/config/read/getFull')
 					.then((res) => res.json())
 					.then((dt) => {
-						this.config = dt;
-						console.log('config', this.config);
-						const cK = Object.keys(this.config);
-						this.keys = cK.includes('app_personalization') ? ['app_personalization', ...cK.filter((x) => x != 'app_personalization')] : cK;
-						this.selectMenu(this.config[this.keys[0]], this.keys[0]);
+						const cK = Object.keys(dt);
+						for (let k of cK) {
+							dt[k] = { type: 'file', config: dt[k] };
+						}
+						this.config = dt; //.map((c: any) => ({ ...c, type: 'file' }));
+						// console.log('config', this.config);
 					});
+				await fetch('/api/dbconfig/read/getFull')
+					.then((res) => res.json())
+					.then((dt) => {
+						for (let c of dt) {
+							this.config[c.category] = { type: 'db', config: c.config };
+						}
+						console.log('config', this.config);
+						// this.config.push(...)
+					});
+				const cK = Object.keys(this.config);
+				this.keys = cK.includes('app_personalization') ? ['app_personalization', ...cK.filter((x) => x != 'app_personalization')] : cK;
+				this.selectMenu(this.config[this.keys[0]], this.keys[0]);
 			},
 			getTranslation: function (t: any) {
 				const trC = this.config_tr[t];
@@ -52,7 +65,7 @@
 
 <template>
 	<div>
-		<button v-for="k of keys" :value="k" @click="selectMenu(config[k], k)" :class="{ active: config[k].selected }">
+		<button v-for="k of keys" :value="k" :key="k" @click="selectMenu(config[k], k)" :class="{ active: config[k].selected }">
 			{{ getTranslation(k) }}
 		</button>
 	</div>

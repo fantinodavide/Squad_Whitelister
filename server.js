@@ -88,6 +88,9 @@ async function init() {
             http: {
                 port: undefined
             }
+        },
+        logging: {
+            requests: true
         }
     };
     var squadjs = {
@@ -916,17 +919,29 @@ async function init() {
         app.get('/api/config/read/getFull', async (req, res, next) => {
             let cpyConf = { ...config };
             if (args.demo && req.userSession.access_level > 0) cpyConf.discord_bot.token = "hidden";
+            if (process.env.HIDDEN_CONFIG_TABS)
+                for (let t of process.env.HIDDEN_CONFIG_TABS.split(';')) {
+                    try {
+                        delete cpyConf[ t ]
+                    } catch (error) { }
+                }
             res.send(cpyConf);
         })
         app.use('/api/config/write', (req, res, next) => { if (!args.demo || req.userSession.access_level == 0) next(); else res.sendStatus(403) })
         app.post('/api/config/write/update', async (req, res, next) => {
             const parm = req.body;
-            config[ parm.category ] = parm.config;
-            fs.writeFileSync("conf.json.bak", fs.readFileSync('conf.json'));
-            fs.writeFileSync("conf.json", JSON.stringify(config, null, "\t"));
-            let resData = { status: "config_updated" }
-            // if ([ 'app_personalization', 'discord_bot' ].includes(parm.category)) resData.action = 'reload';
+            let resData = {};
+            if (!process.env.HIDDEN_CONFIG_TABS || !process.env.HIDDEN_CONFIG_TABS.split(';').includes(parm.category)) {
+                config[ parm.category ] = parm.config;
+                fs.writeFileSync("conf.json.bak", fs.readFileSync('conf.json'));
+                fs.writeFileSync("conf.json", JSON.stringify(config, null, "\t"));
+                resData.status = "config_updated";
+                // resData.action = 'reload';
+            } else {
+                resData.status = "config_rejected";
+            }
             resData.action = 'reload';
+            // if ([ 'app_personalization', 'discord_bot' ].includes(parm.category)) resData.action = 'reload';
 
             res.send(resData);
 
@@ -934,13 +949,25 @@ async function init() {
             restartProcess(0, 0, args);
         })
         app.use('/api/dbconfig/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
+        app.get('/api/dbconfig/read/getFull', async (req, res, next) => {
+            const parm = req.body;
+            mongoConn(dbo => {
+                dbo.collection('configs').find({ config: { $exists: true, $ne: null }, category: { $exists: true, $ne: null } }).toArray((err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else if (dbRes) {
+                        // console.log(dbRes.config);
+                        res.send(dbRes)
+                    }
+                })
+            })
+        })
         app.get('/api/dbconfig/read/:category', async (req, res, next) => {
             const parm = req.body;
             mongoConn(dbo => {
                 dbo.collection('configs').findOne({ category: req.params.category }, (err, dbRes) => {
                     if (err) serverError(res, err);
                     else if (dbRes) {
-                        console.log(dbRes.config);
+                        // console.log(dbRes.config);
                         res.send(dbRes.config)
                     }
                 })
@@ -953,7 +980,10 @@ async function init() {
                 dbo.collection('configs').updateOne({ category: parm.category }, { $set: { config: parm.config } }, { upsert: true }, (err, dbRes) => {
                     if (err) serverError(res, err);
                     else {
-                        res.send(dbRes)
+                        res.send({
+                            status: 'config_updated',
+                            action: 'reload'
+                        })
                     }
                 })
             })
@@ -1492,7 +1522,7 @@ async function init() {
                 let ret = [];
                 for (let g of discordBot.guilds.cache) ret.push({ id: g[ 1 ].id, name: g[ 1 ].name })
                 res.send(ret)
-                console.log(ret);
+                // console.log(ret);
             } else {
                 res.sendStatus(404)
             }
@@ -1703,6 +1733,8 @@ async function init() {
             else callback();//authorizeDCSUsers(req, res, callback)
         }
         function logRequests(req, res, next) {
+            if (!server.logging.requests) return next();
+
             const usingQuery = Object.keys(req.query).length > 0;
             const parm = usingQuery ? req.query : req.body;
             const reqPath = getReqPath(req);
@@ -2524,7 +2556,8 @@ async function init() {
                     emptyConfFile.web_server.https_port = https_port;
                     console.log("Configuration file created, set your parameters and run again \"node server\".\nTerminating execution...");
                     fs.writeFileSync("conf.json", JSON.stringify(emptyConfFile, null, "\t"));
-                    process.exit(0)
+                    if (process.env.PROCESS_MANAGER_TYPE && process.env.PROCESS_MANAGER_TYPE.toUpperCase() == "DOCKER") callback();
+                    else process.exit(0)
                 });
             });
         } else {

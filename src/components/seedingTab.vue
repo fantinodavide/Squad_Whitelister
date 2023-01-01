@@ -112,59 +112,63 @@
 </script>
 
 <template>
-	<div class="flex row wrap">
-		<AdvancedInput
-			text="Reward Enabled"
-			name="reward_enabled"
-			oTitleKey="title"
-			oIdKey="id"
-			:inputHidden="true"
-			:options="[
-				{ id: 'true', title: 'Yes' },
-				{ id: 'false', title: 'No' },
-			]"
-			:optionPreselect="seeding_config.reward_enabled"
-			@valueChanged="seeding_config.reward_enabled = $event.option"
-		/>
-		<AdvancedInput
-			text="Reset seeding time every"
-			name="resetseedingtime"
-			type="number"
-			placeholder="Time"
-			oTitleKey="title"
-			oIdKey="value"
-			:options="[
-				{ title: 'Days', value: 24 * 60 * 60 * 1000 },
-				{ title: 'Weeks', value: 7 * 24 * 60 * 60 * 1000 },
-				{ title: 'Months', value: 30 * 24 * 60 * 60 * 1000 },
-			]"
-			:value="seeding_config.reset_seeding_time.value"
-			:optionPreselect="seeding_config.reset_seeding_time.option"
-			@valueChanged="seeding_config.reset_seeding_time = { value: +$event.value, option: $event.option }"
-		/>
-		<AdvancedInput
-			text="Reward needed time"
-			name="resetseedingtime"
-			type="number"
-			placeholder="Time"
-			oTitleKey="title"
-			oIdKey="value"
-			:value="seeding_config.reward_needed_time.value"
-			:optionPreselect="seeding_config.reward_needed_time.option"
-			:options="[
-				{ title: 'Hours', value: 60 * 60 * 1000 },
-				{ title: 'Days', value: 24 * 60 * 60 * 1000 },
-			]"
-			@valueChanged="seeding_config.reward_needed_time = { value: +$event.value, option: $event.option }"
-		/>
-		<AdvancedInput text="Reward Group" name="rewardgroup" oTitleKey="group_name" oIdKey="_id" :inputHidden="true" :options="game_groups" @valueChanged="seeding_config.reward_group_id = $event.option" :optionPreselect="seeding_config.reward_group_id" />
-		<AdvancedInput text="Seeding Players Threshold" name="seeding_player_threshold" type="number" @valueChanged="seeding_config.seeding_player_threshold = $event.value" :value="seeding_config.seeding_player_threshold" />
-		<AdvancedInput text="Next Reset" name="next_reset" type="date" @valueChanged="seeding_config.next_reset = $event.value" :value="seeding_config.next_reset" />
-		<button @click="pushConfigToDb">Save</button>
-	</div>
 	<div class="flex column">
-		<input type="search" placeholder="Search Player" name="plrSearch" v-model="models.searchPlayer" />
-		<whitelistUserCard v-for="w of wl_players" :key="w" v-show="w.username.toLowerCase().startsWith(models.searchPlayer.toLowerCase()) || w.username.toLowerCase().includes(models.searchPlayer.toLowerCase()) || levenshtein(w.username.toLowerCase(), models.searchPlayer.toLowerCase()) <= 2 || models.searchPlayer == ''" :ref="(r:any)=>{record_refs.push(r)}" :wl_data="w" :hoverMenuVisible="false" :extra-tags="[`${w.percentageCompleted}%`]" />
+		<!-- <div class="flex column grow" style="margin-left: 10px"> -->
+		<div v-if="false" class="flex row wrap">
+			<!-- <h2>Settings</h2> -->
+			<AdvancedInput
+				text="Reward Enabled"
+				name="reward_enabled"
+				oTitleKey="title"
+				oIdKey="id"
+				:inputHidden="true"
+				:options="[
+					{ id: 'true', title: 'Yes' },
+					{ id: 'false', title: 'No' },
+				]"
+				:optionPreselect="seeding_config.reward_enabled"
+				@valueChanged="seeding_config.reward_enabled = $event.option"
+			/>
+			<AdvancedInput
+				text="Reset seeding time every"
+				name="resetseedingtime"
+				type="number"
+				placeholder="Time"
+				oTitleKey="title"
+				oIdKey="value"
+				:options="[
+					{ title: 'Days', value: 24 * 60 * 60 * 1000 },
+					{ title: 'Weeks', value: 7 * 24 * 60 * 60 * 1000 },
+					{ title: 'Months', value: 30 * 24 * 60 * 60 * 1000 },
+				]"
+				:value="seeding_config.reset_seeding_time.value"
+				:optionPreselect="seeding_config.reset_seeding_time.option"
+				@valueChanged="seeding_config.reset_seeding_time = { value: +$event.value, option: $event.option }"
+			/>
+			<AdvancedInput
+				text="Reward needed time"
+				name="resetseedingtime"
+				type="number"
+				placeholder="Time"
+				oTitleKey="title"
+				oIdKey="value"
+				:value="seeding_config.reward_needed_time.value"
+				:optionPreselect="seeding_config.reward_needed_time.option"
+				:options="[
+					{ title: 'Hours', value: 60 * 60 * 1000 },
+					{ title: 'Days', value: 24 * 60 * 60 * 1000 },
+				]"
+				@valueChanged="seeding_config.reward_needed_time = { value: +$event.value, option: $event.option }"
+			/>
+			<AdvancedInput text="Reward Group" name="rewardgroup" oTitleKey="group_name" oIdKey="_id" :inputHidden="true" :options="game_groups" @valueChanged="seeding_config.reward_group_id = $event.option" :optionPreselect="seeding_config.reward_group_id" />
+			<AdvancedInput text="Seeding Players Threshold" name="seeding_player_threshold" type="number" @valueChanged="seeding_config.seeding_player_threshold = $event.value" :value="seeding_config.seeding_player_threshold" />
+			<AdvancedInput text="Next Reset" name="next_reset" type="date" @valueChanged="seeding_config.next_reset = $event.value" :value="seeding_config.next_reset" />
+			<button @click="pushConfigToDb">Save</button>
+		</div>
+		<div class="flex column grow shrink" style="flex-shrink: 1; flex-grow: 10">
+			<input type="search" placeholder="Search Player" name="plrSearch" v-model="models.searchPlayer" />
+			<whitelistUserCard v-for="w of wl_players" :key="w" v-show="w.username.toLowerCase().startsWith(models.searchPlayer.toLowerCase()) || w.username.toLowerCase().includes(models.searchPlayer.toLowerCase()) || levenshtein(w.username.toLowerCase(), models.searchPlayer.toLowerCase()) <= 2 || models.searchPlayer == ''" :ref="(r:any)=>{record_refs.push(r)}" :wl_data="w" :hoverMenuVisible="false" :extra-tags="[`${w.percentageCompleted}%`]" />
+		</div>
 	</div>
 </template>
 

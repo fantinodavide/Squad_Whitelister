@@ -57,10 +57,13 @@
 </script>
 
 <template>
-	<div v-if="typeof content == 'object'">
-		<h3>{{ toUpperFirstChar(confKey) }}</h3>
+	<fieldset v-if="typeof content == 'object'">
+		<legend>{{ toUpperFirstChar(confKey.replace(/\_/g, ' ')) }}</legend>
+		<!-- <div v-if="typeof content == 'object'" style="background: #ffffff08"> -->
+		<!-- <h3>{{ toUpperFirstChar(confKey.replace(/\_/g, ' ')) }}</h3> -->
 		<confLabelInput v-for="k of Object.keys(content)" :key="k" :confKey="k" :modelValue="content[k]" @update:modelValue="(nv) => (content[k] = nv)" />
-	</div>
+		<!-- </div> -->
+	</fieldset>
 	<label v-else>{{ getTranslation(confKey) }}<input :type="getInputType(content)" :value="modelValue" :checked="modelValue" @input="handleInput" /></label>
 </template>
 

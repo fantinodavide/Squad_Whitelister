@@ -332,7 +332,15 @@
 			<changepassword v-if="popups.changepassword" @cancelBtnClick="popups.changepassword = false" />
 			<AddNewClan v-if="popups.addingNewClan" @cancelBtnClick="popups.addingNewClan = false" @new_clan="appendNewClan" />
 			<AddNewGameGroup v-if="popups.addingNewGameGroup" @cancelBtnClick="popups.addingNewGameGroup = false" @new_game_group="appendNewGroup" />
-			<confirmPopup :ref="(el:any) => { pointers.confirmPopup = el; }" v-show="popups.confirm" @cancelBtnClick="popups.confirm = false" />
+			<confirmPopup
+				:ref="
+					(el:any) => {
+						pointers.confirmPopup = el;
+					}
+				"
+				v-show="popups.confirm"
+				@cancelBtnClick="popups.confirm = false"
+			/>
 			<edit-clan v-if="popups.editClan" @cancelBtnClick="popups.editClan = false" :clan_data="clans[inEditingClan]" @clan_edited="clans[inEditingClan] = $event" />
 			<editGameGroup v-if="popups.editGameGroup" @cancelBtnClick="popups.editGameGroup = false" :group_data="game_groups[inEditingGroup]" @edited="game_groups[inEditingGroup] = $event" />
 			<editClanUsers v-if="popups.editClanUsers" :clan_data="clans[inUserEditingClan]" @cancelBtnClick="popups.editClanUsers = false" />
