@@ -3,13 +3,21 @@
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" href="/favicon.ico" />
+  <!-- <link rel="icon" href="/favicon" /> -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script>
+    loadFavicon();
     window.process = {
       env: {
         NODE_ENV: ''
       }
+    }
+    function loadFavicon() {
+      fetch('/api/getAppPersonalization')
+        .then((res) => res.json())
+        .then((dt) => {
+          document.head.innerHTML += `<link rel='icon' href='${dt.favicon}'>`
+        });
     }
   </script>
 </head>

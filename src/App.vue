@@ -46,7 +46,7 @@
 				header_title_hidden: false,
 				accent_color: '#ffc40b',
 				currentTab: 'Home',
-				logo_url: './assets/logo.svg',
+				logo_url: '',
 				logo_border_radius: 10,
 				version: '',
 				tabs: [],
@@ -67,6 +67,7 @@
 					addNewList: false,
 					editList: false,
 				},
+				favicon: '',
 				clans: [] as Array<any>,
 				inEditingClan: -1,
 				game_groups: [] as Array<any>,
@@ -103,6 +104,7 @@
 						this.logo_url = dt.logo_url;
 						this.header_title_hidden = dt.title_hidden_in_header;
 						this.logo_border_radius = dt.logo_border_radius;
+						this.favicon = dt.favicon;
 					});
 			},
 			checkSession: function () {

@@ -90,7 +90,7 @@ async function init() {
             }
         },
         logging: {
-            requests: true
+            requests: false
         }
     };
     var squadjs = {
@@ -390,10 +390,6 @@ async function init() {
             res.send(versionN);
         })
         app.use('/', express.static(__dirname + '/dist'));
-
-        app.use('favicon*', (req, res, next) => {
-            req.redirect(config.app_personalization.logo_url);
-        })
 
         app.get('/api/getAppPersonalization', function (req, res, next) {
             res.send(config.app_personalization);
