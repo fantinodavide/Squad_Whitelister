@@ -148,6 +148,14 @@
 			},
 			setLoginRequired: function (required: boolean) {
 				this.loginRequired = required;
+				this.popups.login = required;
+				this.popups.registration = required;
+				if (required)
+					setTimeout(() => {
+						const elm = document.getElementsByTagName('input')[0];
+						console.log(elm);
+						elm.focus();
+					}, 10);
 				this.currentTab = required ? 'Login' : 'Home';
 			},
 			setCurrentTab: function (ct: string) {
@@ -306,7 +314,7 @@
 </script>
 
 <template>
-	<title>{{ currentTab }} | {{ app_title }}</title>
+	<title>{{ currentTab ? currentTab + ' | ' : '' }}{{ app_title }}</title>
 	<header>
 		<img alt="Squad Whitelister Logo" class="logo" :src="logo_url" :style="{ 'border-radius': logo_border_radius + 'px' }" />
 		<h1 v-if="!header_title_hidden">{{ app_title }}</h1>
