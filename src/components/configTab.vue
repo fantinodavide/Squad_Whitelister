@@ -184,7 +184,40 @@
 				:optionPreselect="currentConfigMenu.reward_enabled"
 				@valueChanged="currentConfigMenu.reward_enabled = $event.option"
 			/>
+			<AdvancedInput text="Discord Seeding Reward Channel" name="resetseedingtime" type="number" placeholder="Time" oTitleKey="name" oIdKey="id" :inputHidden="true" :optionPreselect="currentConfigMenu.discord_seeding_reward_channel" :options="discord_channels" @valueChanged="currentConfigMenu.discord_seeding_reward_channel = $event.option" />
+			<AdvancedInput text="Reward Group" name="rewardgroup" oTitleKey="group_name" oIdKey="_id" :inputHidden="true" :options="game_groups" @valueChanged="currentConfigMenu.reward_group_id = $event.option" :optionPreselect="currentConfigMenu.reward_group_id" />
+			<AdvancedInput text="Seeding Players Threshold" name="seeding_player_threshold" type="number" @valueChanged="currentConfigMenu.seeding_player_threshold = $event.value" :value="currentConfigMenu.seeding_player_threshold" />
 			<AdvancedInput
+				text="Tracking Mode"
+				name="tracking_mode"
+				oTitleKey="title"
+				oIdKey="id"
+				:inputHidden="true"
+				:optionPreselect="currentConfigMenu.tracking_mode"
+				:options="[
+					{ id: 'incremental', title: 'Incremental' },
+					{ id: 'fixed_reset', title: 'Fixed Reset' },
+				]"
+				@valueChanged="currentConfigMenu.tracking_mode = $event.option"
+			/>
+			<AdvancedInput
+				v-if="currentConfigMenu.tracking_mode == 'fixed_reset'"
+				text="Reward needed time"
+				name="resetseedingtime"
+				type="number"
+				placeholder="Time"
+				oTitleKey="title"
+				oIdKey="value"
+				:value="currentConfigMenu.reward_needed_time.value"
+				:optionPreselect="currentConfigMenu.reward_needed_time.option"
+				:options="[
+					{ title: 'Hours', value: 60 * 60 * 1000 },
+					{ title: 'Days', value: 24 * 60 * 60 * 1000 },
+				]"
+				@valueChanged="currentConfigMenu.reward_needed_time = { value: +$event.value, option: $event.option }"
+			/>
+			<AdvancedInput
+				v-if="currentConfigMenu.tracking_mode == 'fixed_reset'"
 				text="Reset seeding time every"
 				name="resetseedingtime"
 				type="number"
@@ -200,24 +233,7 @@
 				:optionPreselect="currentConfigMenu.reset_seeding_time.option"
 				@valueChanged="currentConfigMenu.reset_seeding_time = { value: +$event.value, option: $event.option }"
 			/>
-			<AdvancedInput
-				text="Reward needed time"
-				name="resetseedingtime"
-				type="number"
-				placeholder="Time"
-				oTitleKey="title"
-				oIdKey="value"
-				:value="currentConfigMenu.reward_needed_time.value"
-				:optionPreselect="currentConfigMenu.reward_needed_time.option"
-				:options="[
-					{ title: 'Hours', value: 60 * 60 * 1000 },
-					{ title: 'Days', value: 24 * 60 * 60 * 1000 },
-				]"
-				@valueChanged="currentConfigMenu.reward_needed_time = { value: +$event.value, option: $event.option }"
-			/>
-			<AdvancedInput text="Reward Group" name="rewardgroup" oTitleKey="group_name" oIdKey="_id" :inputHidden="true" :options="game_groups" @valueChanged="currentConfigMenu.reward_group_id = $event.option" :optionPreselect="currentConfigMenu.reward_group_id" />
-			<AdvancedInput text="Seeding Players Threshold" name="seeding_player_threshold" type="number" @valueChanged="currentConfigMenu.seeding_player_threshold = $event.value" :value="currentConfigMenu.seeding_player_threshold" />
-			<AdvancedInput text="Next Reset" name="next_reset" type="date" @valueChanged="currentConfigMenu.next_reset = $event.value" :value="currentConfigMenu.next_reset" />
+			<AdvancedInput text="Next Reset" v-if="currentConfigMenu.tracking_mode == 'fixed_reset'" name="next_reset" type="date" @valueChanged="currentConfigMenu.next_reset = $event.value" :value="currentConfigMenu.next_reset" />
 			<button style="float: right; padding-left: 30px; padding-right: 30px" @click="$emit('confirm', { title: 'Save server configuration?', text: 'Are you sure you want to change the server configuration? Bad configuration may result into multiple failures or temporary data loss.', callback: sendConfigToServer })">Save</button>
 		</div>
 	</tab>

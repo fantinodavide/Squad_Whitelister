@@ -2427,19 +2427,35 @@ async function init() {
 
                             const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
 
+                            if (st.config.tracking_mode == 'incremental') {
+                                await dbo.collection("players").updateMany({ steamid64: { $nin: players }, seeding_points: { $gt: 0 } }, { $inc: { seeding_points: -1 } })
+                                
+                            }
+
                             socket.emit("rcon.getListPlayers", (players) => {
                                 if (players.length <= stConf.seeding_player_threshold) {
                                     // console.log("current seeders", objArrToValArr(players, "name"));
+
                                     for (let p of players) {
-                                        dbo.collection("players").findOneAndUpdate({ steamid64: p.steamID }, { $set: { steamid64: p.steamID, username: p.name }, $inc: { seeding_points: 1 } }, { upsert: true, returnNewDocument: true }, (err, dbRes) => {
+                                        dbo.collection("players").findOneAndUpdate({ steamid64: p.steamID }, { $set: { steamid64: p.steamID, username: p.name }, $inc: { seeding_points: 1 } }, { upsert: true, returnNewDocument: true }, async (err, dbRes) => {
                                             if (err) serverError(null, err)
                                             else if (stConf.reward_enabled == "true") {
                                                 // console.log(dbRes);
                                                 const percentageCompleted = Math.min(Math.round(100 * dbRes.value.seeding_points / requiredPoints), 108);
                                                 if (dbRes.value && dbRes.value.seeding_points && percentageCompleted % 10 == 0 && percentageCompleted < 100)
                                                     socket.emit("rcon.warn", p.steamID, `Seeding Reward: \n\n${percentageCompleted}% completed`, (d) => { })
-                                                else if (percentageCompleted == 100)
-                                                    socket.emit("rcon.warn", p.steamID, `Seeding\n\nYou have received the Seeding Reward!`, (d) => { })
+                                                else if (percentageCompleted == 100) {
+                                                    const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
+                                                    let message =
+                                                        `Seeding Reward Completed!
+                                                        
+                                                        You have received: ${reward_group.group_name}
+                                                        `
+                                                    if (st.config.tracking_mode == 'fixed_reset') message += `Active until: ${(new Date(st.config.next_reset)).toLocaleDateString()}`
+                                                    else if (st.config.tracking_mode == 'incremental') message += `Don't drop below 100% to keep your reward!`
+
+                                                    socket.emit("rcon.warn", p.steamID, message, (d) => { })
+                                                }
 
                                             }
                                         })
