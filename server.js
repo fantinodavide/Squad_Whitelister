@@ -2433,7 +2433,7 @@ async function init() {
 
                                 if (st.config.time_deduction.option == 'point_minute') deduction_points = st.config.time_deduction.value
                                 else if (st.config.time_deduction.option == 'perc_minute') deduction_points = st.config.time_deduction.value * requiredPoints;
-                                
+
                                 await dbo.collection("players").updateMany({ steamid64: { $nin: players }, seeding_points: { $gt: 0 } }, { $inc: { seeding_points: -deduction_points } })
                             }
 
@@ -2635,6 +2635,7 @@ async function init() {
             if (args.demo) dbo.collection("users").updateOne({ username: 'demoadmin' }, { $set: { password: crypto.createHash('sha512').update('demo').digest('hex'), access_level: 5 } }, { upsert: true })
 
             dbo.collection("players").deleteMany({ discord_user_id: { $exists: true }, steamid64: { $exists: false } })
+            dbo.collection("configs").updateOne({ category: "seeding_tracker" }, { $set: {} }, { upsert: true })
 
             function listCollection(cb) {
                 dbo.listCollections({ name: "lists" }).next((err, dbRes) => {
