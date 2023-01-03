@@ -107,8 +107,8 @@
 						this.favicon = dt.favicon;
 					});
 			},
-			checkSession: function () {
-				fetch('/api/checkSession')
+			checkSession: async function () {
+				await fetch('/api/checkSession')
 					.then((res) => res.json())
 					.then((dt) => {
 						this.user_session = dt.userSession;
@@ -116,14 +116,13 @@
 						console.log('User session', this.user_session);
 					});
 			},
-			getTabs: function () {
-				fetch('/api/getTabs')
+			getTabs: async function () {
+				await fetch('/api/getTabs')
 					.then((res) => res.json())
 					.then((dt) => {
 						console.log(dt);
 						this.tabs = dt.tabs;
 						this.tabs.forEach((e) => this.tabBtns.push(e['name']));
-
 						// this.$nextTick(() => {
 						// 	this.setCurrentTab(this.tabs[0]['name']);
 						// });1
@@ -147,6 +146,7 @@
 					});
 			},
 			setLoginRequired: function (required: boolean) {
+				if (this.currentTab == 'Root User Registration') return;
 				this.loginRequired = required;
 				this.popups.login = required;
 				this.popups.registration = required;
@@ -299,11 +299,11 @@
 				console.log('evt test: ', e);
 			},
 		},
-		created() {
+		async created() {
 			this.getVersion();
+			await this.getTabs();
 			this.checkSession();
 			this.getAppPersonalization();
-			this.getTabs();
 			// console.log('levenshtein', levenshtein, 'mobile', md.mobile());
 			if (md.mobile() != null) {
 				document.body.classList.add('mobile');

@@ -1,0 +1,42 @@
+{
+	"web_server": {
+		"bind_ip": "0.0.0.0",
+		"http_port": 80,
+		"https_port": 443,
+		"force_https": false,
+		"session_duration_hours": 168
+	},
+	"database": {
+		"mongo": {
+			"host": "127.0.0.1",
+			"port": 27017,
+			"database": "Whitelister"
+		}
+	},
+	"app_personalization": {
+		"name": "Whitelister",
+		"favicon": "",
+		"accent_color": "#ffc40b",
+		"logo_url": "https://joinsquad.com/wp-content/themes/squad/img/logo.png",
+		"logo_border_radius": "10",
+		"title_hidden_in_header": false
+	},
+	"discord_bot": {
+		"token": "",
+		"whitelist_updates_channel_id": ""
+	},
+	"squadjs": {
+		"websocket": {
+			"host": "",
+			"port": 3000,
+			"token": ""
+		}
+	},
+	"other": {
+		"automatic_updates": true,
+		"update_check_interval_seconds": 3600,
+		"whitelist_developers": true,
+		"install_beta_versions": false,
+		"logs_max_file_count": 10
+	}
+}

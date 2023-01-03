@@ -62,6 +62,8 @@ async function init() {
     const enableServer = true;
     var errorCount = 0;
 
+    const configPath = args.c || "conf.json"
+
     const consoleLogBackup = console.log;
     const consoleErrorBackup = console.error;
 
@@ -128,17 +130,16 @@ async function init() {
 
 
     function start() {
-
         initConfigFile(() => {
             extendLogging()
             console.log("ARGS:", args)
             console.log("ENV:", process.env)
 
-            fs.watchFile("conf.json", (curr, prev) => {
+            fs.watchFile(configPath, (curr, prev) => {
                 console.log("Reloading configuration");
                 let upd_conf, error = false;
                 try {
-                    upd_conf = JSON.parse(fs.readFileSync("conf.json", "utf-8").toString());
+                    upd_conf = JSON.parse(fs.readFileSync(configPath, "utf-8").toString());
                 } catch (err) {
                     console.log("Error found in conf.json file. Couldn't reload configuration.")
                     error = true;
@@ -149,7 +150,7 @@ async function init() {
                     console.log("Reloaded configuration.", config)
                 }
             });
-            config = JSON.parse(fs.readFileSync("conf.json", "utf-8").toString());
+            config = JSON.parse(fs.readFileSync(configPath, "utf-8").toString());
             console.log(config);
 
             initDBConnection(() => {
@@ -929,8 +930,8 @@ async function init() {
             let resData = {};
             if (!process.env.HIDDEN_CONFIG_TABS || !process.env.HIDDEN_CONFIG_TABS.split(';').includes(parm.category)) {
                 config[ parm.category ] = parm.config;
-                fs.writeFileSync("conf.json.bak", fs.readFileSync('conf.json'));
-                fs.writeFileSync("conf.json", JSON.stringify(config, null, "\t"));
+                fs.writeFileSync(configPath + ".bak", fs.readFileSync(configPath));
+                fs.writeFileSync(configPath, JSON.stringify(config, null, "\t"));
                 resData.status = "config_updated";
                 // resData.action = 'reload';
             } else {
@@ -2429,7 +2430,7 @@ async function init() {
 
                             if (st.config.tracking_mode == 'incremental') {
                                 await dbo.collection("players").updateMany({ steamid64: { $nin: players }, seeding_points: { $gt: 0 } }, { $inc: { seeding_points: -1 } })
-                                
+
                             }
 
                             socket.emit("rcon.getListPlayers", (players) => {
@@ -2513,6 +2514,7 @@ async function init() {
     function initConfigFile(callback) {
 
         console.log("Current dir: ", __dirname);
+        console.log(`Configuration file path: ${configPath}`)
         let emptyConfFile = {
             web_server: {
                 bind_ip: "0.0.0.0",
@@ -2561,22 +2563,22 @@ async function init() {
             }
         }
 
-        if (!fs.existsSync("conf.json")) {
+        if (!fs.existsSync(configPath)) {
             get_free_port(emptyConfFile.web_server.http_port, function (http_port) {
                 emptyConfFile.web_server.http_port = http_port;
                 get_free_port(emptyConfFile.web_server.https_port, function (https_port) {
                     emptyConfFile.web_server.https_port = https_port;
                     console.log("Configuration file created, set your parameters and run again \"node server\".\nTerminating execution...");
-                    fs.writeFileSync("conf.json", JSON.stringify(emptyConfFile, null, "\t"));
+                    fs.writeFileSync(configPath, JSON.stringify(emptyConfFile, null, "\t"));
                     if (process.env.PROCESS_MANAGER_TYPE && process.env.PROCESS_MANAGER_TYPE.toUpperCase() == "DOCKER") callback();
                     else process.exit(0)
                 });
             });
         } else {
-            const config = JSON.parse(fs.readFileSync("conf.json", "utf-8").toString());
+            const config = JSON.parse(fs.readFileSync(configPath, "utf-8").toString());
             var config2 = { ...config }
             upgradeConfig(config2, emptyConfFile);
-            fs.writeFileSync("conf.json", JSON.stringify(config2, null, "\t"));
+            fs.writeFileSync(configPath, JSON.stringify(config2, null, "\t"));
             callback();
         }
     }
