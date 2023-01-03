@@ -2407,7 +2407,7 @@ async function init() {
                             const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
 
                             socket.emit("rcon.getListPlayers", async (players) => {
-                                if (st.config.tracking_mode == 'incremental') {
+                                if (st.config.tracking_mode == 'incremental' && players.length > 1) {
                                     let deduction_points = 0;
 
                                     if (st.config.time_deduction.option == 'point_minute') deduction_points = st.config.time_deduction.value
