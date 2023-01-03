@@ -90,7 +90,7 @@ async function init() {
             }
         },
         logging: {
-            requests: false
+            requests: true
         }
     };
     var squadjs = {
