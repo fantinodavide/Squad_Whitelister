@@ -2344,7 +2344,7 @@ async function init() {
                     case 'playerinfo':
                         console.log(dt);
                         break;
-                    case 'profile':
+                    case '!profile':
                         welcomeMessage(dt)
                         break;
                     default:
@@ -2457,53 +2457,54 @@ async function init() {
                 const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
                 const percentageCompleted = Math.min(Math.round(100 * dbRes.value.seeding_points / requiredPoints), 108);
                 const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
-
-                dbo.collection("whitelists").aggregate(pipeline).toArray(async (err, dbRes) => {
-                    if (err) serverError(null, err);
-                    else {
-                        dbo.collection("players").findOne({ steamid64: dt.player.steamID }, async (err, dbResP) => {
-                            if (err) serverError(null, err);
-                            else {
-                                let msg = "Welcome " + dt.player.name + "\n\n";
-
-                                if (subcomponent_status.squadjs) {
-                                    let groups = [];
-                                    if (percentageCompleted >= 100) groups.push({ name: reward_group.group_name, expiration: stConf.tracking_mode == 'fixed_reset' ? new Date(stConf.next_reset) : null })
-
-                                    if (dbRes[ 0 ] && dbRes[ 0 ].group_full_data[ 0 ]) {
-                                        groups.push({ name: dbRes[ 0 ].group_full_data[ 0 ].group_name, expiration: dbRes[ 0 ].expiration })
-                                        // msg +=
-                                        //     "Group: " + dbRes[ 0 ].group_full_data[ 0 ].group_name + "\n" +
-                                        //     "Expiration: " + (dbRes[ 0 ].expiration ? ((dbRes[ 0 ].expiration - new Date()) / 1000 / 60 / 60).toFixed(1) + " h" : "Never") + "\n"
-                                    }
-                                    if (groups.length > 0) {
-                                        msg += `Groups:`
-                                        for (let g of groups) {
-                                            msg += `  ${g.name}`
-                                            if (g.expiration) msg += `: ${((g.expiration - new Date()) / 1000 / 60 / 60).toFixed(1) + " h"}`
+                mongoConn(dbo=>{
+                    dbo.collection("whitelists").aggregate(pipeline).toArray(async (err, dbRes) => {
+                        if (err) serverError(null, err);
+                        else {
+                            dbo.collection("players").findOne({ steamid64: dt.player.steamID }, async (err, dbResP) => {
+                                if (err) serverError(null, err);
+                                else {
+                                    let msg = "Welcome " + dt.player.name + "\n\n";
+    
+                                    if (subcomponent_status.squadjs) {
+                                        let groups = [];
+                                        if (percentageCompleted >= 100) groups.push({ name: reward_group.group_name, expiration: stConf.tracking_mode == 'fixed_reset' ? new Date(stConf.next_reset) : null })
+    
+                                        if (dbRes[ 0 ] && dbRes[ 0 ].group_full_data[ 0 ]) {
+                                            groups.push({ name: dbRes[ 0 ].group_full_data[ 0 ].group_name, expiration: dbRes[ 0 ].expiration })
+                                            // msg +=
+                                            //     "Group: " + dbRes[ 0 ].group_full_data[ 0 ].group_name + "\n" +
+                                            //     "Expiration: " + (dbRes[ 0 ].expiration ? ((dbRes[ 0 ].expiration - new Date()) / 1000 / 60 / 60).toFixed(1) + " h" : "Never") + "\n"
+                                        }
+                                        if (groups.length > 0) {
+                                            msg += `Groups:`
+                                            for (let g of groups) {
+                                                msg += `  ${g.name}`
+                                                if (g.expiration) msg += `: ${((g.expiration - new Date()) / 1000 / 60 / 60).toFixed(1) + " h"}`
+                                            }
                                         }
                                     }
-                                }
-                                if (subcomponent_status.discord_bot) {
-                                    let discordUsername = "";
-                                    if (dbResP && dbResP.discord_user_id && dbResP.discord_user_id != "") {
-                                        const discordUser = await discordBot.users.fetch(dbResP.discord_user_id);
-                                        discordUsername = discordUser.username + "#" + discordUser.discriminator;
+                                    if (subcomponent_status.discord_bot) {
+                                        let discordUsername = "";
+                                        if (dbResP && dbResP.discord_user_id && dbResP.discord_user_id != "") {
+                                            const discordUser = await discordBot.users.fetch(dbResP.discord_user_id);
+                                            discordUsername = discordUser.username + "#" + discordUser.discriminator;
+                                        }
+    
+                                        msg += "Discord Username: " + (discordUsername != "" ? discordUsername : "Not linked")
+                                        msg += "Seeding Reward: " + percentageCompleted
                                     }
-
-                                    msg += "Discord Username: " + (discordUsername != "" ? discordUsername : "Not linked")
-                                    msg += "Seeding Reward: " + percentageCompleted
+    
+    
+                                    if (subcomponent_status.squadjs) {
+                                        setTimeout(() => {
+                                            socket.emit("rcon.warn", dt.player.steamID, msg, (d) => { })
+                                        }, 5000)
+                                    }
                                 }
-
-
-                                if (subcomponent_status.squadjs) {
-                                    setTimeout(() => {
-                                        socket.emit("rcon.warn", dt.player.steamID, msg, (d) => { })
-                                    }, 5000)
-                                }
-                            }
-                        })
-                    }
+                            })
+                        }
+                    })
                 })
             }
         } else {
