@@ -242,7 +242,7 @@
 					oTitleKey="title"
 					oIdKey="value"
 					:options="[
-						{ title: 'Point per Minute', value: 'point_minute	' },
+						{ title: 'Point per Minute', value: 'point_minute' },
 						{ title: '% per Minute', value: 'perc_minute' },
 					]"
 					:value="currentConfigMenu.time_deduction?.value || 0.1"

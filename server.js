@@ -92,7 +92,7 @@ async function init() {
             }
         },
         logging: {
-            requests: true
+            requests: false
         }
     };
     var squadjs = {
@@ -2044,11 +2044,32 @@ async function init() {
                                 dbo.collection("players").findOne({ discord_user_id: (publicMessage ? requestedProfile.id : sender_id) }, async (err, dbRes) => {
                                     if (err) serverError(null, err);
                                     else {
-                                        console.log(dbRes);
                                         let fields = [
                                             { name: "Steam " + ((dbRes && dbRes.steamid64) ? "Username " : ""), value: ((dbRes && dbRes.steamid64) ? dbRes.username : "*Not linked*"), inline: true },
                                         ]
-                                        if (dbRes && dbRes.steamid64) fields.push({ name: 'SteamID', value: Discord.hyperlink(dbRes.steamid64, "https://steamcommunity.com/profiles/" + dbRes.steamid64), inline: true })
+                                        if (dbRes && dbRes.steamid64) {
+                                            fields.push({ name: 'SteamID', value: Discord.hyperlink(dbRes.steamid64, "https://steamcommunity.com/profiles/" + dbRes.steamid64), inline: true })
+
+                                            const allGroups = await dbo.collection("groups").find().toArray();
+                                            const plWlGroups = (await dbo.collection("whitelists").find({ steamid64: dbRes.steamid64, approved: true, $or: [ { expiration: { $gt: new Date() } }, { expiration: null }, { expiration: false } ] }).toArray()).map(g => ({ name: allGroups.find(_g => _g._id.toString() == g.id_group.toString())?.group_name || 'Unknown', expiration: g.expiration }));
+                                            const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
+                                            const stConf = st.config;
+                                            const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
+                                            const percentageCompleted = Math.round(100 * (dbRes.seeding_points || 0) / requiredPoints);
+                                            const reward_group = allGroups.find(g => g._id == stConf.reward_group_id)
+                                            let groups = plWlGroups || [];
+
+                                            if (stConf.reward_enabled=='true') {
+                                                if (percentageCompleted >= 100) groups.push({ name: reward_group.group_name, expiration: stConf.tracking_mode == 'fixed_reset' ? new Date(stConf.next_reset) : null })
+                                                fields.push({ name: 'Seeding Reward', value: `${percentageCompleted}%`, inline: false })
+                                            }
+
+                                            for (let g of groups) {
+                                                let fVal = 'Unlimited'//`  ${g.name}`;
+                                                if (g.expiration) fVal = `Expired ${Discord.time(g.expiration, 'R')}`
+                                                fields.push({ name: g.name, value: fVal, inline: true })
+                                            }
+                                        }
                                         let reply = await interaction.reply({
                                             content: Discord.userMention(requestedProfile.id),
                                             embeds: [
@@ -2305,54 +2326,7 @@ async function init() {
                             dbo.collection("players").updateOne({ steamid64: dt.player.steamID }, { $set: { username: dt.player.name } }, { upsert: true })
                         })
                         setTimeout(() => {
-                            mongoConn((dbo) => {
-                                const pipeline = [
-                                    { $match: { steamid64: dt.player.steamID } },
-                                    {
-                                        $lookup: {
-                                            from: "groups",
-                                            localField: "id_group",
-                                            foreignField: "_id",
-                                            as: "group_full_data"
-                                        }
-                                    }
-                                ]
-                                dbo.collection("whitelists").aggregate(pipeline).toArray(async (err, dbRes) => {
-                                    if (err) serverError(null, err);
-                                    else {
-                                        dbo.collection("players").findOne({ steamid64: dt.player.steamID }, async (err, dbResP) => {
-                                            if (err) serverError(null, err);
-                                            else {
-                                                let msg = "Welcome " + dt.player.name + "\n\n";
-
-                                                if (subcomponent_status.squadjs) {
-                                                    if (dbRes[ 0 ] && dbRes[ 0 ].group_full_data[ 0 ]) {
-                                                        msg +=
-                                                            "Group: " + dbRes[ 0 ].group_full_data[ 0 ].group_name + "\n" +
-                                                            "Expiration: " + (dbRes[ 0 ].expiration ? ((dbRes[ 0 ].expiration - new Date()) / 1000 / 60 / 60).toFixed(1) + " h" : "Never") + "\n"
-                                                    }
-                                                }
-                                                if (subcomponent_status.discord_bot) {
-                                                    let discordUsername = "";
-                                                    if (dbResP && dbResP.discord_user_id && dbResP.discord_user_id != "") {
-                                                        const discordUser = await discordBot.users.fetch(dbResP.discord_user_id);
-                                                        discordUsername = discordUser.username + "#" + discordUser.discriminator;
-                                                    }
-
-                                                    msg += "Discord Username: " + (discordUsername != "" ? discordUsername : "Not linked")
-                                                }
-
-
-                                                if (subcomponent_status.squadjs) {
-                                                    setTimeout(() => {
-                                                        socket.emit("rcon.warn", dt.player.steamID, msg, (d) => { })
-                                                    }, 5000)
-                                                }
-                                            }
-                                        })
-                                    }
-                                })
-                            })
+                            welcomeMessage(dt)
                         }, 10000)
                     }
                 } catch (error) {
@@ -2363,11 +2337,15 @@ async function init() {
             //     console.log("Player disconnected: ", dt)
             // })
             socket.on("CHAT_MESSAGE", async (dt) => {
+
                 switch (dt.message) {
                     case 'test':
                         break;
                     case 'playerinfo':
                         console.log(dt);
+                        break;
+                    case 'profile':
+                        welcomeMessage(dt)
                         break;
                     default:
                         if (dt.message.length == 6 && !dt.message.includes(' ')) {
@@ -2428,16 +2406,16 @@ async function init() {
 
                             const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
 
-                            if (st.config.tracking_mode == 'incremental') {
-                                let deduction_points = 0;
+                            socket.emit("rcon.getListPlayers", async (players) => {
+                                if (st.config.tracking_mode == 'incremental') {
+                                    let deduction_points = 0;
 
-                                if (st.config.time_deduction.option == 'point_minute') deduction_points = st.config.time_deduction.value
-                                else if (st.config.time_deduction.option == 'perc_minute') deduction_points = st.config.time_deduction.value * requiredPoints;
+                                    if (st.config.time_deduction.option == 'point_minute') deduction_points = st.config.time_deduction.value
+                                    else if (st.config.time_deduction.option == 'perc_minute') deduction_points = st.config.time_deduction.value * requiredPoints / 100;
 
-                                await dbo.collection("players").updateMany({ steamid64: { $nin: players }, seeding_points: { $gt: 0 } }, { $inc: { seeding_points: -deduction_points } })
-                            }
+                                    await dbo.collection("players").updateMany({ steamid64: { $nin: players }, seeding_points: { $gt: deduction_points } }, { $inc: { seeding_points: -deduction_points } })
+                                }
 
-                            socket.emit("rcon.getListPlayers", (players) => {
                                 if (players.length <= stConf.seeding_player_threshold) {
                                     // console.log("current seeders", objArrToValArr(players, "name"));
 
@@ -2446,8 +2424,8 @@ async function init() {
                                             if (err) serverError(null, err)
                                             else if (stConf.reward_enabled == "true") {
                                                 // console.log(dbRes);
-                                                const percentageCompleted = Math.min(Math.round(100 * dbRes.value.seeding_points / requiredPoints), 108);
-                                                if (dbRes.value && dbRes.value.seeding_points && percentageCompleted % 10 == 0 && percentageCompleted < 100)
+                                                const percentageCompleted = Math.min(Math.round(100 * dbRes.value?.seeding_points / requiredPoints), 108);
+                                                if (dbRes.value && dbRes.value?.seeding_points && percentageCompleted % 10 == 0 && percentageCompleted < 100)
                                                     socket.emit("rcon.warn", p.steamID, `Seeding Reward: \n\n${percentageCompleted}% completed`, (d) => { })
                                                 else if (percentageCompleted == 100) {
                                                     const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
@@ -2471,6 +2449,62 @@ async function init() {
                         })
                     }
                 }
+            }
+
+            async function welcomeMessage(dt) {
+                const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
+                const stConf = st.config;
+                const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
+                const percentageCompleted = Math.min(Math.round(100 * dbRes.value.seeding_points / requiredPoints), 108);
+                const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
+
+                dbo.collection("whitelists").aggregate(pipeline).toArray(async (err, dbRes) => {
+                    if (err) serverError(null, err);
+                    else {
+                        dbo.collection("players").findOne({ steamid64: dt.player.steamID }, async (err, dbResP) => {
+                            if (err) serverError(null, err);
+                            else {
+                                let msg = "Welcome " + dt.player.name + "\n\n";
+
+                                if (subcomponent_status.squadjs) {
+                                    let groups = [];
+                                    if (percentageCompleted >= 100) groups.push({ name: reward_group.group_name, expiration: stConf.tracking_mode == 'fixed_reset' ? new Date(stConf.next_reset) : null })
+
+                                    if (dbRes[ 0 ] && dbRes[ 0 ].group_full_data[ 0 ]) {
+                                        groups.push({ name: dbRes[ 0 ].group_full_data[ 0 ].group_name, expiration: dbRes[ 0 ].expiration })
+                                        // msg +=
+                                        //     "Group: " + dbRes[ 0 ].group_full_data[ 0 ].group_name + "\n" +
+                                        //     "Expiration: " + (dbRes[ 0 ].expiration ? ((dbRes[ 0 ].expiration - new Date()) / 1000 / 60 / 60).toFixed(1) + " h" : "Never") + "\n"
+                                    }
+                                    if (groups.length > 0) {
+                                        msg += `Groups:`
+                                        for (let g of groups) {
+                                            msg += `  ${g.name}`
+                                            if (g.expiration) msg += `: ${((g.expiration - new Date()) / 1000 / 60 / 60).toFixed(1) + " h"}`
+                                        }
+                                    }
+                                }
+                                if (subcomponent_status.discord_bot) {
+                                    let discordUsername = "";
+                                    if (dbResP && dbResP.discord_user_id && dbResP.discord_user_id != "") {
+                                        const discordUser = await discordBot.users.fetch(dbResP.discord_user_id);
+                                        discordUsername = discordUser.username + "#" + discordUser.discriminator;
+                                    }
+
+                                    msg += "Discord Username: " + (discordUsername != "" ? discordUsername : "Not linked")
+                                    msg += "Seeding Reward: " + percentageCompleted
+                                }
+
+
+                                if (subcomponent_status.squadjs) {
+                                    setTimeout(() => {
+                                        socket.emit("rcon.warn", dt.player.steamID, msg, (d) => { })
+                                    }, 5000)
+                                }
+                            }
+                        })
+                    }
+                })
             }
         } else {
             console.log(" > Not configured. Skipping.");
