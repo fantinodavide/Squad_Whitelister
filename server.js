@@ -2630,48 +2630,14 @@ async function init() {
         }
 
         mongoConn(async (dbo) => {
-            dbo.collection("users").findOne({ access_level: 0 }, (err, dbRes) => {
-                if (err) {
-                    serverError(null, err)
-                } else if (dbRes != null) {
-                    // if (callback)
-                    //     callback();
-                    subcomponent_data.database.root_user_registered = true;
-                    listCollection(() => { repairListFormat(callback) });
-                } else {
-                    subcomponent_data.database.root_user_registered = false;
-                    listCollection(() => { repairListFormat(callback) });
-                    // let adminPwd = randomString(12);
-                    // let defaultAdminAccount = {
-                    //     username: "admin",
-                    //     password: crypto.createHash('sha512').update(adminPwd).digest('hex'),
-                    //     access_level: 0,
-                    //     registration_date: new Date()
-                    // }
-                    // dbo.collection("users").insertOne(defaultAdminAccount, (err, dbRes) => {
-                    //     if (err) {
-                    //         res.sendStatus(500);
-                    //         console.error(err);
-                    //         process.exit(1);
-                    //     } else if (callback) {
-                    //         const startdelay = 5;
-                    //         consoleLogBackup("\n\n\n\n########## ADMIN CREDENTIALS ##########\n##  Username: admin                  ##\n##  Password: " + adminPwd + "           ##\n#######################################\n\n!!! Save your credentials, you will NOT see them again !!!\n\nServer will be started in", startdelay, "s")
-
-                    //         setTimeout(() => {
-                    //             consoleLogBackup("\n\n\n\n");
-                    //             // callback();
-                    //             listCollection(callback);
-                    //         }, startdelay * 1000);
-                    //     }
-                    // })
-                }
-            })
+            subcomponent_data.database.root_user_registered = (await dbo.collection("users").findOne({ access_level: 0 })) ? true : false;
             if (args.demo) dbo.collection("users").updateOne({ username: 'demoadmin' }, { $set: { password: crypto.createHash('sha512').update('demo').digest('hex'), access_level: 5 } }, { upsert: true })
-
             dbo.collection("players").deleteMany({ discord_user_id: { $exists: true }, steamid64: { $exists: false } })
 
-            if (!await dbo.collection("config").findOne({ category: "seeding_tracker", config: { $exists: false } }))
+            if (!(await dbo.collection("configs").findOne({ category: "seeding_tracker", config: { $exists: true } })))
                 dbo.collection("configs").updateOne({ category: "seeding_tracker" }, { $set: { config: { tracking_mode: 'incremental' } } }, { upsert: true })
+
+            listCollection(() => { repairListFormat(callback) });
             // dbo.collection("configs").deleteMany({ category: "seeding_tracker", tracking_mode: { $exists: false } })
 
             function listCollection(cb) {
