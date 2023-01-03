@@ -2457,7 +2457,18 @@ async function init() {
                 const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
                 const percentageCompleted = Math.min(Math.round(100 * dbRes.value.seeding_points / requiredPoints), 108);
                 const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
-                mongoConn(dbo=>{
+                mongoConn(dbo => {
+                    const pipeline = [
+                        { $match: { steamid64: dt.player.steamID } },
+                        {
+                            $lookup: {
+                                from: "groups",
+                                localField: "id_group",
+                                foreignField: "_id",
+                                as: "group_full_data"
+                            }
+                        }
+                    ]
                     dbo.collection("whitelists").aggregate(pipeline).toArray(async (err, dbRes) => {
                         if (err) serverError(null, err);
                         else {
@@ -2465,11 +2476,11 @@ async function init() {
                                 if (err) serverError(null, err);
                                 else {
                                     let msg = "Welcome " + dt.player.name + "\n\n";
-    
+
                                     if (subcomponent_status.squadjs) {
                                         let groups = [];
                                         if (percentageCompleted >= 100) groups.push({ name: reward_group.group_name, expiration: stConf.tracking_mode == 'fixed_reset' ? new Date(stConf.next_reset) : null })
-    
+
                                         if (dbRes[ 0 ] && dbRes[ 0 ].group_full_data[ 0 ]) {
                                             groups.push({ name: dbRes[ 0 ].group_full_data[ 0 ].group_name, expiration: dbRes[ 0 ].expiration })
                                             // msg +=
@@ -2490,12 +2501,12 @@ async function init() {
                                             const discordUser = await discordBot.users.fetch(dbResP.discord_user_id);
                                             discordUsername = discordUser.username + "#" + discordUser.discriminator;
                                         }
-    
+
                                         msg += "Discord Username: " + (discordUsername != "" ? discordUsername : "Not linked")
                                         msg += "Seeding Reward: " + percentageCompleted
                                     }
-    
-    
+
+
                                     if (subcomponent_status.squadjs) {
                                         setTimeout(() => {
                                             socket.emit("rcon.warn", dt.player.steamID, msg, (d) => { })
