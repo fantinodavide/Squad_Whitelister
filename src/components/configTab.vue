@@ -201,7 +201,6 @@
 				@valueChanged="currentConfigMenu.tracking_mode = $event.option"
 			/>
 			<AdvancedInput
-				v-if="currentConfigMenu.tracking_mode == 'fixed_reset'"
 				text="Reward needed time"
 				name="resetseedingtime"
 				type="number"
@@ -216,24 +215,45 @@
 				]"
 				@valueChanged="currentConfigMenu.reward_needed_time = { value: +$event.value, option: $event.option }"
 			/>
-			<AdvancedInput
-				v-if="currentConfigMenu.tracking_mode == 'fixed_reset'"
-				text="Reset seeding time every"
-				name="resetseedingtime"
-				type="number"
-				placeholder="Time"
-				oTitleKey="title"
-				oIdKey="value"
-				:options="[
-					{ title: 'Days', value: 24 * 60 * 60 * 1000 },
-					{ title: 'Weeks', value: 7 * 24 * 60 * 60 * 1000 },
-					{ title: 'Months', value: 30 * 24 * 60 * 60 * 1000 },
-				]"
-				:value="currentConfigMenu.reset_seeding_time.value"
-				:optionPreselect="currentConfigMenu.reset_seeding_time.option"
-				@valueChanged="currentConfigMenu.reset_seeding_time = { value: +$event.value, option: $event.option }"
-			/>
-			<AdvancedInput text="Next Reset" v-if="currentConfigMenu.tracking_mode == 'fixed_reset'" name="next_reset" type="date" @valueChanged="currentConfigMenu.next_reset = $event.value" :value="currentConfigMenu.next_reset" />
+			<div v-if="currentConfigMenu.tracking_mode == 'fixed_reset'">
+				<AdvancedInput
+					text="Reset seeding time every"
+					name="resetseedingtime"
+					type="number"
+					placeholder="Time"
+					oTitleKey="title"
+					oIdKey="value"
+					:options="[
+						{ title: 'Days', value: 24 * 60 * 60 * 1000 },
+						{ title: 'Weeks', value: 7 * 24 * 60 * 60 * 1000 },
+						{ title: 'Months', value: 30 * 24 * 60 * 60 * 1000 },
+					]"
+					:value="currentConfigMenu.reset_seeding_time.value"
+					:optionPreselect="currentConfigMenu.reset_seeding_time.option"
+					@valueChanged="currentConfigMenu.reset_seeding_time = { value: +$event.value, option: $event.option }"
+				/>
+				<AdvancedInput text="Next Reset" name="next_reset" type="date" @valueChanged="currentConfigMenu.next_reset = $event.value" :value="currentConfigMenu.next_reset" />
+			</div>
+			<div v-if="currentConfigMenu.tracking_mode == 'incremental'">
+				<AdvancedInput
+					text="Non-seeding Time Deduction"
+					name="resetseedingtime"
+					type="number"
+					oTitleKey="title"
+					oIdKey="value"
+					:options="[
+						{ title: 'Point per Minute', value: 'point_minute' },
+						{ title: '% per Minute', value: 'perc_minute' },
+					]"
+					:value="currentConfigMenu.time_deduction?.value || 0.1"
+					:optionPreselect="currentConfigMenu.time_deduction?.option"
+					@valueChanged="currentConfigMenu.time_deduction = { value: +$event.value, option: $event.option }"
+				/>
+				<fieldset>
+					<legend>Attention</legend>
+					<b>Non-seeding Time Deduction</b> applies only during seeding phase.
+				</fieldset>
+			</div>
 			<button style="float: right; padding-left: 30px; padding-right: 30px" @click="$emit('confirm', { title: 'Save server configuration?', text: 'Are you sure you want to change the server configuration? Bad configuration may result into multiple failures or temporary data loss.', callback: sendConfigToServer })">Save</button>
 		</div>
 	</tab>
@@ -247,6 +267,9 @@
 	label > input,
 	label > select {
 		margin-left: 10px;
+	}
+	label {
+		margin-right: 0;
 	}
 	div.ct {
 		margin: 0 auto;
