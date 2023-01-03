@@ -156,7 +156,7 @@
 						console.log(elm);
 						elm.focus();
 					}, 10);
-				this.currentTab = required ? 'Login' : 'Home';
+				this.currentTab = required ? 'Login' : 'Clans';
 			},
 			setCurrentTab: function (ct: string) {
 				this.currentTab = ct;
