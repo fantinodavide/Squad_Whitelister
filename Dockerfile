@@ -1,5 +1,7 @@
 FROM node
 
+WORKDIR /srv
+
 COPY release ./
 RUN npm i
 
