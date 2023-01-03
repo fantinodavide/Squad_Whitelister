@@ -2059,7 +2059,7 @@ async function init() {
                                             const reward_group = allGroups.find(g => g._id == stConf.reward_group_id)
                                             let groups = plWlGroups || [];
 
-                                            if (stConf.reward_enabled=='true') {
+                                            if (stConf.reward_enabled == 'true') {
                                                 if (percentageCompleted >= 100) groups.push({ name: reward_group.group_name, expiration: stConf.tracking_mode == 'fixed_reset' ? new Date(stConf.next_reset) : null })
                                                 fields.push({ name: 'Seeding Reward', value: `${percentageCompleted}%`, inline: false })
                                             }
@@ -2629,7 +2629,7 @@ async function init() {
             discord_roles: []
         }
 
-        mongoConn((dbo) => {
+        mongoConn(async (dbo) => {
             dbo.collection("users").findOne({ access_level: 0 }, (err, dbRes) => {
                 if (err) {
                     serverError(null, err)
@@ -2669,7 +2669,10 @@ async function init() {
             if (args.demo) dbo.collection("users").updateOne({ username: 'demoadmin' }, { $set: { password: crypto.createHash('sha512').update('demo').digest('hex'), access_level: 5 } }, { upsert: true })
 
             dbo.collection("players").deleteMany({ discord_user_id: { $exists: true }, steamid64: { $exists: false } })
-            dbo.collection("configs").updateOne({ category: "seeding_tracker" }, { $set: {} }, { upsert: true })
+
+            if (!await dbo.collection("config").findOne({ category: "seeding_tracker", config: { $exists: false } }))
+                dbo.collection("configs").updateOne({ category: "seeding_tracker" }, { $set: { config: { tracking_mode: 'incremental' } } }, { upsert: true })
+            // dbo.collection("configs").deleteMany({ category: "seeding_tracker", tracking_mode: { $exists: false } })
 
             function listCollection(cb) {
                 dbo.listCollections({ name: "lists" }).next((err, dbRes) => {

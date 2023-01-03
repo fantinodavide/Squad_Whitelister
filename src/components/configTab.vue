@@ -207,8 +207,8 @@
 				placeholder="Time"
 				oTitleKey="title"
 				oIdKey="value"
-				:value="currentConfigMenu.reward_needed_time.value"
-				:optionPreselect="currentConfigMenu.reward_needed_time.option"
+				:value="currentConfigMenu.reward_needed_time?.value"
+				:optionPreselect="currentConfigMenu.reward_needed_time?.option"
 				:options="[
 					{ title: 'Hours', value: 60 * 60 * 1000 },
 					{ title: 'Days', value: 24 * 60 * 60 * 1000 },
@@ -228,8 +228,8 @@
 						{ title: 'Weeks', value: 7 * 24 * 60 * 60 * 1000 },
 						{ title: 'Months', value: 30 * 24 * 60 * 60 * 1000 },
 					]"
-					:value="currentConfigMenu.reset_seeding_time.value"
-					:optionPreselect="currentConfigMenu.reset_seeding_time.option"
+					:value="currentConfigMenu.reset_seeding_time?.value"
+					:optionPreselect="currentConfigMenu.reset_seeding_time?.option"
 					@valueChanged="currentConfigMenu.reset_seeding_time = { value: +$event.value, option: $event.option }"
 				/>
 				<AdvancedInput text="Next Reset" name="next_reset" type="date" @valueChanged="currentConfigMenu.next_reset = $event.value" :value="currentConfigMenu.next_reset" />
