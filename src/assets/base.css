@@ -372,3 +372,7 @@ fieldset {
 fieldset:hover {
 	border-color: #fff4;
 }
+
+b{
+	font-weight: 500;
+}

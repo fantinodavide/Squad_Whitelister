@@ -252,7 +252,7 @@ async function init() {
                     const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
                     if (!st) return;
                     const stConf = st.config;
-                    if (stConf.next_reset && new Date() > new Date(stConf.next_reset)) {
+                    if (stConf.tracking_mode == 'fixed_reset' && stConf.next_reset && new Date() > new Date(stConf.next_reset)) {
                         dbo.collection('players').updateMany({}, { $set: { seeding_points: 0 } });
                         dbo.collection('configs').updateOne({ category: 'seeding_tracker' }, { $set: { "config.next_reset": new Date(new Date().valueOf() + (stConf.reset_seeding_time.value * stConf.reset_seeding_time.option)).toISOString().split('T')[ 0 ] } })
                     }
@@ -2429,8 +2429,12 @@ async function init() {
                             const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
 
                             if (st.config.tracking_mode == 'incremental') {
-                                await dbo.collection("players").updateMany({ steamid64: { $nin: players }, seeding_points: { $gt: 0 } }, { $inc: { seeding_points: -1 } })
+                                let deduction_points = 0;
 
+                                if (st.config.time_deduction.option == 'point_minute') deduction_points = st.config.time_deduction.value
+                                else if (st.config.time_deduction.option == 'perc_minute') deduction_points = st.config.time_deduction.value * requiredPoints;
+                                
+                                await dbo.collection("players").updateMany({ steamid64: { $nin: players }, seeding_points: { $gt: 0 } }, { $inc: { seeding_points: -deduction_points } })
                             }
 
                             socket.emit("rcon.getListPlayers", (players) => {
