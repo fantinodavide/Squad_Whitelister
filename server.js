@@ -257,7 +257,7 @@ async function init() {
                     const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
                     if (!st) return;
                     const stConf = st.config;
-                    if (stConf.tracking_mode == 'fixed_reset' && stConf.next_reset && new Date() > new Date(stConf.next_reset)) {
+                    if (stConf.tracking_mode == 'fixed_reset' && stConf.reset_seeding_time && stConf.next_reset && new Date() > new Date(stConf.next_reset)) {
                         dbo.collection('players').updateMany({}, { $set: { seeding_points: 0 } });
                         dbo.collection('configs').updateOne({ category: 'seeding_tracker' }, { $set: { "config.next_reset": new Date(new Date().valueOf() + (stConf.reset_seeding_time.value * stConf.reset_seeding_time.option)).toISOString().split('T')[ 0 ] } })
                     }
@@ -2513,7 +2513,7 @@ async function init() {
                                             discordUsername = discordUser.username + "#" + discordUser.discriminator;
                                         }
 
-                                        msg += "\nSeeding Reward: " + percentageCompleted + "%"
+                                        if (stConf.reward_enabled == 'true') msg += "\nSeeding Reward: " + percentageCompleted + "%"
                                         msg += "\nDiscord Username: " + (discordUsername != "" ? discordUsername : "Not linked")
                                     }
 
@@ -2736,6 +2736,29 @@ async function init() {
             require_appr: false,
             discord_roles: []
         }
+        const seedingTrackerConf = {
+            category: "seeding_tracker",
+            config: {
+                reset_seeding_time: {
+                    value: 1,
+                    option: 86400000
+                },
+                reward_needed_time: {
+                    value: 0,
+                    option: 3600000
+                },
+                reward_group_id: "",
+                next_reset: "",
+                seeding_player_threshold: 50,
+                reward_enabled: "false",
+                discord_seeding_reward_channel: "982449246999547995",
+                tracking_mode: "incremental",
+                time_deduction: {
+                    value: 1,
+                    option: "perc_minute"
+                }
+            }
+        }
 
         mongoConn(async (dbo) => {
             subcomponent_data.database.root_user_registered = (await dbo.collection("users").findOne({ access_level: 0 })) ? true : false;
@@ -2744,6 +2767,8 @@ async function init() {
 
             if (!(await dbo.collection("configs").findOne({ category: "seeding_tracker", config: { $exists: true } })))
                 dbo.collection("configs").updateOne({ category: "seeding_tracker" }, { $set: { config: { tracking_mode: 'incremental' } } }, { upsert: true })
+
+            await repairSeedingTrackerConfigFormat();
 
             listCollection(() => { repairListFormat(callback) });
             // dbo.collection("configs").deleteMany({ category: "seeding_tracker", tracking_mode: { $exists: false } })
@@ -2771,11 +2796,11 @@ async function init() {
             async function repairListFormat(cb) {
                 let logSent = false;
                 const keysToCheck = Object.keys(mainListData);
-                repair(0)
+                await repair(0)
 
-                function repair(ki) {
+                async function repair(ki) {
                     const k = keysToCheck[ ki ]
-                    dbo.collection("lists").updateMany({ [ k ]: { $exists: false } }, { $set: { [ k ]: mainListData[ k ] } }, async (err, dbRes) => {
+                    await dbo.collection("lists").updateMany({ [ k ]: { $exists: false } }, { $set: { [ k ]: mainListData[ k ] } }, async (err, dbRes) => {
                         if (err) console.error(err);
                         else {
                             if (dbRes.modifiedCount > 0) {
@@ -2784,7 +2809,30 @@ async function init() {
                                     console.log("Repairing Lists format");
                                 }
                             }
-                            if (ki < keysToCheck.length - 1) repair(ki + 1);
+                            if (ki < keysToCheck.length - 1) await repair(ki + 1);
+                            else cb();
+                        }
+                    })
+                }
+            }
+            async function repairSeedingTrackerConfigFormat(cb = () => { }) {
+                let logSent = false;
+
+                const keysToCheck = Object.keys(seedingTrackerConf.config);
+                await repair(0)
+
+                async function repair(ki) {
+                    const k = `config.${keysToCheck[ ki ]}`
+                    await dbo.collection("configs").updateOne({ category: 'seeding_tracker', [ k ]: { $exists: false } }, { $set: { [ k ]: seedingTrackerConf.config[ keysToCheck[ ki ] ] } }, async (err, dbRes) => {
+                        if (err) console.error(err);
+                        else {
+                            if (dbRes.modifiedCount > 0) {
+                                if (!logSent) {
+                                    logSent = true;
+                                    console.log("Repairing SD Config format");
+                                }
+                            }
+                            if (ki < keysToCheck.length - 1) await repair(ki + 1);
                             else cb();
                         }
                     })

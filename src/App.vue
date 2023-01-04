@@ -126,9 +126,7 @@
 						// this.$nextTick(() => {
 						// 	this.setCurrentTab(this.tabs[0]['name']);
 						// });1
-						// setTimeout(() => {
-						// 	this.setCurrentTab(this.tabs[0]['name']);
-						// }, 10);
+						this.setCurrentTab(this.tabs[0]['name']);
 					});
 			},
 			logout: function () {
@@ -146,17 +144,18 @@
 					});
 			},
 			setLoginRequired: function (required: boolean) {
-				if (this.currentTab == 'Root User Registration') return;
-				this.loginRequired = required;
-				this.popups.login = required;
-				this.popups.registration = required;
-				if (required)
-					setTimeout(() => {
-						const elm = document.getElementsByTagName('input')[0];
-						console.log(elm);
-						elm.focus();
-					}, 10);
-				this.setCurrentTab(required ? 'Login' : this.tabs[0]['name']);
+				if (this.currentTab != 'Root User Registration') {
+					this.loginRequired = required;
+					this.popups.login = required;
+					this.popups.registration = required;
+					if (required)
+						setTimeout(() => {
+							const elm = document.getElementsByTagName('input')[0];
+							console.log(elm);
+							elm.focus();
+						}, 10);
+					this.setCurrentTab(required ? 'Login' : this.tabs[0]['name']);
+				}
 			},
 			setCurrentTab: function (ct: string) {
 				this.currentTab = ct;
