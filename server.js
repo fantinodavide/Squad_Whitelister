@@ -2367,7 +2367,8 @@ async function init() {
                                         if (dbRes.expiration > new Date()) {
                                             const discordUser = await discordBot.users.fetch(dbRes.discordUserId);
                                             const discordUsername = discordUser.username + "#" + discordUser.discriminator;
-                                            dbo.collection("players").updateOne({ discord_user_id: dbRes.discordUserId }, { $set: { steamid64: dt.player.steamID, username: dt.player.name, discord_user_id: dbRes.discordUserId } }, { upsert: true }, (err, dbResU) => {
+                                            const oldPlayerData = await dbo.collection("players").findOne({ steamid64: dt.player.steamID, discord_user_id: { $exists: false } }, { seeding_points: 1 })
+                                            dbo.collection("players").updateOne({ discord_user_id: dbRes.discordUserId }, { $set: { steamid64: dt.player.steamID, username: dt.player.name, discord_user_id: dbRes.discordUserId, ...oldPlayerData } }, { upsert: true }, (err, dbResU) => {
                                                 dbo.collection("players").deleteOne({ steamid64: dt.player.steamID, discord_user_id: { $exists: false } }, (err, dbResRem) => {
                                                     if (err) return serverError(null, err)
 
