@@ -126,9 +126,9 @@
 						// this.$nextTick(() => {
 						// 	this.setCurrentTab(this.tabs[0]['name']);
 						// });1
-						setTimeout(() => {
-							this.setCurrentTab(this.tabs[0]['name']);
-						}, 10);
+						// setTimeout(() => {
+						// 	this.setCurrentTab(this.tabs[0]['name']);
+						// }, 10);
 					});
 			},
 			logout: function () {
@@ -156,7 +156,7 @@
 						console.log(elm);
 						elm.focus();
 					}, 10);
-				this.currentTab = required ? 'Login' : 'Clans';
+				this.setCurrentTab(required ? 'Login' : this.tabs[0]['name']);
 			},
 			setCurrentTab: function (ct: string) {
 				this.currentTab = ct;
