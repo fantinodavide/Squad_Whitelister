@@ -2561,7 +2561,7 @@ async function init() {
         const pipeline = [
             {
                 $match: {
-                    steamid64: { $ne: null },
+                    steamid64: steamid64,
                     discord_roles_ids: { $exists: true }
                 }
             },
