@@ -2028,7 +2028,7 @@ async function init() {
                                             if (embeds.length % 10 == 0) {
                                                 if (reply) {
                                                     reply = false;
-                                                    interaction.reply({ embeds: embeds });
+                                                    interaction.reply({ content: Discord.userMention(sender_id), embeds: embeds });
                                                 } else {
                                                     client.channels.cache.get(interaction.channelId).send({ embeds: embeds });
                                                 }
@@ -2076,7 +2076,7 @@ async function init() {
                                             }
                                         }
                                         let reply = await interaction.reply({
-                                            content: Discord.userMention(requestedProfile.id),
+                                            content: Discord.userMention(sender_id),
                                             embeds: [
                                                 new Discord.EmbedBuilder()
                                                     .setColor(config.app_personalization.accent_color)
@@ -2136,7 +2136,7 @@ async function init() {
                             interaction.message.edit({ embeds: [ emb ] })
                             break;
                         case 'profilelink':
-                            console.log(interaction.message.mentions.users, sender_id, interaction.message.mentions.users.find(m => m.id == sender_id));
+                            // console.log(interaction.message.mentions.users, sender_id, interaction.message.mentions.users.find(m => m.id == sender_id));
                             if (interaction.message.mentions.users.find(m => m.id == sender_id) || interaction.message.ephemeral) {
                                 switch (idsplit[ 1 ]) {
                                     case 'steam':
@@ -2163,6 +2163,7 @@ async function init() {
                                                                         }
                                                                         else {
                                                                             interaction.reply({
+                                                                                content: Discord.userMention(sender_id),
                                                                                 embeds: [
                                                                                     new Discord.EmbedBuilder()
                                                                                         .setColor(config.app_personalization.accent_color)
@@ -2196,6 +2197,7 @@ async function init() {
                                                 // await interaction.showModal(modal);
                                                 if (!idsplit[ 3 ]) {
                                                     await interaction.reply({
+                                                        content: Discord.userMention(sender_id),
                                                         embeds: [
                                                             new Discord.EmbedBuilder()
                                                                 .setColor(config.app_personalization.accent_color)
@@ -2220,8 +2222,8 @@ async function init() {
                                                                     if (err) serverError(null, err);
                                                                     else {
                                                                         console.log(dbRes)
-                                                                        if (dbRes.modifiedCount == 1) interaction.reply({ content: "Your Steam account has been unlinked", ephemeral: true });
-                                                                        else interaction.reply({ content: "You don't have a Steam account to unlink", ephemeral: true })
+                                                                        if (dbRes.modifiedCount == 1) interaction.reply({ content: Discord.userMention(sender_id) + "\nYour Steam account has been unlinked", ephemeral: true });
+                                                                        else interaction.reply({ content: Discord.userMention(sender_id) + "\nYou don't have a Steam account to unlink", ephemeral: true })
                                                                     }
                                                                 })
                                                             })
@@ -2234,6 +2236,7 @@ async function init() {
                                 }
                             } else {
                                 interaction.reply({
+                                    content: Discord.userMention(sender_id),
                                     embeds: [
                                         new Discord.EmbedBuilder()
                                             .setColor(config.app_personalization.accent_color)
