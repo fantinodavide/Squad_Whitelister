@@ -24,6 +24,24 @@ const irequire = async module => {
         //process.exit(1)
     }
 }
+var subcomponent_status = {
+    discord_bot: false,
+    squadjs: false
+}
+var subcomponent_data = {
+    discord_bot: {
+        invite_link: ""
+    },
+    squadjs: {
+
+    },
+    database: {
+        root_user_registered: false
+    },
+    updater: {
+        updating: false
+    }
+}
 
 async function init() {
     const packageJSON = await irequire('./package.json');
@@ -107,27 +125,7 @@ async function init() {
 
     var discordBot;
 
-    var subcomponent_status = {
-        discord_bot: false,
-        squadjs: false
-    }
-    var subcomponent_data = {
-        discord_bot: {
-            invite_link: ""
-        },
-        squadjs: {
-
-        },
-        database: {
-            root_user_registered: false
-        },
-        updater: {
-            updating: false
-        }
-    }
-
     start();
-
 
     function start() {
         initConfigFile(() => {
@@ -2286,15 +2284,19 @@ async function init() {
                 if (cb) cb();
             }, 10000)
 
-            let socket = io(`ws://${config.squadjs.websocket.host}:${config.squadjs.websocket.port}`, {
+
+
+            subcomponent_data.socket = io(`ws://${config.squadjs.websocket.host}:${config.squadjs.websocket.port}`, {
                 auth: {
                     token: config.squadjs.websocket.token
-                }
+                },
+                autoUnref: true
             })
-            socket.on("connect", async () => {
+            subcomponent_data.socket.on("connect", async () => {
                 clearTimeout(tm);
                 console.log(" > Connected");
-                // socket.emit("rcon.warn", "76561198419229279", "Whitelister Connected", () => { })
+
+                // subcomponent_data.socket.emit("rcon.warn", "76561198419229279", "Whitelister Connected", () => { })
                 clearInterval(reconnect_int);
                 subcomponent_status.squadjs = true;
 
@@ -2306,24 +2308,24 @@ async function init() {
                     cb();
                 }
             });
-            // socket.on("newListener", async (dt) => {
+            // subcomponent_data.socket.on("newListener", async (dt) => {
             //     console.log(dt)
             // })
-            // socket.onAny(async (dt) => {
+            // subcomponent_data.socket.onAny(async (dt) => {
             //     console.log(dt)
             // })
-            socket.on("disconnect", async () => {
+            subcomponent_data.socket.on("disconnect", async () => {
                 subcomponent_status.squadjs = false;
                 console.log("SquadJS WebSocket\n > Disconnected\n > Trying to reconnect")
                 reconnect_int = setInterval(() => {
-                    if (!subcomponent_status.squadjs) socket.connect()
+                    if (!subcomponent_status.squadjs) subcomponent_data.socket.connect()
                 }, 10 * 1000)
             });
-            socket.on("PLAYER_CONNECTED", async (dt) => {
+            subcomponent_data.socket.on("PLAYER_CONNECTED", async (dt) => {
                 // console.log("Player connected: ", dt)
                 // if (dt.player.steamID == "76561198419229279") {
                 //     setTimeout(() => {
-                //         socket.emit("rcon.warn", "76561198419229279", "This server is using the Whitelister tool", (d) => {
+                //         subcomponent_data.socket.emit("rcon.warn", "76561198419229279", "This server is using the Whitelister tool", (d) => {
                 //             console.log(d)
                 //         })
                 //     }, 5000)
@@ -2341,10 +2343,10 @@ async function init() {
                     console.error("PLAYER_CONNECTED ERROR", error)
                 }
             })
-            // socket.on("PLAYER_DISCONNECTED", async (dt) => {
+            // subcomponent_data.socket.on("PLAYER_DISCONNECTED", async (dt) => {
             //     console.log("Player disconnected: ", dt)
             // })
-            socket.on("CHAT_MESSAGE", async (dt) => {
+            subcomponent_data.socket.on("CHAT_MESSAGE", async (dt) => {
 
                 switch (dt.message.replace(/^(!|\/)/, '')) {
                     case 'test':
@@ -2372,7 +2374,7 @@ async function init() {
                                                     dbo.collection("profilesLinking").deleteOne({ _id: dbRes._id })
                                                     if (err) serverError(null, err);
                                                     else {
-                                                        socket.emit("rcon.warn", dt.steamID, "Linked Discord profile: " + discordUsername, (d) => { })
+                                                        subcomponent_data.socket.emit("rcon.warn", dt.steamID, "Linked Discord profile: " + discordUsername, (d) => { })
                                                         discordUser.send({
                                                             embeds: [
                                                                 new Discord.EmbedBuilder()
@@ -2424,7 +2426,7 @@ async function init() {
 
                             const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
 
-                            socket.emit("rcon.getListPlayers", async (players) => {
+                            subcomponent_data.socket.emit("rcon.getListPlayers", async (players) => {
                                 if (players.length >= (stConf.seeding_start_player_count || 2)) {
                                     if (st.config.tracking_mode == 'incremental') {
                                         let deduction_points = 0;
@@ -2445,7 +2447,7 @@ async function init() {
                                                     // console.log(dbRes);
                                                     const percentageCompleted = Math.min(Math.round(100 * dbRes.value?.seeding_points / requiredPoints), 108);
                                                     if (dbRes.value && dbRes.value?.seeding_points && percentageCompleted % 10 == 0 && percentageCompleted < 100)
-                                                        socket.emit("rcon.warn", p.steamID, `Seeding Reward: \n\n${percentageCompleted}% completed`, (d) => { })
+                                                        subcomponent_data.socket.emit("rcon.warn", p.steamID, `Seeding Reward: \n\n${percentageCompleted}% completed`, (d) => { })
                                                     else if (percentageCompleted == 100) {
                                                         const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
                                                         let message =
@@ -2453,7 +2455,7 @@ async function init() {
                                                         if (st.config.tracking_mode == 'fixed_reset') message += `Active until: ${(new Date(st.config.next_reset)).toLocaleDateString()}`
                                                         else if (st.config.tracking_mode == 'incremental') message += `Don't drop below 100% to keep your reward!`
 
-                                                        socket.emit("rcon.warn", p.steamID, message, (d) => { })
+                                                        subcomponent_data.socket.emit("rcon.warn", p.steamID, message, (d) => { })
                                                     }
 
                                                 }
@@ -2520,7 +2522,7 @@ async function init() {
 
                                     if (subcomponent_status.squadjs) {
                                         setTimeout(() => {
-                                            socket.emit("rcon.warn", dt.player.steamID, msg, (d) => { })
+                                            subcomponent_data.socket.emit("rcon.warn", dt.player.steamID, msg, (d) => { })
                                             console.log(msg);
                                         }, timeoutDelay)
                                     }
@@ -2688,6 +2690,7 @@ async function init() {
             },
             discord_bot: {
                 token: "",
+                server_id: "",
                 whitelist_updates_channel_id: ""
             },
             squadjs: {
@@ -2890,7 +2893,7 @@ async function init() {
     }
     process.on('uncaughtException', function (err) {
         console.error("Uncaught Exception", err.message, err.stack)
-        if (++errorCount >= (args[ "self-pm" ] ? 5 : 0)) {
+        if (++errorCount >= (args[ "self-pm" ] ? 5 : 2)) {
             console.error("Too many errors occurred during the current run. Terminating execution...");
             restartProcess(0, 1, args);
         }
@@ -3003,7 +3006,8 @@ async function init() {
 
 init();
 
-function restartProcess(delay = 5000, code = 0, args = null, forceRestart = false) {
+
+function restartProcess(delay = 0, code = 0, args = null, forceRestart = false) {
     if ((args && args[ "self-pm" ] && args[ "self-pm" ] == true) || forceRestart/*args["using-pm"] && args["using-pm"] == true*/) {
         process.on("exit", function () {
             console.log("Process terminated\nStarting new process");
@@ -3014,11 +3018,33 @@ function restartProcess(delay = 5000, code = 0, args = null, forceRestart = fals
             });
         });
         setTimeout(() => {
-            process.exit(code);
+            closeSubcomponents(() => {
+                process.exit(code);
+            });
         }, delay)
     } else {
-        console.log("Terminating execution. Process manager will restart me.")
-        process.exit(code)
+
+        setTimeout(() => {
+            console.log("Terminating execution. Process manager will restart me.")
+            closeSubcomponents(() => {
+                process.exit(code);
+            });
+        }, delay)
+    }
+
+    function closeSubcomponents(cb) {
+        if (cb) cb();
+        // if (subcomponent_status.squadjs) {
+        //     console.log("SquadJS WebSocket\n > Closing")
+        //     // subcomponent_data.squadjs.socket.removeAllListeners();
+        //     subcomponent_data.squadjs.socket.close(() => {
+        //         console.log(" > Closed")
+        //         if (cb) cb();
+        //     })
+        // } else {
+        //     if (cb) cb();
+
+        // }
     }
 }
 
