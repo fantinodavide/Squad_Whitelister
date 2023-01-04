@@ -224,6 +224,7 @@ async function init() {
                                     } else {
                                         console.error("Couldn't start HTTPS server");
                                     }
+                                    startupDone();
                                 }
                             })
                         })
@@ -241,6 +242,10 @@ async function init() {
                 });
             });
         });
+
+        async function startupDone() {
+            // console.log(await getPlayerGroups("76561198419229279"))
+        }
 
         function resetSeedingTime() {
             _reset();
@@ -569,78 +574,77 @@ async function init() {
                                                 })
                                             }
 
-                                            const pipeline = [
-                                                {
-                                                    $match: {
-                                                        steamid64: { $ne: null },
-                                                        discord_roles_ids: { $exists: true }
-                                                    }
-                                                },
-                                                {
-                                                    $lookup: {
-                                                        from: "lists",
-                                                        let: {
-                                                            pl_roles: "$discord_roles_ids"
-                                                        },
-                                                        pipeline: [
-                                                            {
-                                                                $match: {
-                                                                    output_path: req.params.basePath
-                                                                }
-                                                            },
-                                                            {
-                                                                $addFields: {
-                                                                    int_r: { $setIntersection: [ "$discord_roles", "$$pl_roles" ] }
-                                                                }
-                                                            },
-                                                            {
-                                                                $match: {
-                                                                    int_r: { $ne: [] },
-                                                                }
-                                                            },
-                                                        ],
-                                                        as: "lists",
-                                                    }
-                                                },
-                                                {
-                                                    $lookup: {
-                                                        from: "groups",
-                                                        let: {
-                                                            pl_roles: "$discord_roles_ids"
-                                                        },
-                                                        pipeline: [
-                                                            {
-                                                                $addFields: {
-                                                                    int_r: { $setIntersection: [ "$discord_roles", "$$pl_roles" ] }
-                                                                }
-                                                            },
-                                                            {
-                                                                $match: {
-                                                                    // discord_roles: { $ne: [] },
-                                                                    int_r: { $ne: [] },
-                                                                }
-                                                            },
-                                                        ],
-                                                        as: "groups",
-                                                    }
-                                                },
-                                                {
-                                                    $project: {
-                                                        discord_roles_ids: 0,
-                                                        "groups.discord_roles": 0,
-                                                        "groups.intersection_roles": 0,
-                                                        "groups.int_r": 0,
-                                                        "groups.require_appr": 0,
-                                                    }
-                                                },
-                                                {
-                                                    $match: {
-                                                        lists: { $ne: [] }
-                                                    }
-                                                }
-                                            ]
-
                                             if (!req.params.clan_code) {
+                                                const pipeline = [
+                                                    {
+                                                        $match: {
+                                                            steamid64: { $ne: null },
+                                                            discord_roles_ids: { $exists: true }
+                                                        }
+                                                    },
+                                                    {
+                                                        $lookup: {
+                                                            from: "lists",
+                                                            let: {
+                                                                pl_roles: "$discord_roles_ids"
+                                                            },
+                                                            pipeline: [
+                                                                {
+                                                                    $match: {
+                                                                        output_path: req.params.basePath
+                                                                    }
+                                                                },
+                                                                {
+                                                                    $addFields: {
+                                                                        int_r: { $setIntersection: [ "$discord_roles", "$$pl_roles" ] }
+                                                                    }
+                                                                },
+                                                                {
+                                                                    $match: {
+                                                                        int_r: { $ne: [] },
+                                                                    }
+                                                                },
+                                                            ],
+                                                            as: "lists",
+                                                        }
+                                                    },
+                                                    {
+                                                        $lookup: {
+                                                            from: "groups",
+                                                            let: {
+                                                                pl_roles: "$discord_roles_ids"
+                                                            },
+                                                            pipeline: [
+                                                                {
+                                                                    $addFields: {
+                                                                        int_r: { $setIntersection: [ "$discord_roles", "$$pl_roles" ] }
+                                                                    }
+                                                                },
+                                                                {
+                                                                    $match: {
+                                                                        // discord_roles: { $ne: [] },
+                                                                        int_r: { $ne: [] },
+                                                                    }
+                                                                },
+                                                            ],
+                                                            as: "groups",
+                                                        }
+                                                    },
+                                                    {
+                                                        $project: {
+                                                            discord_roles_ids: 0,
+                                                            "groups.discord_roles": 0,
+                                                            "groups.intersection_roles": 0,
+                                                            "groups.int_r": 0,
+                                                            "groups.require_appr": 0,
+                                                        }
+                                                    },
+                                                    {
+                                                        $match: {
+                                                            lists: { $ne: [] }
+                                                        }
+                                                    }
+                                                ]
                                                 dbo.collection("players").aggregate(pipeline).toArray((err, dbRes) => {
                                                     if (err) {
                                                         res.sendStatus(500);
@@ -2024,7 +2028,7 @@ async function init() {
                                             if (embeds.length % 10 == 0) {
                                                 if (reply) {
                                                     reply = false;
-                                                    interaction.reply({ embeds: embeds });
+                                                    interaction.reply({ content: Discord.userMention(sender_id), embeds: embeds });
                                                 } else {
                                                     client.channels.cache.get(interaction.channelId).send({ embeds: embeds });
                                                 }
@@ -2050,28 +2054,29 @@ async function init() {
                                         if (dbRes && dbRes.steamid64) {
                                             fields.push({ name: 'SteamID', value: Discord.hyperlink(dbRes.steamid64, "https://steamcommunity.com/profiles/" + dbRes.steamid64), inline: true })
 
-                                            const allGroups = await dbo.collection("groups").find().toArray();
-                                            const plWlGroups = (await dbo.collection("whitelists").find({ steamid64: dbRes.steamid64, approved: true, $or: [ { expiration: { $gt: new Date() } }, { expiration: null }, { expiration: false } ] }).toArray()).map(g => ({ name: allGroups.find(_g => _g._id.toString() == g.id_group.toString())?.group_name || 'Unknown', expiration: g.expiration }));
+                                            // const allGroups = await dbo.collection("groups").find().toArray();
+                                            // const plWlGroups = (await dbo.collection("whitelists").find({ steamid64: dbRes.steamid64, approved: true, $or: [ { expiration: { $gt: new Date() } }, { expiration: null }, { expiration: false } ] }).toArray()).map(g => ({ name: allGroups.find(_g => _g._id.toString() == g.id_group.toString())?.group_name || 'Unknown', expiration: g.expiration }));
                                             const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
                                             const stConf = st.config;
                                             const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
                                             const percentageCompleted = Math.round(100 * (dbRes.seeding_points || 0) / requiredPoints);
-                                            const reward_group = allGroups.find(g => g._id == stConf.reward_group_id)
-                                            let groups = plWlGroups || [];
+                                            // const reward_group = allGroups.find(g => g._id == stConf.reward_group_id)
+                                            // let groups = plWlGroups || [];
 
                                             if (stConf.reward_enabled == 'true') {
-                                                if (percentageCompleted >= 100) groups.push({ name: reward_group.group_name, expiration: stConf.tracking_mode == 'fixed_reset' ? new Date(stConf.next_reset) : null })
+                                                // if (percentageCompleted >= 100) groups.push({ name: reward_group.group_name, expiration: stConf.tracking_mode == 'fixed_reset' ? new Date(stConf.next_reset) : null })
                                                 fields.push({ name: 'Seeding Reward', value: `${percentageCompleted}%`, inline: false })
                                             }
 
-                                            for (let g of groups) {
+                                            const groups = await getPlayerGroups(dbRes.steamid64);
+                                            for (let g of groups.filter(e => e.approved)) {
                                                 let fVal = 'Unlimited'//`  ${g.name}`;
                                                 if (g.expiration) fVal = `Expired ${Discord.time(g.expiration, 'R')}`
                                                 fields.push({ name: g.name, value: fVal, inline: true })
                                             }
                                         }
                                         let reply = await interaction.reply({
-                                            content: Discord.userMention(requestedProfile.id),
+                                            content: Discord.userMention(sender_id),
                                             embeds: [
                                                 new Discord.EmbedBuilder()
                                                     .setColor(config.app_personalization.accent_color)
@@ -2131,7 +2136,7 @@ async function init() {
                             interaction.message.edit({ embeds: [ emb ] })
                             break;
                         case 'profilelink':
-                            console.log(interaction.message.mentions.users, sender_id, interaction.message.mentions.users.find(m => m.id == sender_id));
+                            // console.log(interaction.message.mentions.users, sender_id, interaction.message.mentions.users.find(m => m.id == sender_id));
                             if (interaction.message.mentions.users.find(m => m.id == sender_id) || interaction.message.ephemeral) {
                                 switch (idsplit[ 1 ]) {
                                     case 'steam':
@@ -2158,6 +2163,7 @@ async function init() {
                                                                         }
                                                                         else {
                                                                             interaction.reply({
+                                                                                content: Discord.userMention(sender_id),
                                                                                 embeds: [
                                                                                     new Discord.EmbedBuilder()
                                                                                         .setColor(config.app_personalization.accent_color)
@@ -2191,6 +2197,7 @@ async function init() {
                                                 // await interaction.showModal(modal);
                                                 if (!idsplit[ 3 ]) {
                                                     await interaction.reply({
+                                                        content: Discord.userMention(sender_id),
                                                         embeds: [
                                                             new Discord.EmbedBuilder()
                                                                 .setColor(config.app_personalization.accent_color)
@@ -2215,8 +2222,8 @@ async function init() {
                                                                     if (err) serverError(null, err);
                                                                     else {
                                                                         console.log(dbRes)
-                                                                        if (dbRes.modifiedCount == 1) interaction.reply({ content: "Your Steam account has been unlinked", ephemeral: true });
-                                                                        else interaction.reply({ content: "You don't have a Steam account to unlink", ephemeral: true })
+                                                                        if (dbRes.modifiedCount == 1) interaction.reply({ content: Discord.userMention(sender_id) + "\nYour Steam account has been unlinked", ephemeral: true });
+                                                                        else interaction.reply({ content: Discord.userMention(sender_id) + "\nYou don't have a Steam account to unlink", ephemeral: true })
                                                                     }
                                                                 })
                                                             })
@@ -2229,6 +2236,7 @@ async function init() {
                                 }
                             } else {
                                 interaction.reply({
+                                    content: Discord.userMention(sender_id),
                                     embeds: [
                                         new Discord.EmbedBuilder()
                                             .setColor(config.app_personalization.accent_color)
@@ -2338,13 +2346,13 @@ async function init() {
             // })
             socket.on("CHAT_MESSAGE", async (dt) => {
 
-                switch (dt.message) {
+                switch (dt.message.replace(/^(!|\/)/, '')) {
                     case 'test':
                         break;
                     case 'playerinfo':
                         console.log(dt);
                         break;
-                    case '!profile':
+                    case 'profile':
                         welcomeMessage(dt, 0)
                         break;
                     default:
@@ -2393,7 +2401,17 @@ async function init() {
             function seedingTimeTracking() {
                 const checkIntervalMinutes = 1;
                 let firstStart = true;
-                if (firstStart) _check()
+                if (firstStart) {
+
+                    // welcomeMessage({
+                    //     player: {
+                    //         steamID: "76561198419229279",
+                    //         name: "JetDave"
+                    //     }
+                    // }, 0)
+
+                    _check()
+                }
                 setInterval(_check, checkIntervalMinutes * 60 * 1000)
                 // setInterval(_check, 5000)
                 function _check() {
@@ -2407,40 +2425,41 @@ async function init() {
                             const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
 
                             socket.emit("rcon.getListPlayers", async (players) => {
-                                if (st.config.tracking_mode == 'incremental' && players.length > 1) {
-                                    let deduction_points = 0;
+                                if (players.length >= (stConf.seeding_start_player_count || 2)) {
+                                    if (st.config.tracking_mode == 'incremental') {
+                                        let deduction_points = 0;
 
-                                    if (st.config.time_deduction.option == 'point_minute') deduction_points = st.config.time_deduction.value
-                                    else if (st.config.time_deduction.option == 'perc_minute') deduction_points = st.config.time_deduction.value * requiredPoints / 100;
+                                        if (st.config.time_deduction.option == 'point_minute') deduction_points = st.config.time_deduction.value
+                                        else if (st.config.time_deduction.option == 'perc_minute') deduction_points = st.config.time_deduction.value * requiredPoints / 100;
 
-                                    await dbo.collection("players").updateMany({ steamid64: { $nin: players }, seeding_points: { $gt: deduction_points } }, { $inc: { seeding_points: -deduction_points } })
-                                }
-
-                                if (players.length <= stConf.seeding_player_threshold) {
-                                    // console.log("current seeders", objArrToValArr(players, "name"));
-
-                                    for (let p of players) {
-                                        dbo.collection("players").findOneAndUpdate({ steamid64: p.steamID }, { $set: { steamid64: p.steamID, username: p.name }, $inc: { seeding_points: 1 } }, { upsert: true, returnNewDocument: true }, async (err, dbRes) => {
-                                            if (err) serverError(null, err)
-                                            else if (stConf.reward_enabled == "true") {
-                                                // console.log(dbRes);
-                                                const percentageCompleted = Math.min(Math.round(100 * dbRes.value?.seeding_points / requiredPoints), 108);
-                                                if (dbRes.value && dbRes.value?.seeding_points && percentageCompleted % 10 == 0 && percentageCompleted < 100)
-                                                    socket.emit("rcon.warn", p.steamID, `Seeding Reward: \n\n${percentageCompleted}% completed`, (d) => { })
-                                                else if (percentageCompleted == 100) {
-                                                    const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
-                                                    let message =
-                                                        `Seeding Reward Completed!\n\nYou have received: ${reward_group.group_name}\n`
-                                                    if (st.config.tracking_mode == 'fixed_reset') message += `Active until: ${(new Date(st.config.next_reset)).toLocaleDateString()}`
-                                                    else if (st.config.tracking_mode == 'incremental') message += `Don't drop below 100% to keep your reward!`
-
-                                                    socket.emit("rcon.warn", p.steamID, message, (d) => { })
-                                                }
-
-                                            }
-                                        })
+                                        await dbo.collection("players").updateMany({ steamid64: { $nin: players.map(p => p.steamID) }, seeding_points: { $gt: deduction_points } }, { $inc: { seeding_points: -deduction_points } })
                                     }
 
+                                    if (players.length <= stConf.seeding_player_threshold) {
+                                        // console.log("current seeders", objArrToValArr(players, "name"));
+
+                                        for (let p of players) {
+                                            dbo.collection("players").findOneAndUpdate({ steamid64: p.steamID }, { $set: { steamid64: p.steamID, username: p.name }, $inc: { seeding_points: 1 } }, { upsert: true, returnNewDocument: true }, async (err, dbRes) => {
+                                                if (err) serverError(null, err)
+                                                else if (stConf.reward_enabled == "true") {
+                                                    // console.log(dbRes);
+                                                    const percentageCompleted = Math.min(Math.round(100 * dbRes.value?.seeding_points / requiredPoints), 108);
+                                                    if (dbRes.value && dbRes.value?.seeding_points && percentageCompleted % 10 == 0 && percentageCompleted < 100)
+                                                        socket.emit("rcon.warn", p.steamID, `Seeding Reward: \n\n${percentageCompleted}% completed`, (d) => { })
+                                                    else if (percentageCompleted == 100) {
+                                                        const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
+                                                        let message =
+                                                            `Seeding Reward Completed!\n\nYou have received: ${reward_group.group_name}\n`
+                                                        if (st.config.tracking_mode == 'fixed_reset') message += `Active until: ${(new Date(st.config.next_reset)).toLocaleDateString()}`
+                                                        else if (st.config.tracking_mode == 'incremental') message += `Don't drop below 100% to keep your reward!`
+
+                                                        socket.emit("rcon.warn", p.steamID, message, (d) => { })
+                                                    }
+
+                                                }
+                                            })
+                                        }
+                                    }
                                 }
                             })
                         })
@@ -2476,20 +2495,14 @@ async function init() {
                                     let msg = "Welcome " + dt.player.name + "\n\n";
 
                                     if (subcomponent_status.squadjs) {
-                                        let groups = [];
-                                        if (percentageCompleted >= 100) groups.push({ name: reward_group.group_name, expiration: stConf.tracking_mode == 'fixed_reset' ? new Date(stConf.next_reset) : null })
+                                        let groups = (await getPlayerGroups(dt.player.steamID)).filter(e => e.approved);
 
-                                        if (dbRes[ 0 ] && dbRes[ 0 ].group_full_data[ 0 ]) {
-                                            groups.push({ name: dbRes[ 0 ].group_full_data[ 0 ].group_name, expiration: dbRes[ 0 ].expiration })
-                                            // msg +=
-                                            //     "Group: " + dbRes[ 0 ].group_full_data[ 0 ].group_name + "\n" +
-                                            //     "Expiration: " + (dbRes[ 0 ].expiration ? ((dbRes[ 0 ].expiration - new Date()) / 1000 / 60 / 60).toFixed(1) + " h" : "Never") + "\n"
-                                        }
                                         if (groups.length > 0) {
                                             msg += `Groups:\n`
                                             for (let g of groups) {
-                                                msg += `  ${g.name}`
-                                                if (g.expiration) msg += `: ${((g.expiration - new Date()) / 1000 / 60 / 60).toFixed(1) + " h"}`
+                                                msg += ` - ${g.name}`
+                                                if (g.expiration) msg += `: ${((g.expiration - new Date()) / 1000 / 60 / 60).toFixed(1) + "h left"}`
+                                                msg += '\n'
                                             }
                                         }
                                     }
@@ -2500,14 +2513,15 @@ async function init() {
                                             discordUsername = discordUser.username + "#" + discordUser.discriminator;
                                         }
 
-                                        msg += "\n\nDiscord Username: " + (discordUsername != "" ? discordUsername : "Not linked")
-                                        msg += "\n\nSeeding Reward: " + percentageCompleted + "%"
+                                        msg += "\nSeeding Reward: " + percentageCompleted + "%"
+                                        msg += "\nDiscord Username: " + (discordUsername != "" ? discordUsername : "Not linked")
                                     }
 
 
                                     if (subcomponent_status.squadjs) {
                                         setTimeout(() => {
                                             socket.emit("rcon.warn", dt.player.steamID, msg, (d) => { })
+                                            console.log(msg);
                                         }, timeoutDelay)
                                     }
                                 }
@@ -2522,8 +2536,90 @@ async function init() {
         }
     }
 
+    async function getPlayerGroups(steamid64) {
+        const dbo = await mongoConn()
+        const allGroups = await dbo.collection('groups').find().toArray()
+        const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
+        const stConf = st.config;
+        const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
+        const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
+        let playerGroups = [];
+        // GROUP FORMAT: { name: "groupName", expiration: new Date() }
+        playerGroups.push(...(await dbo.collection('whitelists').find({ steamid64: steamid64 }).toArray()).map(_e => {
+            const g = allGroups.find(_g => _g._id.toString() == _e.id_group.toString());
+            let e = {}
+            e.id = _e.id_group.toString()
+            e.name = g.group_name
+            e.expiration = _e.expiration
+            e.approved = _e.approved
+            e.source = 'Whitelists'
+            return e;
+        }))
 
-    function mongoConn(connCallback, override = false) {
+        const pipeline = [
+            {
+                $match: {
+                    steamid64: { $ne: null },
+                    discord_roles_ids: { $exists: true }
+                }
+            },
+            {
+                $lookup: {
+                    from: "groups",
+                    let: {
+                        pl_roles: "$discord_roles_ids"
+                    },
+                    pipeline: [
+                        {
+                            $addFields: {
+                                int_r: { $setIntersection: [ "$discord_roles", "$$pl_roles" ] }
+                            }
+                        },
+                        {
+                            $match: {
+                                // discord_roles: { $ne: [] },
+                                int_r: { $ne: [] },
+                            }
+                        },
+                    ],
+                    as: "groups",
+                }
+            },
+            {
+                $project: {
+                    discord_roles_ids: 0,
+                    "groups.discord_roles": 0,
+                    "groups.intersection_roles": 0,
+                    "groups.int_r": 0,
+                    "groups.require_appr": 0,
+                }
+            },
+            {
+                $match: {
+                    lists: { $ne: [] }
+                }
+            }
+        ]
+        const dbResP = await dbo.collection("players").aggregate(pipeline).toArray()
+        for (let w of dbResP) {
+            const percentageCompleted = Math.round(100 * w.seeding_points / requiredPoints);
+            if (percentageCompleted >= 100) playerGroups.push({ id: reward_group._id?.toString(), name: reward_group.group_name, expiration: stConf.tracking_mode == 'fixed_reset' ? new Date(stConf.next_reset) : false, approved: stConf.reward_enabled == 'true', source: 'Seeding' })
+
+            for (let g of w.groups) {
+                playerGroups.push({
+                    id: g._id,
+                    name: g.group_name,
+                    expiration: false,
+                    approved: true,
+                    source: 'Discord'
+                })
+            }
+        }
+
+        return playerGroups
+    }
+
+    async function mongoConn(connCallback = () => { }, override = false) {
         if (!mongodb_global_connection || override) {
             let url;
             let dbName// = config.database.mongo.database;
@@ -2539,9 +2635,11 @@ async function init() {
                 if (err) console.error(err)
                 var dbo = dbName ? db.db(dbName) : db.db();
                 connCallback(dbo);
+                return dbo
             });
         } else {
             connCallback(mongodb_conn)
+            return mongodb_conn
         }
     }
 
