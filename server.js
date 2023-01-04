@@ -2345,7 +2345,7 @@ async function init() {
                         console.log(dt);
                         break;
                     case '!profile':
-                        welcomeMessage(dt)
+                        welcomeMessage(dt, 0)
                         break;
                     default:
                         if (dt.message.length == 6 && !dt.message.includes(' ')) {
@@ -2430,10 +2430,7 @@ async function init() {
                                                 else if (percentageCompleted == 100) {
                                                     const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
                                                     let message =
-                                                        `Seeding Reward Completed!
-                                                        
-                                                        You have received: ${reward_group.group_name}
-                                                        `
+                                                        `Seeding Reward Completed!\n\nYou have received: ${reward_group.group_name}\n`
                                                     if (st.config.tracking_mode == 'fixed_reset') message += `Active until: ${(new Date(st.config.next_reset)).toLocaleDateString()}`
                                                     else if (st.config.tracking_mode == 'incremental') message += `Don't drop below 100% to keep your reward!`
 
@@ -2451,13 +2448,8 @@ async function init() {
                 }
             }
 
-            async function welcomeMessage(dt) {
-                const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
-                const stConf = st.config;
-                const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
-                const percentageCompleted = Math.min(Math.round(100 * dbRes.value.seeding_points / requiredPoints), 108);
-                const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
-                mongoConn(dbo => {
+            async function welcomeMessage(dt, timeoutDelay = 5000) {
+                mongoConn(async dbo => {
                     const pipeline = [
                         { $match: { steamid64: dt.player.steamID } },
                         {
@@ -2475,6 +2467,12 @@ async function init() {
                             dbo.collection("players").findOne({ steamid64: dt.player.steamID }, async (err, dbResP) => {
                                 if (err) serverError(null, err);
                                 else {
+                                    const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
+                                    const stConf = st.config;
+                                    const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
+                                    const percentageCompleted = Math.round(100 * dbResP.seeding_points / requiredPoints);
+                                    const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
+
                                     let msg = "Welcome " + dt.player.name + "\n\n";
 
                                     if (subcomponent_status.squadjs) {
@@ -2488,7 +2486,7 @@ async function init() {
                                             //     "Expiration: " + (dbRes[ 0 ].expiration ? ((dbRes[ 0 ].expiration - new Date()) / 1000 / 60 / 60).toFixed(1) + " h" : "Never") + "\n"
                                         }
                                         if (groups.length > 0) {
-                                            msg += `Groups:`
+                                            msg += `Groups:\n`
                                             for (let g of groups) {
                                                 msg += `  ${g.name}`
                                                 if (g.expiration) msg += `: ${((g.expiration - new Date()) / 1000 / 60 / 60).toFixed(1) + " h"}`
@@ -2502,15 +2500,15 @@ async function init() {
                                             discordUsername = discordUser.username + "#" + discordUser.discriminator;
                                         }
 
-                                        msg += "Discord Username: " + (discordUsername != "" ? discordUsername : "Not linked")
-                                        msg += "Seeding Reward: " + percentageCompleted
+                                        msg += "\n\nDiscord Username: " + (discordUsername != "" ? discordUsername : "Not linked")
+                                        msg += "\n\nSeeding Reward: " + percentageCompleted + "%"
                                     }
 
 
                                     if (subcomponent_status.squadjs) {
                                         setTimeout(() => {
                                             socket.emit("rcon.warn", dt.player.steamID, msg, (d) => { })
-                                        }, 5000)
+                                        }, timeoutDelay)
                                     }
                                 }
                             })
