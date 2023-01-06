@@ -1964,9 +1964,11 @@ async function init() {
                 if (interaction.isChatInputCommand()) {
                     switch (interaction.commandName) {
                         case 'ping':
-                            await interaction.reply('Pong!');
+                            await interaction.deferReply();
+                            await interaction.followUp('Pong!');
                             break;
                         case 'listclans':
+                            await interaction.deferReply();
                             mongoConn((dbo) => {
                                 dbo.collection("lists").find().toArray((err, dbResL) => {
                                     const pipeline = [
@@ -2033,15 +2035,17 @@ async function init() {
                                                 embeds = [];
                                             }
                                         }
-                                        if (embeds.length > 0) client.channels.cache.get(interaction.channelId).send({ embeds: embeds });
+                                        if (embeds.length > 0) client.channels.cache.get(interaction.channelId).followUp({ embeds: embeds });
                                     })
                                 })
                             })
                             break;
                         case 'profile':
+                            let publicMessage = interaction.options.getUser('user') != null;
+                            let requestedProfile = publicMessage ? interaction.options.getUser('user') : sender
+                            const ephemeral = !publicMessage;
+                            await interaction.deferReply({ ephemeral: ephemeral });
                             mongoConn((dbo) => {
-                                let publicMessage = interaction.options.getUser('user') != null;
-                                let requestedProfile = publicMessage ? interaction.options.getUser('user') : sender
 
                                 dbo.collection("players").findOne({ discord_user_id: (publicMessage ? requestedProfile.id : sender_id) }, async (err, dbRes) => {
                                     if (err) serverError(null, err);
@@ -2073,8 +2077,8 @@ async function init() {
                                                 fields.push({ name: g.name, value: fVal, inline: true })
                                             }
                                         }
-                                        let reply = await interaction.reply({
-                                            content: Discord.userMention(sender_id),
+                                        let reply = await interaction.followUp({
+                                            content: Discord.userMention(requestedProfile.id),
                                             embeds: [
                                                 new Discord.EmbedBuilder()
                                                     .setColor(config.app_personalization.accent_color)
@@ -2099,7 +2103,7 @@ async function init() {
                                                                 .setStyle(Discord.ButtonStyle.Success))
                                                     )
                                             ],
-                                            ephemeral: !publicMessage
+                                            ephemeral: ephemeral
                                         });
                                         if (!reply.interaction.ephemeral) {
                                             setTimeout(async () => {
