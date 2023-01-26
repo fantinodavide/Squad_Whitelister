@@ -52,6 +52,10 @@
 				required: false,
 				default: false,
 			},
+			readonly: {
+				required: false,
+				default: false,
+			},
 		},
 		data() {
 			return {
@@ -96,7 +100,7 @@
 <template>
 	<label :class="{ selectVisible: options.length > 0 }"
 		>{{ text }}
-		<input v-if="!inputHidden" :type="type" :value="value" :placeholder="placeholder" @change="valueUpdate" :optional="optional" />
+		<input v-if="!inputHidden" :type="type" :value="value" :placeholder="placeholder" @change="valueUpdate" :optional="optional" :readonly="readonly" />
 		<select v-if="!selectHidden && options.length > 0" @change="optionUpdate">
 			<option value="0" selected hidden>Select</option>
 			<option v-for="o of options" :key="o[oIdKey]" :value="oIdKey && o[oIdKey] ? o[oIdKey] : o" :selected="(oIdKey && o[oIdKey] ? o[oIdKey] : o) == optRet">{{ oTitleKey && o[oTitleKey] ? o[oTitleKey] : o }}</option>
@@ -133,6 +137,8 @@
 		border-top-right-radius: 10px;
 		border-bottom-right-radius: 10px;
 		height: 100%;
+		width: auto;
+		flex-shrink: 1;
 		/* width: auto; */
 		/* margin: 0; */
 	}

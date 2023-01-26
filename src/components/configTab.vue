@@ -21,6 +21,9 @@
 				discord_channels: [] as Array<any>,
 				discord_invite_link: '' as string,
 				game_groups: [] as Array<any>,
+				subcomponent_status: {
+					squadjs: false,
+				},
 			};
 		},
 		methods: {
@@ -124,6 +127,15 @@
 						// return (this.game_groups = [{ _id: '', group_name: 'None', group_permissions: [], require_appr: false }, ...dt]);
 					});
 			},
+			getSquadJSStatus: async function () {
+				await fetch('/api/subcomponent/read/squadjs/status')
+					.then((res) => res.json())
+					.then((dt) => {
+						console.log(dt);
+						return (this.subcomponent_status.squadjs = dt);
+						// return (this.game_groups = [{ _id: '', group_name: 'None', group_permissions: [], require_appr: false }, ...dt]);
+					});
+			},
 			openNewTab: function (url: string) {
 				window.open(url, '_blank');
 			},
@@ -133,6 +145,7 @@
 			this.getDiscordChannels();
 			this.getDiscordInviteLink();
 			this.getGameGroups();
+			this.getSquadJSStatus();
 		},
 		components: { SideMenu, tab, confLabelInput },
 	};
@@ -144,6 +157,9 @@
 		<div v-if="!['discord_bot', 'seeding_tracker'].includes(selectedMenu)" class="ct">
 			<!-- <label v-for="k of Object.keys(currentConfigMenu)">{{ getTranslation(k) }}<input :type="getInputType(currentConfigMenu[k])" v-model="currentConfigMenu[k]" /></label> -->
 			<confLabelInput v-for="k of Object.keys(currentConfigMenu)" :key="k" :confKey="k" :modelValue="currentConfigMenu[k]" @update:modelValue="(nv) => (currentConfigMenu[k] = nv)" />
+			<!-- <h4 v-if="selectedMenu == 'squadjs'">Websocket is {{ subcomponent_status.squadjs ? '' : 'Not ' }} Connected</h4> -->
+			<AdvancedInput v-if="selectedMenu == 'squadjs'" text="Websocket" name="" :value="subcomponent_status.squadjs ? 'Connected' : 'Not Connected'" optional readonly />
+
 			<button style="float: right; width: 100px" @click="$emit('confirm', { title: 'Save server configuration?', text: 'Are you sure you want to change the server configuration? Bad configuration may result into multiple failures or temporary data loss.', callback: sendConfigToServer })">Save</button>
 		</div>
 		<div v-else-if="selectedMenu == 'discord_bot'" class="ct">

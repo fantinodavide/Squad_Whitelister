@@ -369,10 +369,20 @@ fieldset {
 	border-radius: 10px;
 	transition: all 100ms ease-in-out;
 }
+
 fieldset:hover {
 	border-color: #fff4;
 }
 
-b{
+b {
 	font-weight: 500;
+}
+
+*[readonly]:focus {
+	outline: none;
+}
+*[readonly] {
+	cursor: default;
+	/* text-align: right; */
+	width: min-content !important;
 }
