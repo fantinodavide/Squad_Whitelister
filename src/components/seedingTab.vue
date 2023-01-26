@@ -94,7 +94,7 @@
 							.map((original: any) => ({
 								...original,
 								approved: this.seeding_config.reward_enabled == 'true' && original.seeding_points >= (this.seeding_config.reward_needed_time.value * this.seeding_config.reward_needed_time.option) / 1000 / 60,
-								percentageCompleted: Math.min(Math.round((original.seeding_points * 100) / ((this.seeding_config.reward_needed_time.value * this.seeding_config.reward_needed_time.option) / 1000 / 60))),
+								percentageCompleted: Math.min(Math.floor((original.seeding_points * 100) / ((this.seeding_config.reward_needed_time.value * this.seeding_config.reward_needed_time.option) / 1000 / 60))),
 							}))
 							.sort((a: any, b: any) => b.percentageCompleted - a.percentageCompleted);
 						console.log(dt);
