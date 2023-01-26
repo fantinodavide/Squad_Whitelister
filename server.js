@@ -2473,23 +2473,23 @@ async function init() {
                                                         if (st.config.tracking_mode == 'fixed_reset') message += `Active until: ${(new Date(st.config.next_reset)).toLocaleDateString()}`
                                                         else if (st.config.tracking_mode == 'incremental') message += `Don't drop below 100% to keep your reward!`
 
+                                                        subcomponent_data.socket.emit("rcon.warn", p.steamID, message, (d) => { })
                                                         if (subcomponent_status.discord_bot) {
                                                             const embeds = [
                                                                 new Discord.EmbedBuilder()
                                                                     .setColor(config.app_personalization.accent_color)
-                                                                    .setTitle(`${dbRes.username} received the Seeding Reward!`)
+                                                                    .setTitle(`${p.name} received the Seeding Reward!`)
                                                                     // .setDescription(formatEmbed("Manager", ) + formatEmbed("List", dbResList.title)),
                                                                     .addFields(
-                                                                        { name: 'Username', value: dbRes.username, inline: true },
-                                                                        { name: 'SteamID', value: Discord.hyperlink(dbRes.steamid64, "https://steamcommunity.com/profiles/" + insWlPlayer.steamid64), inline: true },
-                                                                        { name: 'Discord User', value: dbRes.discord_user_id ? Discord.userMention(dbRes.discord_user_id) : 'Not Linked', inline: false },
-                                                                        { name: 'Reward Group', value: reward_group.group_name, inline: false }
+                                                                        { name: 'Username', value: p.name, inline: true },
+                                                                        { name: 'SteamID', value: Discord.hyperlink(p.steamID, "https://steamcommunity.com/profiles/" + p.steamID), inline: true },
+                                                                        { name: 'Discord User', value: dbRes.value.discord_user_id ? Discord.userMention(dbRes.value.discord_user_id) : 'Not Linked', inline: false },
+                                                                        { name: 'Reward Group', value: reward_group.group_name, inline: true }
+                                                                        // { name: 'Expiration', value: reward_group.group_name, inline: true }
                                                                     )
                                                             ]
                                                             discordBot.channels.cache.get(stConf.discord_seeding_reward_channel).send({ embeds: embeds })
                                                         }
-
-                                                        subcomponent_data.socket.emit("rcon.warn", p.steamID, message, (d) => { })
                                                     }
 
                                                 }
