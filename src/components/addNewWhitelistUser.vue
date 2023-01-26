@@ -2,6 +2,7 @@
 	import { assertExpressionStatement } from '@babel/types';
 	import $ from 'jquery';
 	import popup from './popup.vue';
+	import AdvancedInput from './advancedInput.vue';
 </script>
 
 <script lang="ts">
@@ -9,6 +10,9 @@
 		data() {
 			return {
 				game_groups: [] as Array<any>,
+				extRet: {
+					durationHours: null as any,
+				},
 			};
 		},
 		props: {
@@ -64,14 +68,31 @@
 </script>
 
 <template>
-	<popup ref="popupLogin" title="Add Player" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confBtnClick" :hide-cancel="false">
+	<popup ref="popupLogin" title="Add Player" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confBtnClick" :hide-cancel="false" :extRetProp="extRet">
 		<input name="username" type="text" placeholder="Username" />
 		<input name="steamid64" type="text" regex="^\d{17}$" placeholder="SteamID64" />
 		<select name="group">
 			<option hidden selected value>Select a group</option>
 			<option v-for="g of game_groups" :value="g._id">{{ g.group_name }}</option>
 		</select>
-		<label>Duration (hours)<input name="durationHours" type="number" placeholder="Unlimited" style="width: 100px" optional /></label>
+		<!-- <label>Duration (hours)<input name="durationHours" type="number" placeholder="Unlimited" style="width: 100px" optional /></label> -->
+		<AdvancedInput
+			style="margin: 5px 0; height: 30px"
+			text="Duration"
+			name="durationHoursAdv"
+			type="number"
+			placeholder="Unlimited"
+			oTitleKey="title"
+			oIdKey="value"
+			:options="[
+				{ title: 'Hours', value: 1 },
+				{ title: 'Days', value: 24 },
+				{ title: 'Weeks', value: 7 * 24 },
+				{ title: 'Months', value: 30 * 24 },
+			]"
+			@valueChanged="extRet.durationHours = +$event.value * $event.option"
+			optional
+		/>
 		<input name="discordUsername" type="text" placeholder="Discord Username" optional regex="^.{3,32}#[0-9]{4}$" />
 	</popup>
 </template>
