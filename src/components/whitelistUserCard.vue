@@ -134,6 +134,7 @@
 		border: 3px solid var(--accent-color);
 		background: #0000;
 		margin: 10px;
+		flex-shrink: 0;
 	}
 
 	.dot.fill {
@@ -168,6 +169,9 @@
 	.gameGroupCard {
 		border: none;
 		background: #2f2f2f;
+		width: -webkit-fill-available;
+		overflow-x: auto;
+		/* padding: 0px 10px; */
 	}
 
 	.mainGroupContainer {
@@ -177,10 +181,11 @@
 		display: flex;
 		flex-direction: row;
 		align-items: center;
-		overflow: hidden;
 		width: 0px;
+		overflow: hidden;
 		overflow-x: auto;
-		margin-right: 10px;
+		margin-right: 10px !important;
+		min-width: 100px;
 	}
 
 	.groupName {

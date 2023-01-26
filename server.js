@@ -70,6 +70,9 @@ async function init() {
     const { mainModule } = await irequire("process");
     const Discord = await irequire("discord.js");
     const { io } = await irequire("socket.io-client");
+    const dns = await irequire('dns')
+    const util = require('util');
+    const lookup = util.promisify(dns.lookup);
 
     try {
         (await irequire('dotenv')).config();
@@ -914,6 +917,11 @@ async function init() {
             res.send(roles)
         })
         // app.use('/api/whitelist/*', removeExpiredPlayers);
+
+        // app.use('/api/subcomponent/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
+        app.get('/api/subcomponent/read/:subComp/status', async (req, res, next) => {
+            res.send(subcomponent_status[ req.params.subComp ])
+        })
         app.use('/api/config/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
         app.get('/api/config/read/getFull', async (req, res, next) => {
             let cpyConf = { ...config };
@@ -2061,7 +2069,7 @@ async function init() {
                                             const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
                                             const stConf = st.config;
                                             const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
-                                            const percentageCompleted = Math.round(100 * (dbRes.seeding_points || 0) / requiredPoints);
+                                            const percentageCompleted = Math.floor(100 * (dbRes.seeding_points || 0) / requiredPoints);
                                             // const reward_group = allGroups.find(g => g._id == stConf.reward_group_id)
                                             // let groups = plWlGroups || [];
 
@@ -2278,7 +2286,7 @@ async function init() {
         }
     }
 
-    function SquadJSWebSocket(cb = null) {
+    async function SquadJSWebSocket(cb = null) {
         let reconnect_int = null;
         console.log("SquadJS WebSocket")
         if (config.squadjs.websocket && config.squadjs.websocket.token != "" && config.squadjs.websocket.host != "") {
@@ -2288,9 +2296,10 @@ async function init() {
                 if (cb) cb();
             }, 10000)
 
+            const res_ip = (await lookup(config.squadjs.websocket.host)).address
+            // console.log(`Lookup ${config.squadjs.websocket.host} =>`, res_ip)
 
-
-            subcomponent_data.socket = io(`ws://${config.squadjs.websocket.host}:${config.squadjs.websocket.port}`, {
+            subcomponent_data.socket = io(`ws://${res_ip}:${config.squadjs.websocket.port}`, {
                 auth: {
                     token: config.squadjs.websocket.token
                 },
@@ -2436,7 +2445,7 @@ async function init() {
                             const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
 
                             subcomponent_data.socket.emit("rcon.getListPlayers", async (players) => {
-                                if (players.length >= (stConf.seeding_start_player_count || 2)) {
+                                if (players && players.length >= (stConf.seeding_start_player_count || 2)) {
                                     if (st.config.tracking_mode == 'incremental') {
                                         let deduction_points = 0;
 
@@ -2465,6 +2474,22 @@ async function init() {
                                                         else if (st.config.tracking_mode == 'incremental') message += `Don't drop below 100% to keep your reward!`
 
                                                         subcomponent_data.socket.emit("rcon.warn", p.steamID, message, (d) => { })
+                                                        if (subcomponent_status.discord_bot) {
+                                                            const embeds = [
+                                                                new Discord.EmbedBuilder()
+                                                                    .setColor(config.app_personalization.accent_color)
+                                                                    .setTitle(`${p.name} received the Seeding Reward!`)
+                                                                    // .setDescription(formatEmbed("Manager", ) + formatEmbed("List", dbResList.title)),
+                                                                    .addFields(
+                                                                        { name: 'Username', value: p.name, inline: true },
+                                                                        { name: 'SteamID', value: Discord.hyperlink(p.steamID, "https://steamcommunity.com/profiles/" + p.steamID), inline: true },
+                                                                        { name: 'Discord User', value: dbRes.value.discord_user_id ? Discord.userMention(dbRes.value.discord_user_id) : 'Not Linked', inline: false },
+                                                                        { name: 'Reward Group', value: reward_group.group_name, inline: true }
+                                                                        // { name: 'Expiration', value: reward_group.group_name, inline: true }
+                                                                    )
+                                                            ]
+                                                            discordBot.channels.cache.get(stConf.discord_seeding_reward_channel).send({ embeds: embeds })
+                                                        }
                                                     }
 
                                                 }
@@ -2762,6 +2787,7 @@ async function init() {
                 reward_group_id: "",
                 next_reset: "",
                 seeding_player_threshold: 50,
+                seeding_start_player_count: 2,
                 reward_enabled: "false",
                 discord_seeding_reward_channel: "982449246999547995",
                 tracking_mode: "incremental",
