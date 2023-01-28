@@ -1702,7 +1702,7 @@ async function init() {
         })
 
         app.use((req, res, next) => {
-            res.redirect("/");
+            res.redirect(404, "/");
         });
 
         function getApiRoutes() {
