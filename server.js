@@ -1428,6 +1428,30 @@ async function init() {
                 })
             })
         })
+        app.use('/api/players/read/*', (req, res, next) => {
+            if (req.userSession && req.userSession.access_level < 30) next()
+            else res.sendStatus(401)
+        })
+        app.get('/api/players/read/from/steamId/:id', (req, res, next) => {
+            mongoConn((dbo) => {
+                dbo.collection("players").findOne({ steamid64: req.params.id }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        res.send(dbRes);
+                    }
+                })
+            })
+        })
+        app.get('/api/players/read/from/discordUserId/:id', (req, res, next) => {
+            mongoConn((dbo) => {
+                dbo.collection("players").findOne({ discord_user_id: req.params.id }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        res.send(dbRes);
+                    }
+                })
+            })
+        })
         app.use('/api/approval/write/*', (req, res, next) => {
             if (req.userSession && req.userSession.access_level < 30) next()
             else res.sendStatus(401)
