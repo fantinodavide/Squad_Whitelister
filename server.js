@@ -2483,39 +2483,42 @@ async function init() {
                                         // console.log("current seeders", objArrToValArr(players, "name"));
 
                                         for (let p of players) {
+                                            const oldPlayerData = await dbo.collection("players").findOne({ steamid64: p.steamID });
                                             dbo.collection("players").findOneAndUpdate({ steamid64: p.steamID }, { $set: { steamid64: p.steamID, username: p.name }, $inc: { seeding_points: 1 } }, { upsert: true, returnNewDocument: true }, async (err, dbRes) => {
                                                 if (err) serverError(null, err)
                                                 else if (stConf.reward_enabled == "true") {
                                                     // console.log(dbRes);
-                                                    const percentageCompleted = Math.min(Math.round(100 * dbRes.value?.seeding_points / requiredPoints), 108);
-                                                    if (dbRes.value && dbRes.value?.seeding_points && percentageCompleted % 10 == 0 && percentageCompleted < 100)
-                                                        subcomponent_data.socket.emit("rcon.warn", p.steamID, `Seeding Reward: \n\n${percentageCompleted}% completed`, (d) => { })
-                                                    else if (percentageCompleted == 100) {
-                                                        const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
-                                                        let message =
-                                                            `Seeding Reward Completed!\n\nYou have received: ${reward_group.group_name}\n`
-                                                        if (st.config.tracking_mode == 'fixed_reset') message += `Active until: ${(new Date(st.config.next_reset)).toLocaleDateString()}`
-                                                        else if (st.config.tracking_mode == 'incremental') message += `Don't drop below 100% to keep your reward!`
-
-                                                        subcomponent_data.socket.emit("rcon.warn", p.steamID, message, (d) => { })
-                                                        if (subcomponent_status.discord_bot) {
-                                                            const embeds = [
-                                                                new Discord.EmbedBuilder()
-                                                                    .setColor(config.app_personalization.accent_color)
-                                                                    .setTitle(`${p.name} received the Seeding Reward!`)
-                                                                    // .setDescription(formatEmbed("Manager", ) + formatEmbed("List", dbResList.title)),
-                                                                    .addFields(
-                                                                        { name: 'Username', value: p.name, inline: true },
-                                                                        { name: 'SteamID', value: Discord.hyperlink(p.steamID, "https://steamcommunity.com/profiles/" + p.steamID), inline: true },
-                                                                        { name: 'Discord User', value: dbRes.value.discord_user_id ? Discord.userMention(dbRes.value.discord_user_id) : 'Not Linked', inline: false },
-                                                                        { name: 'Reward Group', value: reward_group.group_name, inline: true }
-                                                                        // { name: 'Expiration', value: reward_group.group_name, inline: true }
-                                                                    )
-                                                            ]
-                                                            discordBot.channels.cache.get(stConf.discord_seeding_reward_channel).send({ embeds: embeds })
+                                                    const percentageCompletedOld = Math.min(Math.floor(10 * oldPlayerData?.seeding_points / requiredPoints), 10) * 10 || 0
+                                                    const percentageCompleted = Math.min(Math.floor(10 * dbRes.value?.seeding_points / requiredPoints), 10) * 10 || 0
+                                                    if(dbRes.value && dbRes.value?.seeding_points && percentageCompleted > percentageCompletedOld){
+                                                        if (percentageCompleted < 100)
+                                                            subcomponent_data.socket.emit("rcon.warn", p.steamID, `Seeding Reward: \n\n${percentageCompleted}% completed`, (d) => { })
+                                                        else if (percentageCompleted == 100) {
+                                                            const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
+                                                            let message =
+                                                                `Seeding Reward Completed!\n\nYou have received: ${reward_group.group_name}\n`
+                                                            if (st.config.tracking_mode == 'fixed_reset') message += `Active until: ${(new Date(st.config.next_reset)).toLocaleDateString()}`
+                                                            else if (st.config.tracking_mode == 'incremental') message += `Don't drop below 100% to keep your reward!`
+    
+                                                            subcomponent_data.socket.emit("rcon.warn", p.steamID, message, (d) => { })
+                                                            if (subcomponent_status.discord_bot) {
+                                                                const embeds = [
+                                                                    new Discord.EmbedBuilder()
+                                                                        .setColor(config.app_personalization.accent_color)
+                                                                        .setTitle(`${p.name} received the Seeding Reward!`)
+                                                                        // .setDescription(formatEmbed("Manager", ) + formatEmbed("List", dbResList.title)),
+                                                                        .addFields(
+                                                                            { name: 'Username', value: p.name, inline: true },
+                                                                            { name: 'SteamID', value: Discord.hyperlink(p.steamID, "https://steamcommunity.com/profiles/" + p.steamID), inline: true },
+                                                                            { name: 'Discord User', value: dbRes.value.discord_user_id ? Discord.userMention(dbRes.value.discord_user_id) : 'Not Linked', inline: false },
+                                                                            { name: 'Reward Group', value: reward_group.group_name, inline: true }
+                                                                            // { name: 'Expiration', value: reward_group.group_name, inline: true }
+                                                                        )
+                                                                ]
+                                                                discordBot.channels.cache.get(stConf.discord_seeding_reward_channel).send({ embeds: embeds })
+                                                            }
                                                         }
                                                     }
-
                                                 }
                                             })
                                         }
