@@ -926,6 +926,7 @@ async function init() {
         app.get('/api/config/read/getFull', async (req, res, next) => {
             let cpyConf = { ...config };
             if (args.demo && req.userSession.access_level > 0) cpyConf.discord_bot.token = "hidden";
+            config.app_personalization.favicon = config.app_personalization.favicon || config.app_personalization.logo_url;
             if (process.env.HIDDEN_CONFIG_TABS)
                 for (let t of process.env.HIDDEN_CONFIG_TABS.split(';')) {
                     try {
@@ -1921,6 +1922,10 @@ async function init() {
                     description: 'Gives a full list of clans with corresponding info',
                 },
                 {
+                    name: 'topseed',
+                    description: 'Gives a list of seeders',
+                },
+                {
                     name: 'profile',
                     description: 'Links the Discord profile to the Steam profile',
                     options: [
@@ -2139,15 +2144,22 @@ async function init() {
                                         });
                                         if (!reply.interaction.ephemeral) {
                                             setTimeout(async () => {
-                                                const sentReply = await reply.interaction.webhook.fetchMessage();
+                                                try {
+                                                    const sentReply = await reply.interaction.webhook.fetchMessage();
+                                                    sentReply.edit({ components: [] })
+                                                } catch (error) {
+                                                    console.error(error);
+                                                }
                                                 // console.log(sentReply);
-                                                sentReply.edit({ components: [] })
                                             }, 30 * 1000)
                                         }
                                     }
                                 })
 
                             })
+                            break;
+                        case 'topseed':
+                            topSeedMessage(sender, interaction)
                             break;
                         // case 'userinfo':
                         //     console.log(interaction.member)
@@ -2157,7 +2169,7 @@ async function init() {
                     updateUserRoles(sender_id);
                 } else if (interaction.isButton()) {
                     const idsplit = interaction.customId.split(':');
-                    console.log(idsplit);
+                    // console.log(idsplit);
                     switch (idsplit[ 0 ]) {
                         case "approval":
                             const appr_status = idsplit[ 1 ] == "approve" ? true : false;
@@ -2202,7 +2214,7 @@ async function init() {
                                                                                     new Discord.EmbedBuilder()
                                                                                         .setColor(config.app_personalization.accent_color)
                                                                                         .setTitle("Link Steam Profile")
-                                                                                        .setDescription("Join our Squad server and send in any chat the following code")
+                                                                                        .setDescription("Join our Squad server and send in any chat the following code (case-sensitive)")
                                                                                         .addFields(
                                                                                             { name: "Linking Code", value: linkingCode, inline: false },
                                                                                             { name: "Expiration", value: Discord.time(codeExpiration, 'R'), inline: false },
@@ -2251,16 +2263,21 @@ async function init() {
                                                 } else {
                                                     switch (idsplit[ 3 ]) {
                                                         case 'confirm':
-                                                            mongoConn((dbo) => {
-                                                                dbo.collection("players").updateOne({ discord_user_id: sender_id }, { $unset: { discord_user_id: 1 } }, (err, dbRes) => {
-                                                                    if (err) serverError(null, err);
-                                                                    else {
-                                                                        console.log(dbRes)
-                                                                        if (dbRes.modifiedCount == 1) interaction.reply({ content: Discord.userMention(sender_id) + "\nYour Steam account has been unlinked", ephemeral: true });
-                                                                        else interaction.reply({ content: Discord.userMention(sender_id) + "\nYou don't have a Steam account to unlink", ephemeral: true })
-                                                                    }
+                                                            try {
+                                                                mongoConn((dbo) => {
+                                                                    dbo.collection("players").updateOne({ discord_user_id: sender_id }, { $unset: { discord_user_id: 1 } }, (err, dbRes) => {
+                                                                        if (err) serverError(null, err);
+                                                                        else {
+                                                                            console.log(dbRes)
+                                                                            if (dbRes.modifiedCount == 1) interaction.reply({ content: Discord.userMention(sender_id) + "\nYour Steam account has been unlinked", ephemeral: true });
+                                                                            else interaction.reply({ content: Discord.userMention(sender_id) + "\nYou don't have a Steam account to unlink", ephemeral: true })
+                                                                        }
+                                                                    })
                                                                 })
-                                                            })
+                                                            } catch (error) {
+                                                                interaction.reply({ content: "An error occurred and this interaction cannot be completed", ephemeral: true })
+                                                                console.error(error)
+                                                            }
                                                             break;
                                                     }
                                                 }
@@ -2281,6 +2298,9 @@ async function init() {
                                 })
                             }
                             break;
+                        case 'topseed':
+                            if (idsplit[ 1 ] == 'page') topSeedMessage(sender, interaction, idsplit[ 2 ])
+                            break;
                     }
                 } else if (interaction.isModalSubmit()) {
                     interaction.reply({ content: "Modal received", ephemeral: true })
@@ -2294,16 +2314,67 @@ async function init() {
                     if (member) {
                         const user = member.user;
                         const user_roles = member._roles;
-                        mongoConn((dbo) => {
-                            dbo.collection("players").updateOne({ discord_user_id: member_id }, { $set: { discord_user_id: member_id, discord_username: user.username + "#" + user.discriminator, discord_roles_ids: user_roles } }, { upsert: true })
-                        })
+                        try {
+                            mongoConn((dbo) => {
+                                dbo.collection("players").updateOne({ discord_user_id: member_id }, { $set: { discord_user_id: member_id, discord_username: user.username + "#" + user.discriminator, discord_roles_ids: user_roles } }, { upsert: true })
+                            })
+                        } catch (error) {
+                            console.error(error)
+                        }
                     }
                 } catch (error) {
                     console.error(error)
                 }
             }
 
+            async function topSeedMessage(sender, interaction, page = 0) {
+                const sender_id = `${sender.id}`;
+                // console.log(interaction)
+                mongoConn(async dbo => {
+                    let res = await dbo.collection("players").find({ seeding_points: { $gt: 0 } }).skip(page * 10).limit(11).sort({ seeding_points: -1 }).toArray();
+                    // await interaction.deferReply({ ephemeral: false });
+                    const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
+                    const stConf = st.config;
+                    const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
+                    const messageContent = {
+                        // content: Discord.userMention(sender_id),
+                        embeds: res.splice(0, 10).map((e, i) => ({
+                            color: Discord.resolveColor(config.app_personalization.accent_color),
+                            title: `${page * 10 + i + 1}. ${e.username}`,
+                            url: steamProfileUrl(e.steamid64),
+                            fields: [
+                                { name: 'Score', value: Math.floor(100 * (e.seeding_points || 0) / requiredPoints) + "%", inline: true },
+                                { name: 'SteamID', value: Discord.hyperlink(e.steamid64, steamProfileUrl(e.steamid64)), inline: true },
+                                { name: 'Discord Username', value: e.discord_user_id ? Discord.userMention(e.discord_user_id) : 'Not Linked', inline: true }
+                            ]
+                        })),
+                        components: [
+                            new Discord.ActionRowBuilder()
+                                .addComponents(
+                                    new Discord.ButtonBuilder()
+                                        .setCustomId(`topseed:page:${+page - 1}`)
+                                        .setLabel('⮜')
+                                        .setStyle(Discord.ButtonStyle.Success)
+                                        .setDisabled(page - 1 < 0)
+                                    ,
+                                    new Discord.ButtonBuilder()
+                                        .setCustomId(`topseed:page:${+page + 1}`)
+                                        .setLabel('⮞')
+                                        .setStyle(Discord.ButtonStyle.Success)
+                                        .setDisabled(res.length == 0),
+                                )
+                        ],
+                        ephemeral: false
+                    }
 
+                    if (interaction.isButton()) {
+                        // const sentReply = await interaction.webhook.fetchMessage();
+                        await interaction.deferUpdate();
+                        await interaction.message.edit(messageContent)
+                    } else
+                        await interaction.reply(messageContent);
+                })
+            }
         } else {
             console.log(" > Not configured. Skipping.");
             discCallback();
@@ -2385,7 +2456,7 @@ async function init() {
             // })
             subcomponent_data.socket.on("CHAT_MESSAGE", async (dt) => {
 
-                switch (dt.message.replace(/^(!|\/)/, '')) {
+                switch (dt.message.toLowerCase().replace(/^(!|\/)/, '')) {
                     case 'test':
                         break;
                     case 'playerinfo':
@@ -2484,28 +2555,58 @@ async function init() {
 
                                         for (let p of players) {
                                             const oldPlayerData = await dbo.collection("players").findOne({ steamid64: p.steamID });
-                                            dbo.collection("players").findOneAndUpdate({ steamid64: p.steamID }, { $set: { steamid64: p.steamID, username: p.name }, $inc: { seeding_points: 1 } }, { upsert: true, returnNewDocument: true }, async (err, dbRes) => {
+                                            dbo.collection("players").findOneAndUpdate({ steamid64: p.steamID }, { $set: { steamid64: p.steamID, username: p.name }, $inc: { seeding_points: 1 } }, { upsert: true, returnDocument: 'after' }, async (err, dbRes) => {
                                                 if (err) serverError(null, err)
                                                 else if (stConf.reward_enabled == "true") {
                                                     // console.log(dbRes);
-                                                    const percentageCompletedOld = Math.min(Math.floor(10 * oldPlayerData?.seeding_points / requiredPoints), 10) * 10 || 0
-                                                    const percentageCompleted = Math.min(Math.floor(10 * dbRes.value?.seeding_points / requiredPoints), 10) * 10 || 0
-                                                    if(dbRes.value && dbRes.value?.seeding_points && percentageCompleted > percentageCompletedOld){
-                                                        if (percentageCompleted < 100)
+                                                    const stepOld = Math.min(Math.floor(10 * oldPlayerData?.seeding_points / requiredPoints), 10) || 0;
+                                                    const percentageCompletedOld = stepOld * 10;
+                                                    const step = Math.min(Math.floor(10 * dbRes.value?.seeding_points / requiredPoints), 10) || 0;
+                                                    const percentageCompleted = step * 10
+                                                    // console.log(p.name, stepOld, step)
+
+                                                    if (step > 0 && step > stepOld) {
+                                                        if (percentageCompleted < 100) {
                                                             subcomponent_data.socket.emit("rcon.warn", p.steamID, `Seeding Reward: \n\n${percentageCompleted}% completed`, (d) => { })
-                                                        else if (percentageCompleted == 100) {
+                                                            // new Array(10).fill('■',0,1).fill('□',1,10).join('')
+
+                                                            const messageContent = {
+                                                                embeds: [ {
+                                                                    color: Discord.resolveColor(config.app_personalization.accent_color),
+                                                                    title: `${p.name}`,
+                                                                    url: steamProfileUrl(p.steamID),
+                                                                    fields: [
+                                                                        { name: 'Score', value: percentageCompleted + "%", inline: true },
+                                                                        { name: 'SteamID', value: Discord.hyperlink(p.steamID, steamProfileUrl(p.steamID)), inline: true },
+                                                                        { name: 'Discord User', value: dbRes.value.discord_user_id ? Discord.userMention(dbRes.value.discord_user_id) : 'Not Linked', inline: false },
+                                                                    ],
+                                                                    footer: {
+                                                                        text: new Array(10).fill('◼', 0, step).fill('◻', step, 10).join('') + ` ${percentageCompleted}%`,
+                                                                        icon_url: config.app_personalization.favicon || config.app_personalization.logo_url,
+                                                                    },
+                                                                    thumbnail: {
+                                                                        url: config.app_personalization.logo_url,
+                                                                    },
+                                                                    timestamp: new Date().toISOString(),
+                                                                } ],
+                                                                ephemeral: false
+                                                            }
+                                                            discordBot.channels.cache.get(stConf.discord_seeding_reward_channel).send(messageContent)
+
+                                                        } else if (percentageCompleted == 100) {
                                                             const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
                                                             let message =
                                                                 `Seeding Reward Completed!\n\nYou have received: ${reward_group.group_name}\n`
                                                             if (st.config.tracking_mode == 'fixed_reset') message += `Active until: ${(new Date(st.config.next_reset)).toLocaleDateString()}`
                                                             else if (st.config.tracking_mode == 'incremental') message += `Don't drop below 100% to keep your reward!`
-    
+
                                                             subcomponent_data.socket.emit("rcon.warn", p.steamID, message, (d) => { })
                                                             if (subcomponent_status.discord_bot) {
                                                                 const embeds = [
                                                                     new Discord.EmbedBuilder()
                                                                         .setColor(config.app_personalization.accent_color)
                                                                         .setTitle(`${p.name} received the Seeding Reward!`)
+                                                                        .setURL(steamProfileUrl(p.steamID))
                                                                         // .setDescription(formatEmbed("Manager", ) + formatEmbed("List", dbResList.title)),
                                                                         .addFields(
                                                                             { name: 'Username', value: p.name, inline: true },
@@ -2514,6 +2615,12 @@ async function init() {
                                                                             { name: 'Reward Group', value: reward_group.group_name, inline: true }
                                                                             // { name: 'Expiration', value: reward_group.group_name, inline: true }
                                                                         )
+                                                                        .setThumbnail(config.app_personalization.logo_url)
+                                                                        .setFooter({
+                                                                            text: new Array(10).fill('◼', 0, 10).join('') + " 100%",
+                                                                            iconURL: config.app_personalization.favicon || config.app_personalization.logo_url,
+                                                                        })
+                                                                        .setTimestamp(new Date())
                                                                 ]
                                                                 discordBot.channels.cache.get(stConf.discord_seeding_reward_channel).send({ embeds: embeds })
                                                             }
@@ -2680,6 +2787,10 @@ async function init() {
         }
 
         return playerGroups
+    }
+
+    function steamProfileUrl(steamid64) {
+        return "https://steamcommunity.com/profiles/" + steamid64
     }
 
     async function mongoConn(connCallback = () => { }, override = false) {
