@@ -73,7 +73,7 @@
 		<input name="steamid64" type="text" regex="^\d{17}$" placeholder="SteamID64" />
 		<select name="group">
 			<option hidden selected value>Select a group</option>
-			<option v-for="g of game_groups" :value="g._id">{{ g.group_name }}</option>
+			<option v-for="g of game_groups" :value="g._id" :key="g">{{ g.group_name }}</option>
 		</select>
 		<!-- <label>Duration (hours)<input name="durationHours" type="number" placeholder="Unlimited" style="width: 100px" optional /></label> -->
 		<AdvancedInput
@@ -81,6 +81,7 @@
 			text="Duration"
 			name="durationHoursAdv"
 			type="number"
+			:regex="/^(?!-)/"
 			placeholder="Unlimited"
 			oTitleKey="title"
 			oIdKey="value"
