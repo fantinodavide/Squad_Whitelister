@@ -201,6 +201,7 @@
 				@valueChanged="currentConfigMenu.reward_enabled = $event.option"
 			/>
 			<AdvancedInput text="Discord Seeding Reward Channel" name="resetseedingtime" type="number" placeholder="Time" oTitleKey="name" oIdKey="id" :inputHidden="true" :optionPreselect="currentConfigMenu.discord_seeding_reward_channel" :options="discord_channels" @valueChanged="currentConfigMenu.discord_seeding_reward_channel = $event.option" />
+			<AdvancedInput text="Discord Seeding Score Channel" name="resetseedingscoretime" type="number" placeholder="Time" oTitleKey="name" oIdKey="id" :inputHidden="true" :optionPreselect="currentConfigMenu.discord_seeding_score_channel" :options="discord_channels" @valueChanged="currentConfigMenu.discord_seeding_score_channel = $event.option" />
 			<AdvancedInput text="Reward Group" name="rewardgroup" oTitleKey="group_name" oIdKey="_id" :inputHidden="true" :options="game_groups" @valueChanged="currentConfigMenu.reward_group_id = $event.option" :optionPreselect="currentConfigMenu.reward_group_id" />
 			<AdvancedInput text="Live Player Count" name="seeding_player_threshold" type="number" @valueChanged="currentConfigMenu.seeding_player_threshold = $event.value" :value="currentConfigMenu.seeding_player_threshold" />
 			<AdvancedInput text="Seeding Start Player Count" name="seeding_player_threshold" type="number" @valueChanged="currentConfigMenu.seeding_start_player_count = $event.value" :value="currentConfigMenu.seeding_start_player_count" />

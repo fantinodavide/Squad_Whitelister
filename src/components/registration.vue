@@ -28,9 +28,10 @@
 							this.$emit('registration_done');
 							location.reload();
 						},
-						error: (err) => {
-							console.error(err);
-							compPopup.blinkAll();
+						error: (err: any) => {
+							if (err.responseJSON.field) compPopup.blinkName(err.responseJSON.field);
+							else compPopup.blinkAll();
+							console.error('error', err);
 							//.blinkBgColor(this.$refs.popupLogin.getInputs());
 						},
 					});

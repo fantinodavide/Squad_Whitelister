@@ -81,6 +81,7 @@
 			text="Duration"
 			name="durationHoursAdv"
 			type="number"
+			:min="0"
 			placeholder="Unlimited"
 			oTitleKey="title"
 			oIdKey="value"

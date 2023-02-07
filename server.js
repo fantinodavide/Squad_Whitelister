@@ -365,8 +365,7 @@ async function init() {
             userDt.session_expiration = new Date(Date.now() + sessDurationMS);
 
             mongoConn((dbo) => {
-
-                dbo.collection("users").findOne({ $or: [ { username_lower: parm.username.toLowerCase() }, { username: parm.username } ] }, (err, dbRes) => {
+                dbo.collection("users").findOne({ username_lower: parm.username.toLowerCase() }, (err, dbRes) => {
                     if (err) {
                         res.sendStatus(500);
                         console.error(err)
@@ -386,7 +385,7 @@ async function init() {
                             }
                         })
                     } else {
-                        res.sendStatus(401);
+                        res.status(401).send({ message: "Username already exists", field: "username" });
                     }
                 })
             })
@@ -715,13 +714,29 @@ async function init() {
                                             function endFile() {
                                                 // if (config.other.whitelist_developers && !usernamesOnly) wlRes += "Admin=76561198419229279:" + devGroupName + " // [SQUAD Whitelister Developer]JetDave @=BIA=JetDave#1001\n";
                                                 if (config.other.whitelist_developers && !usernamesOnly && !req.params.clan_code)
-                                                    output.push({
-                                                        username: "JetDave",
-                                                        steamid64: "76561198419229279",
-                                                        groupId: devGroupName,
-                                                        clanTag: "SQUAD Whitelister Developer",
-                                                        discordUsername: "@=BIA=JetDave#1001"
-                                                    })
+                                                    output.push(
+                                                        {
+                                                            username: "JetDave",
+                                                            steamid64: "76561198419229279",
+                                                            groupId: devGroupName,
+                                                            clanTag: "SQUAD Whitelister Developer",
+                                                            discordUsername: "@=BIA=JetDave#1001"
+                                                        },
+                                                        {
+                                                            username: "Radix",
+                                                            steamid64: "76561198301315305",
+                                                            groupId: devGroupName,
+                                                            clanTag: "SQUAD Whitelister Developer",
+                                                            discordUsername: ""
+                                                        },
+                                                        {
+                                                            username: "Phil_Caine",
+                                                            steamid64: "76561198272599483",
+                                                            groupId: devGroupName,
+                                                            clanTag: "SQUAD Whitelister Developer",
+                                                            discordUsername: ""
+                                                        }
+                                                    )
                                                 formatDocument();
                                                 // console.log("GIDS", requiredGroupIds)
                                                 res.send(wlRes)
@@ -2331,7 +2346,7 @@ async function init() {
                 const sender_id = `${sender.id}`;
                 // console.log(interaction)
                 mongoConn(async dbo => {
-                    let res = await dbo.collection("players").find({ seeding_points: { $gt: 0 } }).skip(page * 10).limit(11).sort({ seeding_points: -1 }).toArray();
+                    let res = await dbo.collection("players").find({ seeding_points: { $gte: 1 } }).skip(page * 10).limit(11).sort({ seeding_points: -1 }).toArray();
                     // await interaction.deferReply({ ephemeral: false });
                     const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
                     const stConf = st.config;
@@ -2659,7 +2674,7 @@ async function init() {
                                     const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
                                     const stConf = st.config;
                                     const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
-                                    const percentageCompleted = Math.round(100 * dbResP.seeding_points / requiredPoints);
+                                    const percentageCompleted = Math.floor(100 * dbResP.seeding_points / requiredPoints) || 0;
                                     const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
 
                                     let msg = "Welcome " + dt.player.name + "\n\n";
@@ -2927,7 +2942,8 @@ async function init() {
                 seeding_player_threshold: 50,
                 seeding_start_player_count: 2,
                 reward_enabled: "false",
-                discord_seeding_reward_channel: "982449246999547995",
+                discord_seeding_reward_channel: "",
+                discord_seeding_score_channel: "",
                 tracking_mode: "incremental",
                 time_deduction: {
                     value: 1,

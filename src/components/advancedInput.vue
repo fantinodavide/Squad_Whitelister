@@ -56,6 +56,14 @@
 				required: false,
 				default: false,
 			},
+			min: {
+				required: false,
+				type: Number,
+			},
+			max: {
+				required: false,
+				type: Number,
+			},
 		},
 		data() {
 			return {
@@ -100,7 +108,7 @@
 <template>
 	<label :class="{ selectVisible: options.length > 0 }"
 		>{{ text }}
-		<input v-if="!inputHidden" :type="type" :value="value" :placeholder="placeholder" @change="valueUpdate" :optional="optional" :readonly="readonly" />
+		<input v-if="!inputHidden" :type="type" :value="value" :placeholder="placeholder" @change="valueUpdate" :optional="optional" :readonly="readonly" :min="min" :max="max" />
 		<select v-if="!selectHidden && options.length > 0" @change="optionUpdate">
 			<option value="0" selected hidden>Select</option>
 			<option v-for="o of options" :key="o[oIdKey]" :value="oIdKey && o[oIdKey] ? o[oIdKey] : o" :selected="(oIdKey && o[oIdKey] ? o[oIdKey] : o) == optRet">{{ oTitleKey && o[oTitleKey] ? o[oTitleKey] : o }}</option>
