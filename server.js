@@ -2606,7 +2606,7 @@ async function init() {
                                                                 } ],
                                                                 ephemeral: false
                                                             }
-                                                            discordBot.channels.cache.get(stConf.discord_seeding_reward_channel).send(messageContent)
+                                                            discordBot.channels.cache.get(stConf.discord_seeding_score_channel).send(messageContent)
 
                                                         } else if (percentageCompleted == 100) {
                                                             const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
