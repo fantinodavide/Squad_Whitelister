@@ -1960,7 +1960,6 @@ async function init() {
 
             client.on('ready', async () => {
                 clearTimeout(tm);
-                subcomponent_status.discord_bot = true;
                 discordBot = new Proxy(client, {});
                 // const permissionsString = "1099780151360";
                 const permissionsString = "268564544";
@@ -1977,6 +1976,10 @@ async function init() {
                 let discordBotServers = [];
                 if (client.guilds) for (let g of client.guilds.cache) discordBotServers.push({ id: g[ 1 ].id, name: g[ 1 ].name })
                 if (config.discord_bot.server_id == "" && discordBotServers.length > 0) config.discord_bot.server_id = discordBotServers[ 0 ].id;
+
+                if (config.discord_bot.server_id == "") return;
+
+                subcomponent_status.discord_bot = true;
 
                 temporizedRoleUpdate();
                 setInterval(temporizedRoleUpdate, 5 * 60 * 1000)
@@ -2346,7 +2349,7 @@ async function init() {
                 const sender_id = `${sender.id}`;
                 // console.log(interaction)
                 mongoConn(async dbo => {
-                    let res = await dbo.collection("players").find({ seeding_points: { $gte: 0 } }).skip(page * 10).limit(11).sort({ seeding_points: -1 }).toArray();
+                    let res = await dbo.collection("players").find({ seeding_points: { $gte: 1 } }).skip(page * 10).limit(11).sort({ seeding_points: -1 }).toArray();
                     // await interaction.deferReply({ ephemeral: false });
                     const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
                     const stConf = st.config;
