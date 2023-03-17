@@ -27,7 +27,8 @@ Add run argument `--self-pm` to automatically restart after an update or crash
 - If you need the output for a specific clan the path is **/wl/*{clan_code}*** (ex. https://example.ex/wl/1a2b3c4d)
 
 #### Environment Variables
-- `MONGODB_CONNECTION_STRING` Useful when deploying on docker.
+- `MONGODB_CONNECTION_STRING` ex. mongodb://user:password@host:port/database.
+- `HIDDEN_CONFIG_TABS` ex. web_server;database
 
 #### [**Screenshots**](/screenshots) ####
 
