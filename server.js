@@ -451,8 +451,14 @@ async function init() {
                     max_access_level: 5
                 },
                 {
-                    name: "Configuration",
+                    name: "API",
                     order: 35,
+                    type: "tab",
+                    max_access_level: 5
+                },
+                {
+                    name: "Configuration",
+                    order: 40,
                     type: "tab",
                     max_access_level: 5
                 }
@@ -930,6 +936,13 @@ async function init() {
                 }
             }
             res.send(roles)
+        })
+        app.use('/api/api_keys/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
+        app.get('/api/api_keys/read/getAll', (req, res, next) => {
+            res.send([])
+        })
+        app.post('/api/api_keys/write/create', (req, res, next) => {
+            return null;
         })
         // app.use('/api/whitelist/*', removeExpiredPlayers);
 
