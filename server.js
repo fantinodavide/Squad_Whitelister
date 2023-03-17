@@ -3092,7 +3092,7 @@ async function init() {
     }
     process.on('uncaughtException', function (err) {
         console.error("Uncaught Exception", err.message, err.stack)
-        if (++errorCount >= (args[ "self-pm" ] ? 5 : 2)) {
+        if (++errorCount >= (args[ "self-pm" ] ? 5 : 5)) {
             console.error("Too many errors occurred during the current run. Terminating execution...");
             restartProcess(0, 1, args);
         }
