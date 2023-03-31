@@ -24,6 +24,12 @@ const irequire = async module => {
         //process.exit(1)
     }
 }
+
+installUpdateDependencies = async () => {
+    console.log(`INSTALLING/UPDATING DEPENDENCIES...\nTHIS PROCESS MAY TAKE SOME TIME. PLEASE WAIT`)
+    cp.execSync(`npm install`)
+}
+
 var subcomponent_status = {
     discord_bot: false,
     squadjs: false
@@ -650,7 +656,6 @@ async function init() {
                                                         res.sendStatus(500);
                                                         console.error(err)
                                                     } else {
-                                                        // console.log(dbRes);
                                                         for (let w of dbRes) {
                                                             if (usernamesOnly)
                                                                 wlRes += w.username + "\n"
@@ -693,6 +698,11 @@ async function init() {
 
                                             function formatDocument() {
                                                 for (let w of output) {
+                                                    if (!groups[ w.groupId ]) {
+                                                        console.log("Could not find group with id", w.groupId, groups[ w.groupId ])
+                                                        dbo.collection("whitelists").deleteMany({ id_group: w.groupId })
+                                                        continue;
+                                                    }
                                                     w.groupId = `${w.groupId}`;
                                                     wlRes += `Admin=${w.steamid64}:${groups[ w.groupId ].group_name} // [${w.clanTag}] ${w.username} ${w.discordUsername}\n`
 
@@ -3203,6 +3213,7 @@ async function init() {
     }
 }
 
+installUpdateDependencies();
 init();
 
 
