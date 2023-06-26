@@ -39,3 +39,5 @@ ALTERNATIVE PORTS.txt
 docker-image.tar
 
 .env
+
+package-lock.json
