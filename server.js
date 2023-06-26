@@ -24,6 +24,12 @@ const irequire = async module => {
         //process.exit(1)
     }
 }
+
+installUpdateDependencies = async () => {
+    console.log(`INSTALLING/UPDATING DEPENDENCIES...\nTHIS PROCESS MAY TAKE SOME TIME. PLEASE WAIT`)
+    cp.execSync(`npm install`)
+}
+
 var subcomponent_status = {
     discord_bot: false,
     squadjs: false
@@ -656,7 +662,6 @@ async function init() {
                                                         res.sendStatus(500);
                                                         console.error(err)
                                                     } else {
-                                                        // console.log(dbRes);
                                                         for (let w of dbRes) {
                                                             if (usernamesOnly)
                                                                 wlRes += w.username + "\n"
@@ -699,6 +704,11 @@ async function init() {
 
                                             function formatDocument() {
                                                 for (let w of output) {
+                                                    if (!groups[ w.groupId ]) {
+                                                        console.log("Could not find group with id", w.groupId, groups[ w.groupId ])
+                                                        dbo.collection("whitelists").deleteMany({ id_group: w.groupId })
+                                                        continue;
+                                                    }
                                                     w.groupId = `${w.groupId}`;
                                                     wlRes += `Admin=${w.steamid64}:${groups[ w.groupId ].group_name} // [${w.clanTag}] ${w.username} ${w.discordUsername}\n`
 
@@ -2516,7 +2526,7 @@ async function init() {
                                     else if (dbRes) {
                                         if (dbRes.expiration > new Date()) {
                                             const discordUser = await discordBot.users.fetch(dbRes.discordUserId);
-                                            const discordUsername = discordUser.username + "#" + discordUser.discriminator;
+                                            const discordUsername = discordUser.username + (discordUser.discriminator ? "#" + discordUser.discriminator : '');
                                             const oldPlayerData = await dbo.collection("players").findOne({ steamid64: dt.player.steamID }, { projection: { _id: 0, seeding_points: 1 } })
                                             dbo.collection("players").updateOne({ discord_user_id: dbRes.discordUserId }, { $set: { steamid64: dt.player.steamID, username: dt.player.name, discord_user_id: dbRes.discordUserId, discord_username: discordUsername, ...oldPlayerData } }, { upsert: true }, (err, dbResU) => {
                                                 dbo.collection("players").deleteOne({ steamid64: dt.player.steamID, discord_user_id: { $exists: false } }, (err, dbResRem) => {
@@ -2718,7 +2728,7 @@ async function init() {
                                         let discordUsername = "";
                                         if (dbResP && dbResP.discord_user_id && dbResP.discord_user_id != "") {
                                             const discordUser = await discordBot.users.fetch(dbResP.discord_user_id);
-                                            discordUsername = discordUser.username + "#" + discordUser.discriminator;
+                                            discordUsername = discordUser.username + (discordUser.discriminator ? "#" + discordUser.discriminator : '');
                                         }
 
                                         if (stConf.reward_enabled == 'true') msg += "\nSeeding Reward: " + percentageCompleted + "%"
@@ -3106,7 +3116,7 @@ async function init() {
     }
     process.on('uncaughtException', function (err) {
         console.error("Uncaught Exception", err.message, err.stack)
-        if (++errorCount >= (args[ "self-pm" ] ? 5 : 2)) {
+        if (++errorCount >= (args[ "self-pm" ] ? 5 : 5)) {
             console.error("Too many errors occurred during the current run. Terminating execution...");
             restartProcess(0, 1, args);
         }
@@ -3217,6 +3227,7 @@ async function init() {
     }
 }
 
+installUpdateDependencies();
 init();
 
 
