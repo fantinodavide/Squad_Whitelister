@@ -2513,7 +2513,7 @@ async function init() {
                                     else if (dbRes) {
                                         if (dbRes.expiration > new Date()) {
                                             const discordUser = await discordBot.users.fetch(dbRes.discordUserId);
-                                            const discordUsername = discordUser.username + "#" + discordUser.discriminator;
+                                            const discordUsername = discordUser.username + (discordUser.discriminator ? "#" + discordUser.discriminator : '');
                                             const oldPlayerData = await dbo.collection("players").findOne({ steamid64: dt.player.steamID }, { projection: { _id: 0, seeding_points: 1 } })
                                             dbo.collection("players").updateOne({ discord_user_id: dbRes.discordUserId }, { $set: { steamid64: dt.player.steamID, username: dt.player.name, discord_user_id: dbRes.discordUserId, discord_username: discordUsername, ...oldPlayerData } }, { upsert: true }, (err, dbResU) => {
                                                 dbo.collection("players").deleteOne({ steamid64: dt.player.steamID, discord_user_id: { $exists: false } }, (err, dbResRem) => {
@@ -2715,7 +2715,7 @@ async function init() {
                                         let discordUsername = "";
                                         if (dbResP && dbResP.discord_user_id && dbResP.discord_user_id != "") {
                                             const discordUser = await discordBot.users.fetch(dbResP.discord_user_id);
-                                            discordUsername = discordUser.username + "#" + discordUser.discriminator;
+                                            discordUsername = discordUser.username + (discordUser.discriminator ? "#" + discordUser.discriminator : '');
                                         }
 
                                         if (stConf.reward_enabled == 'true') msg += "\nSeeding Reward: " + percentageCompleted + "%"
