@@ -12,6 +12,7 @@
 					web_server: 'Web Server',
 					app_personalization: 'Personalization',
 				} as any,
+				legend: '',
 			};
 		},
 		name: 'confLabelInput',
@@ -52,17 +53,19 @@
 		},
 		created() {
 			// console.log('conf_data:', this.confKey, this.modelValue);
+			this.legend = this.toUpperFirstChar(this.confKey.replace(/\_/g, ' '));
 		},
 	};
 </script>
 
 <template>
 	<fieldset v-if="typeof content == 'object'">
-		<legend>{{ toUpperFirstChar(confKey.replace(/\_/g, ' ')) }}</legend>
+		<legend>{{ legend.match(/^[\d]+$/) ? +legend + 1 : legend }}</legend>
 		<!-- <div v-if="typeof content == 'object'" style="background: #ffffff08"> -->
 		<!-- <h3>{{ toUpperFirstChar(confKey.replace(/\_/g, ' ')) }}</h3> -->
 		<confLabelInput v-for="k of Object.keys(content)" :key="k" :confKey="k" :modelValue="content[k]" @update:modelValue="(nv) => (content[k] = nv)" />
 		<!-- </div> -->
+		<slot />
 	</fieldset>
 	<label v-else>{{ getTranslation(confKey) }}<input :type="getInputType(content)" :value="modelValue" :checked="modelValue" @input="handleInput" /></label>
 </template>

@@ -187,7 +187,7 @@
 	<popup id="popup" :focus="refs.textarea" :class="{ big: currentStep == 0 }" ref="popupComp" title="Import List" :confirmText="importSteps[currentStep].confBtnText" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick">
 		<h3>{{ importSteps[currentStep].title }}</h3>
 		<div v-show="currentStep == 0" style="flex-grow: 1; display: flex; flex-direction: column; width: 100%">
-			<textarea :ref="(r) => (refs.textarea = r)" style="flex-grow: 1" ref="txtList" placeholder="Paste here your whitelist"></textarea>
+			<textarea :ref="(r) => (refs.textarea = r)" style="flex-grow: 1" placeholder="Paste here your whitelist"></textarea>
 			<div class="rowBtnContainer">
 				<label>Replace<input :ref="(r) => (refs.replace.from = r)" type="text" placeholder="Replace" optional /></label><label>With<input :ref="(r) => (refs.replace.with = r)" type="text" placeholder="With" optional /><button @click="replaceTextArea">Replace</button></label>
 			</div>
@@ -196,15 +196,15 @@
 			</div>
 		</div>
 		<div v-if="currentStep == 1">
-			<div v-for="g of importFoundGroups" class="grTranslation">
+			<div v-for="g of importFoundGroups" :key="g" class="grTranslation">
 				<span class="tag">{{ g }}</span>
 				<select :name="'sel-' + g">
-					<option v-for="allG of game_groups" :value="allG._id" :selected="allG.group_name.toLowerCase() == g.toLowerCase()">{{ allG.group_name }}</option>
+					<option v-for="allG of game_groups" :key="allG" :value="allG._id" :selected="allG.group_name.toLowerCase() == g.toLowerCase()">{{ allG.group_name }}</option>
 				</select>
 			</div>
 		</div>
 		<div v-if="currentStep == 2" class="overflow">
-			<div v-for="p of parListImport" class="grTranslation">
+			<div v-for="p of parListImport" class="grTranslation" :key="p.steamid">
 				<input :name="p.steamid" type="text" :value="p.comment.replace(/\@.{3,32}#[0-9]{4}/, '')" />
 				<span class="tag">{{ game_groups.filter((g) => g._id == conv_gameGroups[p.group])[0].group_name }}</span>
 				<span class="tag">{{ p.steamid }} </span>

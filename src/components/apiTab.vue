@@ -38,9 +38,10 @@
 </script>
 
 <template>
+	<div></div>
 	<!-- <input type="search" placeholder="Search Player" name="plrSearch" v-model="models.search" /> -->
 
-	<button class="addHorizontal" @click="$emit('addNewApiKey', { callback: appendPlayer })"></button>
+	<!-- <button class="addHorizontal" @click="$emit('addNewApiKey', { callback: appendPlayer })"></button> -->
 	<!-- <whitelistUserCard v-for="w of wl_players" v-show="w.username.toLowerCase().startsWith(models.search.toLowerCase()) || levenshtein(w.username.toLowerCase(), models.search.toLowerCase()) <= 2 || models.search == ''" :ref="(r:any)=>{record_refs.push(r)}" :wl_data="w" :hoverMenuVisible="editor" @confirm="$emit('confirm', $event)" @removedPlayer="removePlayer" /> -->
 </template>
 

@@ -37,12 +37,12 @@
 				return o.toString().startsWith('#') ? 'color' : tmpType[typeof o];
 			},
 			configMenuChanged: function (e: any) {
-				let cpe = { ...e.config.config };
+				let cpe = e.config.config;
 				delete cpe.selected;
 				this.selectedMenu = e.menu;
 				this.currentConfigType = e.config.type;
-
 				this.currentConfigMenu = cpe;
+				// console.log(this.currentConfigMenu instanceof Array);
 			},
 			getTranslation: function (t: string) {
 				const trC = this.config_tr[t];
@@ -140,7 +140,7 @@
 				window.open(url, '_blank');
 			},
 		},
-		async created() {
+		async beforeMount() {
 			this.getDiscordServers();
 			this.getDiscordChannels();
 			this.getDiscordInviteLink();
@@ -156,11 +156,13 @@
 	<tab>
 		<div v-if="!['discord_bot', 'seeding_tracker'].includes(selectedMenu)" class="ct">
 			<!-- <label v-for="k of Object.keys(currentConfigMenu)">{{ getTranslation(k) }}<input :type="getInputType(currentConfigMenu[k])" v-model="currentConfigMenu[k]" /></label> -->
-			<confLabelInput v-for="k of Object.keys(currentConfigMenu)" :key="k" :confKey="k" :modelValue="currentConfigMenu[k]" @update:modelValue="(nv) => (currentConfigMenu[k] = nv)" />
-			<!-- <h4 v-if="selectedMenu == 'squadjs'">Websocket is {{ subcomponent_status.squadjs ? '' : 'Not ' }} Connected</h4> -->
-			<AdvancedInput v-if="selectedMenu == 'squadjs'" text="Websocket" name="" :value="subcomponent_status.squadjs ? 'Connected' : 'Not Connected'" optional readonly />
+			<confLabelInput v-for="k of Object.keys(currentConfigMenu)" :key="k" :confKey="k" :modelValue="currentConfigMenu[k]" @update:modelValue="(nv) => (currentConfigMenu[k] = nv)">
+				<!-- <h4 v-if="selectedMenu == 'squadjs'">Websocket is {{ subcomponent_status.squadjs ? '' : 'Not ' }} Connected</h4> -->
+				<AdvancedInput v-if="selectedMenu == 'squadjs'" text="Status" name="" :value="subcomponent_status.squadjs ? 'Connected' : 'Not Connected'" optional readonly />
+			</confLabelInput>
 
 			<button style="float: right; width: 100px" @click="$emit('confirm', { title: 'Save server configuration?', text: 'Are you sure you want to change the server configuration? Bad configuration may result into multiple failures or temporary data loss.', callback: sendConfigToServer })">Save</button>
+			<button v-if="currentConfigMenu instanceof Array" style="float: right; width: 50px" @click="currentConfigMenu.push(currentConfigMenu[0])">+</button>
 		</div>
 		<div v-else-if="selectedMenu == 'discord_bot'" class="ct">
 			<confLabelInput confKey="token" :modelValue="currentConfigMenu.token" @update:modelValue="(nv) => (currentConfigMenu.token = nv)" />
