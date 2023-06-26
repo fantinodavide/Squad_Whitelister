@@ -3059,6 +3059,7 @@ async function init() {
         for (let k in emptyConfFile) {
             const objType = Object.prototype.toString.call(emptyConfFile[ k ]);
             const parentObjType = Object.prototype.toString.call(emptyConfFile);
+            // if (config[ k ] && objType != parentObjType)
             if (config[ k ] == undefined || (config[ k ] && (parentObjType == "[object Array]" && !config[ k ].includes(emptyConfFile[ k ])))) {
                 switch (objType) {
                     case "[object Object]":
