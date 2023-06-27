@@ -2975,6 +2975,9 @@ async function init() {
         mongoConn(async (dbo) => {
             subcomponent_data.database.root_user_registered = (await dbo.collection("users").findOne({ access_level: 0 })) ? true : false;
             if (args.demo) dbo.collection("users").updateOne({ username: 'demoadmin' }, { $set: { password: crypto.createHash('sha512').update('demo').digest('hex'), access_level: 5 } }, { upsert: true })
+
+            await syncDatabaseIndexes();
+
             dbo.collection("players").deleteMany({ discord_user_id: { $exists: true }, steamid64: { $exists: false } })
 
             if (!(await dbo.collection("configs").findOne({ category: "seeding_tracker", config: { $exists: true } })))
@@ -3048,6 +3051,46 @@ async function init() {
                             else cb();
                         }
                     })
+                }
+            }
+
+            async function syncDatabaseIndexes() {
+                console.log('Syncing database indexes');
+                const collectionIndexes = {
+                    players: [
+                        'discord_user_id',
+                        'steamid64',
+                        'seeding_points'
+                    ],
+                    sessions: [
+                        'token'
+                    ],
+                    clans: [
+                        'clan_code'
+                    ],
+                    groups: [],
+                    lists: [
+                        'output_path'
+                    ],
+                    whitelists: [
+                        'id_clan',
+                        'steamid64',
+                        'id_group',
+                        'id_list'
+                    ]
+                }
+
+                for (let collectionK in collectionIndexes) {
+                    console.log(` > Syncing collection "${collectionK}"`)
+                    for (let collIndex of collectionIndexes[ collectionK ]) {
+                        let error = false;
+                        const res = await dbo.collection(collectionK).createIndex({ [ collIndex ]: 1 }).catch((r) => {
+                            error = true;
+                            console.log(`  > "${collIndex}": Fail. Error: ${r}`)
+                        })
+                        if (error) continue;
+                        console.log(`  > "${collIndex}": Success`)
+                    }
                 }
             }
         })
@@ -3213,7 +3256,7 @@ async function init() {
     }
 }
 
-installUpdateDependencies();
+// installUpdateDependencies();
 init();
 
 
