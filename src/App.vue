@@ -354,12 +354,8 @@
 				popups.importWhitelist ||
 				popups.changepassword ||
 				popups.addNewList ||
-<<<<<<< HEAD
 				popups.editList ||
 				popups.addEditApiKey
-=======
-				popups.editList
->>>>>>> main
 			"
 		>
 			<login
@@ -500,7 +496,6 @@
 				:roles="tabData.UsersAndRoles.roles"
 				@delete-record="removeUser"
 			/>
-<<<<<<< HEAD
 		</tab>
 		<tab v-else-if="currentTab == 'API'" :currentTab="currentTab">
 			<ApiTab
@@ -510,8 +505,6 @@
 					//tabData.addEditApiKey.add_data = $event;
 				"
 			/>
-=======
->>>>>>> main
 		</tab>
 		<tab v-else-if="currentTab == 'Configuration'" :currentTab="currentTab" complex>
 			<ConfigTab @confirm="confirmEvt" />
