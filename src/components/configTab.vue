@@ -156,12 +156,31 @@
 	<tab>
 		<div v-if="!['discord_bot', 'seeding_tracker'].includes(selectedMenu)" class="ct">
 			<!-- <label v-for="k of Object.keys(currentConfigMenu)">{{ getTranslation(k) }}<input :type="getInputType(currentConfigMenu[k])" v-model="currentConfigMenu[k]" /></label> -->
-			<confLabelInput v-for="k of Object.keys(currentConfigMenu)" :key="k" :confKey="k" :modelValue="currentConfigMenu[k]" @update:modelValue="(nv) => (currentConfigMenu[k] = nv)">
+			<confLabelInput
+				v-for="k of Object.keys(currentConfigMenu)"
+				:key="k"
+				:confKey="k"
+				:modelValue="currentConfigMenu[k]"
+				@update:modelValue="(nv) => (currentConfigMenu[k] = nv)"
+				:current-config-menu="currentConfigMenu"
+				@deleteArrayElement="(index)=> currentConfigMenu = currentConfigMenu.filter((e:any,i:number)=>i!=index)"
+			>
 				<!-- <h4 v-if="selectedMenu == 'squadjs'">Websocket is {{ subcomponent_status.squadjs ? '' : 'Not ' }} Connected</h4> -->
 				<AdvancedInput v-if="selectedMenu == 'squadjs'" text="Status" name="" :value="subcomponent_status.squadjs ? 'Connected' : 'Not Connected'" optional readonly />
 			</confLabelInput>
 
-			<button style="float: right; width: 100px" @click="$emit('confirm', { title: 'Save server configuration?', text: 'Are you sure you want to change the server configuration? Bad configuration may result into multiple failures or temporary data loss.', callback: sendConfigToServer })">Save</button>
+			<button
+				style="float: right; width: 100px"
+				@click="
+					$emit('confirm', {
+						title: 'Save server configuration?',
+						text: 'Are you sure you want to change the server configuration? Bad configuration may result into multiple failures or temporary data loss.',
+						callback: sendConfigToServer,
+					})
+				"
+			>
+				Save
+			</button>
 			<button v-if="currentConfigMenu instanceof Array" style="float: right; width: 50px" @click="currentConfigMenu.push(currentConfigMenu[0])">+</button>
 		</div>
 		<div v-else-if="selectedMenu == 'discord_bot'" class="ct">
@@ -185,8 +204,21 @@
 				</select>
 			</label>
 			<!-- {{ JSON.stringify(currentConfigMenu) }} -->
-			<button style="float: right; padding-left: 30px; padding-right: 30px" @click="$emit('confirm', { title: 'Save server configuration?', text: 'Are you sure you want to change the server configuration? Bad configuration may result into multiple failures or temporary data loss.', callback: sendConfigToServer })">Save</button>
-			<button :disabled="discord_invite_link == ''" @click="openNewTab(discord_invite_link)" style="background: #5865f2; color: #fff; float: right; padding-left: 30px; padding-right: 30px">Invite to Server</button>
+			<button
+				style="float: right; padding-left: 30px; padding-right: 30px"
+				@click="
+					$emit('confirm', {
+						title: 'Save server configuration?',
+						text: 'Are you sure you want to change the server configuration? Bad configuration may result into multiple failures or temporary data loss.',
+						callback: sendConfigToServer,
+					})
+				"
+			>
+				Save
+			</button>
+			<button :disabled="discord_invite_link == ''" @click="openNewTab(discord_invite_link)" style="background: #5865f2; color: #fff; float: right; padding-left: 30px; padding-right: 30px">
+				Invite to Server
+			</button>
 		</div>
 		<div v-else-if="selectedMenu == 'seeding_tracker'" class="ct">
 			<AdvancedInput
@@ -202,11 +234,54 @@
 				:optionPreselect="currentConfigMenu.reward_enabled"
 				@valueChanged="currentConfigMenu.reward_enabled = $event.option"
 			/>
-			<AdvancedInput text="Discord Seeding Reward Channel" name="resetseedingtime" type="number" placeholder="Time" oTitleKey="name" oIdKey="id" :inputHidden="true" :optionPreselect="currentConfigMenu.discord_seeding_reward_channel" :options="discord_channels" @valueChanged="currentConfigMenu.discord_seeding_reward_channel = $event.option" />
-			<AdvancedInput text="Discord Seeding Score Channel" name="resetseedingscoretime" type="number" placeholder="Time" oTitleKey="name" oIdKey="id" :inputHidden="true" :optionPreselect="currentConfigMenu.discord_seeding_score_channel" :options="discord_channels" @valueChanged="currentConfigMenu.discord_seeding_score_channel = $event.option" />
-			<AdvancedInput text="Reward Group" name="rewardgroup" oTitleKey="group_name" oIdKey="_id" :inputHidden="true" :options="game_groups" @valueChanged="currentConfigMenu.reward_group_id = $event.option" :optionPreselect="currentConfigMenu.reward_group_id" />
-			<AdvancedInput text="Live Player Count" name="seeding_player_threshold" type="number" @valueChanged="currentConfigMenu.seeding_player_threshold = $event.value" :value="currentConfigMenu.seeding_player_threshold" />
-			<AdvancedInput text="Seeding Start Player Count" name="seeding_player_threshold" type="number" @valueChanged="currentConfigMenu.seeding_start_player_count = $event.value" :value="currentConfigMenu.seeding_start_player_count" />
+			<AdvancedInput
+				text="Discord Seeding Reward Channel"
+				name="resetseedingtime"
+				type="number"
+				placeholder="Time"
+				oTitleKey="name"
+				oIdKey="id"
+				:inputHidden="true"
+				:optionPreselect="currentConfigMenu.discord_seeding_reward_channel"
+				:options="discord_channels"
+				@valueChanged="currentConfigMenu.discord_seeding_reward_channel = $event.option"
+			/>
+			<AdvancedInput
+				text="Discord Seeding Score Channel"
+				name="resetseedingscoretime"
+				type="number"
+				placeholder="Time"
+				oTitleKey="name"
+				oIdKey="id"
+				:inputHidden="true"
+				:optionPreselect="currentConfigMenu.discord_seeding_score_channel"
+				:options="discord_channels"
+				@valueChanged="currentConfigMenu.discord_seeding_score_channel = $event.option"
+			/>
+			<AdvancedInput
+				text="Reward Group"
+				name="rewardgroup"
+				oTitleKey="group_name"
+				oIdKey="_id"
+				:inputHidden="true"
+				:options="game_groups"
+				@valueChanged="currentConfigMenu.reward_group_id = $event.option"
+				:optionPreselect="currentConfigMenu.reward_group_id"
+			/>
+			<AdvancedInput
+				text="Live Player Count"
+				name="seeding_player_threshold"
+				type="number"
+				@valueChanged="currentConfigMenu.seeding_player_threshold = $event.value"
+				:value="currentConfigMenu.seeding_player_threshold"
+			/>
+			<AdvancedInput
+				text="Seeding Start Player Count"
+				name="seeding_player_threshold"
+				type="number"
+				@valueChanged="currentConfigMenu.seeding_start_player_count = $event.value"
+				:value="currentConfigMenu.seeding_start_player_count"
+			/>
 			<AdvancedInput
 				text="Tracking Mode"
 				name="tracking_mode"
@@ -274,7 +349,18 @@
 					<b>Non-seeding Time Deduction</b> applies only during seeding phase.
 				</fieldset>
 			</div>
-			<button style="float: right; padding-left: 30px; padding-right: 30px" @click="$emit('confirm', { title: 'Save server configuration?', text: 'Are you sure you want to change the server configuration? Bad configuration may result into multiple failures or temporary data loss.', callback: sendConfigToServer })">Save</button>
+			<button
+				style="float: right; padding-left: 30px; padding-right: 30px"
+				@click="
+					$emit('confirm', {
+						title: 'Save server configuration?',
+						text: 'Are you sure you want to change the server configuration? Bad configuration may result into multiple failures or temporary data loss.',
+						callback: sendConfigToServer,
+					})
+				"
+			>
+				Save
+			</button>
 		</div>
 	</tab>
 </template>
