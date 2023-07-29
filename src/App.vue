@@ -354,8 +354,12 @@
 				popups.importWhitelist ||
 				popups.changepassword ||
 				popups.addNewList ||
+<<<<<<< HEAD
 				popups.editList ||
 				popups.addEditApiKey
+=======
+				popups.editList
+>>>>>>> main
 			"
 		>
 			<login
@@ -379,7 +383,7 @@
 				v-show="popups.confirm"
 				@cancelBtnClick="popups.confirm = false"
 			/>
-			<edit-clan v-if="popups.editClan" @cancelBtnClick="popups.editClan = false" :clan_data="clans[inEditingClan]" @clan_edited="clans[inEditingClan] = $event" />
+			<editClan v-if="popups.editClan" @cancelBtnClick="popups.editClan = false" :clan_data="clans[inEditingClan]" @clan_edited="clans[inEditingClan] = $event" />
 			<editGameGroup v-if="popups.editGameGroup" @cancelBtnClick="popups.editGameGroup = false" :group_data="game_groups[inEditingGroup]" @edited="game_groups[inEditingGroup] = $event" />
 			<editClanUsers v-if="popups.editClanUsers" :clan_data="clans[inUserEditingClan]" @cancelBtnClick="popups.editClanUsers = false" />
 			<addNewWhitelistUser v-if="popups.addNewWhitelistUser" @cancelBtnClick="popups.addNewWhitelistUser = false" :add_data="tabData.Whitelist.add_data" />
@@ -496,6 +500,7 @@
 				:roles="tabData.UsersAndRoles.roles"
 				@delete-record="removeUser"
 			/>
+<<<<<<< HEAD
 		</tab>
 		<tab v-else-if="currentTab == 'API'" :currentTab="currentTab">
 			<ApiTab
@@ -505,6 +510,8 @@
 					//tabData.addEditApiKey.add_data = $event;
 				"
 			/>
+=======
+>>>>>>> main
 		</tab>
 		<tab v-else-if="currentTab == 'Configuration'" :currentTab="currentTab" complex>
 			<ConfigTab @confirm="confirmEvt" />

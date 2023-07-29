@@ -168,11 +168,11 @@
 				// 	if (tag && !tags.includes(tag[0])) tags.push(tag.replace(/\[/g, '\\[').replace(/\]/g, '\\]'));
 				// }
 				// repReg += tags.join('|');
-				this.refs.textarea.value = this.refs.textarea.value.replace(/\[.{1,}\]/g, '');
+				this.refs.textarea.value = this.refs.textarea.value.replace(/\[.{1,}\] */g, '');
 				// console.log(regRes, tags, repReg);
 			},
 			getDiscord: function (comment: string) {
-				const m = comment.match(/\@.{3,32}#[0-9]{4}/);
+				const m = comment.match(/\@.{3,32}(#[0-9]{4})/);
 				return m ? m[0] : '';
 			},
 		},
@@ -184,12 +184,22 @@
 </script>
 
 <template>
-	<popup id="popup" :focus="refs.textarea" :class="{ big: currentStep == 0 }" ref="popupComp" title="Import List" :confirmText="importSteps[currentStep].confBtnText" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick">
+	<popup
+		id="popup"
+		:focus="refs.textarea"
+		:class="{ big: currentStep == 0 }"
+		ref="popupComp"
+		title="Import List"
+		:confirmText="importSteps[currentStep].confBtnText"
+		@cancelBtnClick="$emit('cancelBtnClick', $event)"
+		@confirmBtnClick="confirmBtnClick"
+	>
 		<h3>{{ importSteps[currentStep].title }}</h3>
 		<div v-show="currentStep == 0" style="flex-grow: 1; display: flex; flex-direction: column; width: 100%">
 			<textarea :ref="(r) => (refs.textarea = r)" style="flex-grow: 1" placeholder="Paste here your whitelist"></textarea>
 			<div class="rowBtnContainer">
-				<label>Replace<input :ref="(r) => (refs.replace.from = r)" type="text" placeholder="Replace" optional /></label><label>With<input :ref="(r) => (refs.replace.with = r)" type="text" placeholder="With" optional /><button @click="replaceTextArea">Replace</button></label>
+				<label>Replace<input :ref="(r) => (refs.replace.from = r)" type="text" placeholder="Replace" optional /></label
+				><label>With<input :ref="(r) => (refs.replace.with = r)" type="text" placeholder="With" optional /><button @click="replaceTextArea">Replace</button></label>
 			</div>
 			<div class="rowBtnContainer">
 				<button @click="removeTags">Remove Tags</button>
