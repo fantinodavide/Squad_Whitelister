@@ -22,6 +22,10 @@
 				required: true,
 				type: String,
 			},
+			currentConfigMenu: {
+				required: false,
+				type: Object,
+			},
 		},
 		methods: {
 			log: console.log,
@@ -66,6 +70,7 @@
 		<confLabelInput v-for="k of Object.keys(content)" :key="k" :confKey="k" :modelValue="content[k]" @update:modelValue="(nv) => (content[k] = nv)" />
 		<!-- </div> -->
 		<slot />
+		<button v-if="currentConfigMenu instanceof Array" :disabled="currentConfigMenu.length == 1" style="float: right; width: 50px" @click="$emit('deleteArrayElement', confKey)">-</button>
 	</fieldset>
 	<label v-else>{{ getTranslation(confKey) }}<input :type="getInputType(content)" :value="modelValue" :checked="modelValue" @input="handleInput" /></label>
 </template>
