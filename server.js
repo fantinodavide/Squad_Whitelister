@@ -2645,13 +2645,21 @@ async function init() {
         await Promise.all(conns)
     }
 
-
+    function emitPromise(socket, event, data) {
+        return new Promise((resolve, reject) => {
+            socket.emit(event, data, (response) => {
+                if (response.error) {
+                    reject(new Error(response.error));
+                } else {
+                    resolve(response);
+                }
+            });
+        });
+    }
 
     async function seedingTimeTracking() {
         const checkIntervalMinutes = 1;
         let firstStart = true;
-        const allOnlinePlayers = [];
-        const activeSeedingConnections = []
         if (firstStart) {
 
             // welcomeMessage({
@@ -2664,36 +2672,40 @@ async function init() {
 
         }
 
-        const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
-        const stConf = st.config;
 
-        for (let sqJsK in subcomponent_data.squadjs) {
-            const singleServerPlayers = (await util.promisify(subcomponent_data.squadjs[ sqJsK ].socket.emit("rcon.getListPlayers")))
-                .map((p) => ({ ...p, sqJsConnectionIndex: sqJsK }));
 
-            if (singleServerPlayers && singleServerPlayers.length >= (stConf.seeding_start_player_count || 2))
-                activeSeedingConnections[ sqJsK ] = true;
 
-            allOnlinePlayers.push(...singleServerPlayers);
-        }
+        _check()
 
-        console.log('Online Players', allOnlinePlayers)
+        // setInterval(() => {
+        //     _check(allOnlinePlayers, activeSeedingConnections)
+        // }, checkIntervalMinutes * 60 * 1000)
+        setInterval(_check, checkIntervalMinutes * 60 * 1000)
+        async function _check() {
+            const dbo = await mongoConn();
+            const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
+            const stConf = st.config;
+            const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
+            const players = [];
+            const activeSeedingConnections = []
 
-        _check(allOnlinePlayers, activeSeedingConnections)
+            for (let sqJsK in subcomponent_data.squadjs) {
+                // const singleServerPlayers = (await util.promisify(subcomponent_data.squadjs[ sqJsK ].socket.emit)("rcon.getListPlayers"))
+                const singleServerPlayers = (await emitPromise(subcomponent_data.squadjs[ sqJsK ].socket, "rcon.getListPlayers", {}))
+                    .map((p) => ({ ...p, sqJsConnectionIndex: +sqJsK }));
+                console.log('singleServerPlayers', singleServerPlayers)
 
-        setInterval(() => {
-            _check(allOnlinePlayers, activeSeedingConnections)
-        }, checkIntervalMinutes * 60 * 1000)
-        // setInterval(_check, 5000)
-        function _check(players, activeSeedingConnections) {
+                if (singleServerPlayers && singleServerPlayers.length >= (stConf.seeding_start_player_count || 2))
+                    activeSeedingConnections[ sqJsK ] = true;
+
+                players.push(...singleServerPlayers);
+            }
+            console.log('Online Players', players)
+
             firstStart = false;
             // console.log("Checking seeders");
-            if (subcomponent_status.squadjs[ sqJsK ] && activeSeedingConnections.includes(true)) {
+            if (activeSeedingConnections.includes(true)) {
                 mongoConn(async dbo => {
-                    const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
-                    const stConf = st.config;
-
-                    const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
 
                     if (players && players.length > 0) {
                         if (st.config.tracking_mode == 'incremental') {
