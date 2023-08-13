@@ -32,7 +32,7 @@ installUpdateDependencies = async () => {
 
 var subcomponent_status = {
     discord_bot: false,
-    squadjs: false
+    squadjs: []
 }
 var subcomponent_data = {
     discord_bot: {
@@ -189,6 +189,8 @@ async function init() {
 
             discordBot(async () => {
                 await SquadJSWebSocket();
+
+                seedingTimeTracking();
 
                 if (enableServer) {
                     const max_port_tries = 3;
@@ -1404,7 +1406,7 @@ async function init() {
                                                             { name: 'List', value: dbResList.title },
                                                             { name: 'Approval', value: insWlPlayer.approved ? `:white_check_mark: Approved` : ":hourglass: Pending", inline: true },
                                                         )
-                                                        discordBot.channels.cache.get(config.discord_bot.whitelist_updates_channel_id).send({ embeds: embeds, components: components })
+                                                        discordBot.channels.cache.get(config.discord_bot.whitelist_updates_channel_id)?.send({ embeds: embeds, components: components })
 
                                                         function formatEmbed(title, value) {
                                                             return Discord.bold(title) + "\n" + Discord.inlineCode(value) + "\n"
@@ -2433,8 +2435,9 @@ async function init() {
         let reconnect_int = null;
         let conns = [];
 
-        console.log("SquadJS WebSocket")
+        console.log("Starting SquadJS WebSockets")
         for (let sqJsK in config.squadjs) {
+            subcomponent_status.squadjs[ sqJsK ] = false;
             const sqJsConn = config.squadjs[ sqJsK ];
 
             if (sqJsConn.websocket && sqJsConn.websocket.token != "" && sqJsConn.websocket.host != "") {
@@ -2445,7 +2448,7 @@ async function init() {
                 const tm = setTimeout(() => {
                     console.error(` > Connection ${+sqJsK + 1} timed out. Check your SquadJS WebSocket configuration.`);
                     console.log(` > Proceding without SquadJS WebSocket ${+sqJsK + 1}.`);
-                    conns[ sqJsK ].resolve(true);
+                    // conns[ sqJsK ].resolve(true);
                 }, 10000)
 
                 const res_ip = (await lookup(sqJsConn.websocket.host)).address
@@ -2459,18 +2462,16 @@ async function init() {
                     autoUnref: true
                 })
                 subcomponent_data.squadjs[ sqJsK ].socket.on("connect", async () => {
-                    conns[ sqJsK ].resolve(true);
+                    // conns[ sqJsK ].resolve(true);
                     clearTimeout(tm);
-                    console.log(" > Connected");
+                    console.log(`SquadJS Websocket ${+sqJsK + 1} Connected`);
 
                     subcomponent_data.squadjs[ sqJsK ].socket.emit("rcon.warn", "76561198419229279", "Whitelister Test Connected", () => { })
                     clearInterval(reconnect_int);
-                    subcomponent_status.squadjs = true;
+                    subcomponent_status.squadjs[ sqJsK ] = true;
 
                     if (!squadjs.initDone) {
                         squadjs.initDone = true;
-
-                        seedingTimeTracking();
                         // seedingTimeTracking();
                     }
                 });
@@ -2482,7 +2483,7 @@ async function init() {
                 //     console.log(dt)
                 // })
                 subcomponent_data.squadjs[ sqJsK ].socket.on("disconnect", async () => {
-                    subcomponent_status.squadjs = false;
+                    subcomponent_status.squadjs[ sqJsK ] = false;
                     console.log("SquadJS WebSocket\n > Disconnected\n > Trying to reconnect")
                     reconnect_int = setInterval(() => {
                         if (!subcomponent_status.squadjs) subcomponent_data.squadjs[ sqJsK ].connect()
@@ -2571,131 +2572,6 @@ async function init() {
                             break;
                     }
                 })
-
-                function seedingTimeTracking() {
-                    const checkIntervalMinutes = 1;
-                    let firstStart = true;
-                    if (firstStart) {
-
-                        // welcomeMessage({
-                        //     player: {
-                        //         steamID: "76561198419229279",
-                        //         name: "JetDave"
-                        //     }
-                        // }, 0)
-
-                        _check()
-                    }
-                    setInterval(_check, checkIntervalMinutes * 60 * 1000)
-                    // setInterval(_check, 5000)
-                    function _check() {
-                        firstStart = false;
-                        // console.log("Checking seeders");
-                        if (subcomponent_status.squadjs) {
-                            mongoConn(async dbo => {
-                                const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
-                                const stConf = st.config;
-
-                                const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
-
-                                subcomponent_data.squadjs[ sqJsK ].socket.emit("rcon.getListPlayers", async (players) => {
-                                    if (players && players.length >= (stConf.seeding_start_player_count || 2)) {
-                                        if (st.config.tracking_mode == 'incremental') {
-                                            let deduction_points = 0;
-
-                                            if (st.config.time_deduction.option == 'point_minute') deduction_points = st.config.time_deduction.value
-                                            else if (st.config.time_deduction.option == 'perc_minute') deduction_points = st.config.time_deduction.value * requiredPoints / 100;
-
-                                            await dbo.collection("players").updateMany({ steamid64: { $nin: players.map(p => p.steamID) }, seeding_points: { $gt: deduction_points } }, { $inc: { seeding_points: -deduction_points } })
-                                        }
-
-                                        if (players.length <= stConf.seeding_player_threshold) {
-                                            // console.log("current seeders", objArrToValArr(players, "name"));
-
-                                            for (let p of players) {
-                                                const oldPlayerData = await dbo.collection("players").findOne({ steamid64: p.steamID });
-                                                dbo.collection("players").findOneAndUpdate({ steamid64: p.steamID }, { $set: { steamid64: p.steamID, username: p.name }, $inc: { seeding_points: 1 } }, { upsert: true, returnDocument: 'after' }, async (err, dbRes) => {
-                                                    if (err) serverError(null, err)
-                                                    else if (stConf.reward_enabled == "true") {
-                                                        // console.log(dbRes);
-                                                        const stepOld = Math.min(Math.floor(10 * oldPlayerData?.seeding_points / requiredPoints), 10) || 0;
-                                                        const percentageCompletedOld = stepOld * 10;
-                                                        const step = Math.min(Math.floor(10 * dbRes.value?.seeding_points / requiredPoints), 10) || 0;
-                                                        const percentageCompleted = step * 10
-                                                        // console.log(p.name, stepOld, step)
-
-                                                        if (step > 0 && step > stepOld) {
-                                                            if (percentageCompleted < 100) {
-                                                                subcomponent_data.squadjs[ sqJsK ].socket.emit("rcon.warn", p.steamID, `Seeding Reward: \n\n${percentageCompleted}% completed`, (d) => { })
-                                                                // new Array(10).fill('■',0,1).fill('□',1,10).join('')
-
-                                                                const messageContent = {
-                                                                    embeds: [ {
-                                                                        color: Discord.resolveColor(config.app_personalization.accent_color),
-                                                                        title: `${p.name}`,
-                                                                        url: steamProfileUrl(p.steamID),
-                                                                        fields: [
-                                                                            { name: 'Score', value: percentageCompleted + "%", inline: true },
-                                                                            { name: 'SteamID', value: Discord.hyperlink(p.steamID, steamProfileUrl(p.steamID)), inline: true },
-                                                                            { name: 'Discord User', value: dbRes.value.discord_user_id ? Discord.userMention(dbRes.value.discord_user_id) : 'Not Linked', inline: false },
-                                                                        ],
-                                                                        footer: {
-                                                                            text: new Array(10).fill('◼', 0, step).fill('◻', step, 10).join('') + ` ${percentageCompleted}%`,
-                                                                            icon_url: config.app_personalization.favicon || config.app_personalization.logo_url,
-                                                                        },
-                                                                        thumbnail: {
-                                                                            url: config.app_personalization.logo_url,
-                                                                        },
-                                                                        timestamp: new Date().toISOString(),
-                                                                    } ],
-                                                                    ephemeral: false
-                                                                }
-                                                                discordBot.channels.cache.get(stConf.discord_seeding_score_channel).send(messageContent)
-
-                                                            } else if (percentageCompleted == 100) {
-                                                                const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
-                                                                let message =
-                                                                    `Seeding Reward Completed!\n\nYou have received: ${reward_group.group_name}\n`
-                                                                if (st.config.tracking_mode == 'fixed_reset') message += `Active until: ${(new Date(st.config.next_reset)).toLocaleDateString()}`
-                                                                else if (st.config.tracking_mode == 'incremental') message += `Don't drop below 100% to keep your reward!`
-
-                                                                subcomponent_data.squadjs[ sqJsK ].socket.emit("rcon.warn", p.steamID, message, (d) => { })
-                                                                if (subcomponent_status.discord_bot) {
-                                                                    const embeds = [
-                                                                        new Discord.EmbedBuilder()
-                                                                            .setColor(config.app_personalization.accent_color)
-                                                                            .setTitle(`${p.name} received the Seeding Reward!`)
-                                                                            .setURL(steamProfileUrl(p.steamID))
-                                                                            // .setDescription(formatEmbed("Manager", ) + formatEmbed("List", dbResList.title)),
-                                                                            .addFields(
-                                                                                { name: 'Username', value: p.name, inline: true },
-                                                                                { name: 'SteamID', value: Discord.hyperlink(p.steamID, "https://steamcommunity.com/profiles/" + p.steamID), inline: true },
-                                                                                { name: 'Discord User', value: dbRes.value.discord_user_id ? Discord.userMention(dbRes.value.discord_user_id) : 'Not Linked', inline: false },
-                                                                                { name: 'Reward Group', value: reward_group.group_name, inline: true }
-                                                                                // { name: 'Expiration', value: reward_group.group_name, inline: true }
-                                                                            )
-                                                                            .setThumbnail(config.app_personalization.logo_url)
-                                                                            .setFooter({
-                                                                                text: new Array(10).fill('◼', 0, 10).join('') + " 100%",
-                                                                                iconURL: config.app_personalization.favicon || config.app_personalization.logo_url,
-                                                                            })
-                                                                            .setTimestamp(new Date())
-                                                                    ]
-                                                                    discordBot.channels.cache.get(stConf.discord_seeding_reward_channel).send({ embeds: embeds })
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                })
-                                            }
-                                        }
-                                    }
-                                })
-                            })
-                        }
-                    }
-                }
-
                 async function welcomeMessage(dt, timeoutDelay = 5000) {
                     mongoConn(async dbo => {
                         const pipeline = [
@@ -2768,6 +2644,155 @@ async function init() {
 
         await Promise.all(conns)
     }
+
+
+
+    async function seedingTimeTracking() {
+        const checkIntervalMinutes = 1;
+        let firstStart = true;
+        const allOnlinePlayers = [];
+        const activeSeedingConnections = []
+        if (firstStart) {
+
+            // welcomeMessage({
+            //     player: {
+            //         steamID: "76561198419229279",
+            //         name: "JetDave"
+            //     }
+            // }, 0)
+
+
+        }
+
+        const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
+        const stConf = st.config;
+
+        for (let sqJsK in subcomponent_data.squadjs) {
+            const singleServerPlayers = (await util.promisify(subcomponent_data.squadjs[ sqJsK ].socket.emit("rcon.getListPlayers")))
+                .map((p) => ({ ...p, sqJsConnectionIndex: sqJsK }));
+
+            if (singleServerPlayers && singleServerPlayers.length >= (stConf.seeding_start_player_count || 2))
+                activeSeedingConnections[ sqJsK ] = true;
+
+            allOnlinePlayers.push(...singleServerPlayers);
+        }
+
+        console.log('Online Players', allOnlinePlayers)
+
+        _check(allOnlinePlayers, activeSeedingConnections)
+
+        setInterval(() => {
+            _check(allOnlinePlayers, activeSeedingConnections)
+        }, checkIntervalMinutes * 60 * 1000)
+        // setInterval(_check, 5000)
+        function _check(players, activeSeedingConnections) {
+            firstStart = false;
+            // console.log("Checking seeders");
+            if (subcomponent_status.squadjs[ sqJsK ] && activeSeedingConnections.includes(true)) {
+                mongoConn(async dbo => {
+                    const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
+                    const stConf = st.config;
+
+                    const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
+
+                    if (players && players.length > 0) {
+                        if (st.config.tracking_mode == 'incremental') {
+                            let deduction_points = 0;
+
+                            if (st.config.time_deduction.option == 'point_minute') deduction_points = st.config.time_deduction.value
+                            else if (st.config.time_deduction.option == 'perc_minute') deduction_points = st.config.time_deduction.value * requiredPoints / 100;
+
+                            await dbo.collection("players").updateMany({ steamid64: { $nin: players.map(p => p.steamID) }, seeding_points: { $gt: deduction_points } }, { $inc: { seeding_points: -deduction_points } })
+                        }
+
+                        if (players.length <= stConf.seeding_player_threshold) {
+                            // console.log("current seeders", objArrToValArr(players, "name"));
+
+                            for (let p of players) {
+                                if (!activeSeedingConnections[ p.sqJsConnectionIndex ]) continue;
+
+                                const oldPlayerData = await dbo.collection("players").findOne({ steamid64: p.steamID });
+                                dbo.collection("players").findOneAndUpdate({ steamid64: p.steamID }, { $set: { steamid64: p.steamID, username: p.name }, $inc: { seeding_points: 1 } }, { upsert: true, returnDocument: 'after' }, async (err, dbRes) => {
+                                    if (err) serverError(null, err)
+                                    else if (stConf.reward_enabled == "true") {
+                                        // console.log(dbRes);
+                                        const stepOld = Math.min(Math.floor(10 * oldPlayerData?.seeding_points / requiredPoints), 10) || 0;
+                                        const percentageCompletedOld = stepOld * 10;
+                                        const step = Math.min(Math.floor(10 * dbRes.value?.seeding_points / requiredPoints), 10) || 0;
+                                        const percentageCompleted = step * 10
+                                        // console.log(p.name, stepOld, step)
+
+                                        if (step > 0 && step > stepOld) {
+                                            if (percentageCompleted < 100) {
+                                                subcomponent_data.squadjs[ sqJsK ].socket.emit("rcon.warn", p.steamID, `Seeding Reward: \n\n${percentageCompleted}% completed`, (d) => { })
+                                                // new Array(10).fill('■',0,1).fill('□',1,10).join('')
+
+                                                const messageContent = {
+                                                    embeds: [ {
+                                                        color: Discord.resolveColor(config.app_personalization.accent_color),
+                                                        title: `${p.name}`,
+                                                        url: steamProfileUrl(p.steamID),
+                                                        fields: [
+                                                            { name: 'Score', value: percentageCompleted + "%", inline: true },
+                                                            { name: 'SteamID', value: Discord.hyperlink(p.steamID, steamProfileUrl(p.steamID)), inline: true },
+                                                            { name: 'Discord User', value: dbRes.value.discord_user_id ? Discord.userMention(dbRes.value.discord_user_id) : 'Not Linked', inline: false },
+                                                        ],
+                                                        footer: {
+                                                            text: new Array(10).fill('◼', 0, step).fill('◻', step, 10).join('') + ` ${percentageCompleted}%`,
+                                                            icon_url: config.app_personalization.favicon || config.app_personalization.logo_url,
+                                                        },
+                                                        thumbnail: {
+                                                            url: config.app_personalization.logo_url,
+                                                        },
+                                                        timestamp: new Date().toISOString(),
+                                                    } ],
+                                                    ephemeral: false
+                                                }
+                                                discordBot.channels.cache.get(stConf.discord_seeding_score_channel)?.send(messageContent)
+
+                                            } else if (percentageCompleted == 100) {
+                                                const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
+                                                let message =
+                                                    `Seeding Reward Completed!\n\nYou have received: ${reward_group.group_name}\n`
+                                                if (st.config.tracking_mode == 'fixed_reset') message += `Active until: ${(new Date(st.config.next_reset)).toLocaleDateString()}`
+                                                else if (st.config.tracking_mode == 'incremental') message += `Don't drop below 100% to keep your reward!`
+
+                                                subcomponent_data.squadjs[ sqJsK ].socket.emit("rcon.warn", p.steamID, message, (d) => { })
+                                                if (subcomponent_status.discord_bot) {
+                                                    const embeds = [
+                                                        new Discord.EmbedBuilder()
+                                                            .setColor(config.app_personalization.accent_color)
+                                                            .setTitle(`${p.name} received the Seeding Reward!`)
+                                                            .setURL(steamProfileUrl(p.steamID))
+                                                            // .setDescription(formatEmbed("Manager", ) + formatEmbed("List", dbResList.title)),
+                                                            .addFields(
+                                                                { name: 'Username', value: p.name, inline: true },
+                                                                { name: 'SteamID', value: Discord.hyperlink(p.steamID, "https://steamcommunity.com/profiles/" + p.steamID), inline: true },
+                                                                { name: 'Discord User', value: dbRes.value.discord_user_id ? Discord.userMention(dbRes.value.discord_user_id) : 'Not Linked', inline: false },
+                                                                { name: 'Reward Group', value: reward_group.group_name, inline: true }
+                                                                // { name: 'Expiration', value: reward_group.group_name, inline: true }
+                                                            )
+                                                            .setThumbnail(config.app_personalization.logo_url)
+                                                            .setFooter({
+                                                                text: new Array(10).fill('◼', 0, 10).join('') + " 100%",
+                                                                iconURL: config.app_personalization.favicon || config.app_personalization.logo_url,
+                                                            })
+                                                            .setTimestamp(new Date())
+                                                    ]
+                                                    discordBot.channels.cache.get(stConf.discord_seeding_reward_channel)?.send({ embeds: embeds })
+                                                }
+                                            }
+                                        }
+                                    }
+                                })
+                            }
+                        }
+                    }
+                })
+            }
+        }
+    }
+
 
     async function getPlayerGroups(steamid64) {
         const dbo = await mongoConn()
