@@ -22,7 +22,7 @@
 				discord_invite_link: '' as string,
 				game_groups: [] as Array<any>,
 				subcomponent_status: {
-					squadjs: false,
+					squadjs: [],
 				},
 			};
 		},
@@ -131,7 +131,7 @@
 				await fetch('/api/subcomponent/read/squadjs/status')
 					.then((res) => res.json())
 					.then((dt) => {
-						console.log(dt);
+						console.log('SquadJS status', dt);
 						return (this.subcomponent_status.squadjs = dt);
 						// return (this.game_groups = [{ _id: '', group_name: 'None', group_permissions: [], require_appr: false }, ...dt]);
 					});
@@ -166,7 +166,7 @@
 				@deleteArrayElement="(index)=> currentConfigMenu = currentConfigMenu.filter((e:any,i:number)=>i!=index)"
 			>
 				<!-- <h4 v-if="selectedMenu == 'squadjs'">Websocket is {{ subcomponent_status.squadjs ? '' : 'Not ' }} Connected</h4> -->
-				<AdvancedInput v-if="selectedMenu == 'squadjs'" text="Status" name="" :value="subcomponent_status.squadjs ? 'Connected' : 'Not Connected'" optional readonly />
+				<AdvancedInput v-if="selectedMenu == 'squadjs'" text="Status" name="" :value="subcomponent_status.squadjs[(k as any)] ? 'Connected' : 'Not Connected'" optional readonly />
 			</confLabelInput>
 
 			<button
@@ -181,7 +181,7 @@
 			>
 				Save
 			</button>
-			<button v-if="currentConfigMenu instanceof Array" style="float: right; width: 50px" @click="currentConfigMenu.push(currentConfigMenu[0])">+</button>
+			<button v-if="currentConfigMenu instanceof Array" style="float: right; width: 50px" @click="currentConfigMenu.push({ ...currentConfigMenu[0] })">+</button>
 		</div>
 		<div v-else-if="selectedMenu == 'discord_bot'" class="ct">
 			<confLabelInput confKey="token" :modelValue="currentConfigMenu.token" @update:modelValue="(nv) => (currentConfigMenu.token = nv)" />
