@@ -2693,14 +2693,14 @@ async function init() {
                 // const singleServerPlayers = (await util.promisify(subcomponent_data.squadjs[ sqJsK ].socket.emit)("rcon.getListPlayers"))
                 const singleServerPlayers = (await emitPromise(subcomponent_data.squadjs[ sqJsK ].socket, "rcon.getListPlayers", {}))
                     .map((p) => ({ ...p, sqJsConnectionIndex: +sqJsK }));
-                console.log('singleServerPlayers', singleServerPlayers)
+                // console.log('singleServerPlayers', singleServerPlayers)
 
                 if (singleServerPlayers && singleServerPlayers.length >= (stConf.seeding_start_player_count || 2))
                     activeSeedingConnections[ sqJsK ] = true;
 
                 players.push(...singleServerPlayers);
             }
-            console.log('Online Players', players)
+            // console.log('Online Players', players)
 
             firstStart = false;
             // console.log("Checking seeders");
@@ -2736,7 +2736,7 @@ async function init() {
 
                                         if (step > 0 && step > stepOld) {
                                             if (percentageCompleted < 100) {
-                                                subcomponent_data.squadjs[ sqJsK ].socket.emit("rcon.warn", p.steamID, `Seeding Reward: \n\n${percentageCompleted}% completed`, (d) => { })
+                                                subcomponent_data.squadjs[ p.sqJsConnectionIndex ].socket.emit("rcon.warn", p.steamID, `Seeding Reward: \n\n${percentageCompleted}% completed`, (d) => { })
                                                 // new Array(10).fill('■',0,1).fill('□',1,10).join('')
 
                                                 const messageContent = {
@@ -2769,7 +2769,7 @@ async function init() {
                                                 if (st.config.tracking_mode == 'fixed_reset') message += `Active until: ${(new Date(st.config.next_reset)).toLocaleDateString()}`
                                                 else if (st.config.tracking_mode == 'incremental') message += `Don't drop below 100% to keep your reward!`
 
-                                                subcomponent_data.squadjs[ sqJsK ].socket.emit("rcon.warn", p.steamID, message, (d) => { })
+                                                subcomponent_data.squadjs[ p.sqJsConnectionIndex ].socket.emit("rcon.warn", p.steamID, message, (d) => { })
                                                 if (subcomponent_status.discord_bot) {
                                                     const embeds = [
                                                         new Discord.EmbedBuilder()
@@ -2977,15 +2977,15 @@ async function init() {
                 }*/
                 }
             ],
-            testUpgrade: [
-                {
-                    websocket: {
-                        host: "",
-                        port: 3000,
-                        token: ""
-                    }
-                }
-            ],
+            // testUpgrade: [
+            //     {
+            //         websocket: {
+            //             host: "",
+            //             port: 3000,
+            //             token: ""
+            //         }
+            //     }
+            // ],
             other: {
                 automatic_updates: true,
                 update_check_interval_seconds: 3600,
