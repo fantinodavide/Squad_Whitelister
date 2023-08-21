@@ -3,8 +3,6 @@
 </script>
 
 <script lang="ts">
-	import { anyTypeAnnotation } from '@babel/types';
-	import { stringifyStyle } from '@vue/shared';
 	import $ from 'jquery';
 	import SideMenu from './sideMenu.vue';
 	import tab from './tab.vue';
@@ -13,7 +11,7 @@
 	export default {
 		data() {
 			return {
-				currentConfigMenu: {} as any,
+				currentConfigMenu: {} as any | any[],
 				selectedMenu: '' as string,
 				config_tr: {} as any,
 				currentConfigType: '' as string,
@@ -139,6 +137,36 @@
 			openNewTab: function (url: string) {
 				window.open(url, '_blank');
 			},
+			getProxyTarget(obj: any) {
+				if (obj && obj.__getTarget) {
+					return obj.__getTarget();
+				}
+				return obj;
+			},
+			removeProxies(obj: any): any {
+				obj = this.getProxyTarget(obj);
+
+				if (typeof obj !== 'object' || obj === null) {
+					return obj;
+				}
+
+				if (Array.isArray(obj)) {
+					return obj.map((item) => this.removeProxies(item));
+				}
+
+				const result: any = {};
+				for (const key in obj) {
+					if (obj.hasOwnProperty(key)) {
+						result[key] = this.removeProxies(obj[key]);
+					}
+				}
+				return result;
+			},
+			addArrayElement() {
+				const duplicatedBaseElement = { ...this.currentConfigMenu[0] };
+				const cleanedDuplicatedElement = this.removeProxies(duplicatedBaseElement);
+				this.currentConfigMenu.push({ ...cleanedDuplicatedElement });
+			},
 		},
 		async beforeMount() {
 			this.getDiscordServers();
@@ -181,7 +209,8 @@
 			>
 				Save
 			</button>
-			<button v-if="currentConfigMenu instanceof Array" style="float: right; width: 50px" @click="currentConfigMenu.push({ ...currentConfigMenu[0] })">+</button>
+			<!-- <button v-if="currentConfigMenu instanceof Array" style="float: right; width: 50px" @click="currentConfigMenu.push({ ...currentConfigMenu[0] })">+</button> -->
+			<button v-if="currentConfigMenu instanceof Array" style="float: right; width: 50px" @click="addArrayElement">+</button>
 		</div>
 		<div v-else-if="selectedMenu == 'discord_bot'" class="ct">
 			<confLabelInput confKey="token" :modelValue="currentConfigMenu.token" @update:modelValue="(nv) => (currentConfigMenu.token = nv)" />

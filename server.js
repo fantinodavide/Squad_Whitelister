@@ -993,7 +993,7 @@ async function init() {
 
             // if (true || [ 'web_server', 'database', 'discord_bot', 'squadjs' ].includes(parm.category)) restartProcess(0, 0);
 
-            // restartProcess(0, 0, args);
+            restartProcess(0, 0, args);
         })
         app.use('/api/dbconfig/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
         app.get('/api/dbconfig/read/getFull', async (req, res, next) => {
