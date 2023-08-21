@@ -2971,21 +2971,9 @@ async function init() {
                         host: "",
                         port: 3000,
                         token: ""
-                    }/*,
-                seeding_time_tracker: {
-                    live_player_count: 50,
-                }*/
+                    }
                 }
             ],
-            // testUpgrade: [
-            //     {
-            //         websocket: {
-            //             host: "",
-            //             port: 3000,
-            //             token: ""
-            //         }
-            //     }
-            // ],
             other: {
                 automatic_updates: true,
                 update_check_interval_seconds: 3600,
@@ -3171,46 +3159,38 @@ async function init() {
             }
         })
     }
-    function upgradeConfig(config, emptyConfFile) {
-        console.log('upgrading conf')
-        for (let k in emptyConfFile) {
-            const objType = Object.prototype.toString.call(emptyConfFile[ k ]);
-            const parentObjType = Object.prototype.toString.call(emptyConfFile);
-            const activeConfigParentType = Object.prototype.toString.call(config);
-            const activeConfigType = Object.prototype.toString.call(config[ k ]);
-            // if (config[ k ] && objType != parentObjType)
-            if (config[ k ] == undefined || (activeConfigType != objType)) {
-                switch (objType) {
-                    case "[object Object]":
-                        config[ k ] = {}
-                        break;
-                    case "[object Array]":
-                        const confBackup = config[ k ];
-                        console.log('\n\n\n\n', confBackup, '\n\n\n\n')
-                        config[ k ] = [
-                            confBackup
-                        ]
-                        console.log(k, objType, config[ k ])
-                        break;
-
-                    default:
-                        //console.log("CONFIG:", config, "\nKEY:", k, "\nCONFIG_K:", config[k], "\nEMPTY_CONFIG_K:", emptyConfFile[k], "\nPARENT_TYPE:",parentObjType,"\n");
-
-                        // if (parentObjType == "[object Array]") config.push(emptyConfFile[ k ])
-                        // else config[ k ] = emptyConfFile[ k ]
-
-                        config[ k ] = emptyConfFile[ k ]
-                        break;
-                }
+    function upgradeConfig(currentConfig, baseConfig) {
+        console.log('upgrading conf');
+        
+        for (let k in baseConfig) {
+            if (currentConfig[k] === undefined) {
+                currentConfig[k] = JSON.parse(JSON.stringify(baseConfig[k])); // Deep clone
+                continue;
             }
-            if (typeof (emptyConfFile[ k ]) === "object") {
-                upgradeConfig(config[ k ], emptyConfFile[ k ])
+        
+            if (Array.isArray(baseConfig[k])) {
+                if (!Array.isArray(currentConfig[k])) {
+                    // If currentConfig[k] is not an array, make its current value the first entry of the new array
+                    currentConfig[k] = [currentConfig[k]];
+                }
+        
+                for (let i = 0; i < baseConfig[k].length; i++) {
+                    if (i >= currentConfig[k].length) {
+                        currentConfig[k].push(JSON.parse(JSON.stringify(baseConfig[k][i]))); // Deep clone
+                    } else {
+                        upgradeConfig(currentConfig[k][i], baseConfig[k][i]);
+                    }
+                }
+            } else if (typeof baseConfig[k] === "object") {
+                if (typeof currentConfig[k] !== "object" || currentConfig[k] === null) {
+                    currentConfig[k] = {};
+                }
+                upgradeConfig(currentConfig[k], baseConfig[k]);
+            } else if (typeof currentConfig[k] !== typeof baseConfig[k]) {
+                currentConfig[k] = baseConfig[k];
             }
         }
-    }
-    function updateConfig() {
-
-    }
+    }    
 
     function setApprovedStatus(parm, res = null) {
         mongoConn((dbo) => {
