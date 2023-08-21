@@ -13,7 +13,6 @@
 	import popup from './components/popup.vue';
 	import confirmPopup from './components/confirmPopup.vue';
 	import gameGroupCard from './components/gameGroupCard.vue';
-	import editClan from './components/editClan.vue';
 	import editGameGroup from './components/editGameGroup.vue';
 	import editClanUsers from './components/editClanUsers.vue';
 	import whitelistTab from './components/whitelistTab.vue';
@@ -27,6 +26,8 @@
 	import editList from './components/editList.vue';
 	import ConfigTab from './components/configTab.vue';
 	import SeedingTab from './components/seedingTab.vue';
+	import ApiTab from './components/apiTab.vue';
+	import addEditApiKey from './components/addEditApiKey.vue';
 
 	import bia_logo from './assets/bia_logo.png';
 	import jd_logo from './assets/jd_logo.png';
@@ -66,6 +67,7 @@
 					changepassword: false,
 					addNewList: false,
 					editList: false,
+					addEditApiKey: false,
 				},
 				favicon: '',
 				clans: [] as Array<any>,
@@ -77,6 +79,7 @@
 					confirmPopup: {} as any,
 					editClanUsers: {} as any,
 				},
+				roles: [] as any[],
 				tabData: {
 					Whitelist: {
 						add_data: {} as any,
@@ -90,6 +93,9 @@
 						users: [] as Array<any>,
 						roles: [] as Array<any>,
 						userSearch: '',
+					},
+					api_keys: {
+						add_data: [] as any,
 					},
 				},
 			};
@@ -186,6 +192,9 @@
 						console.log('All roles', dt);
 						this.tabData.UsersAndRoles.roles = dt;
 					});
+			},
+			getRolesRet: async function () {
+				return await (await fetch('/api/roles/read/getAll')).json();
 			},
 			getClans: function () {
 				fetch('/api/clans/getAllClans')
@@ -297,6 +306,7 @@
 			evtTest: function (e: any) {
 				console.log('evt test: ', e);
 			},
+			log: console.log,
 		},
 		async created() {
 			this.getVersion();
@@ -307,6 +317,8 @@
 			if (md.mobile() != null) {
 				document.body.classList.add('mobile');
 			}
+			this.roles = await this.getRolesRet();
+			this.log('Roles', this.roles);
 			// this.getClans();
 		},
 	};
@@ -342,7 +354,8 @@
 				popups.importWhitelist ||
 				popups.changepassword ||
 				popups.addNewList ||
-				popups.editList
+				popups.editList ||
+				popups.addEditApiKey
 			"
 		>
 			<login
@@ -373,6 +386,7 @@
 			<importWhitelist v-if="popups.importWhitelist" @cancelBtnClick="popups.importWhitelist = false" :add_data="tabData.Whitelist.add_data" />
 			<addNewList v-if="popups.addNewList" @cancelBtnClick="popups.addNewList = false" :add_data="tabData.Whitelist.new_list_data" />
 			<editList v-if="popups.editList" @cancelBtnClick="popups.editList = false" :data="tabData.Whitelist.edit_list_data" />
+			<addEditApiKey v-if="popups.addEditApiKey" @cancelBtnClick="popups.addEditApiKey = false" :add_data="tabData.api_keys.add_data" :roles="roles" />
 		</blackoutBackground>
 		<!--<button @click="setLoginRequired(!loginRequired)">Toggle</button>-->
 		<tab v-if="currentTab == 'Home'" :currentTab="currentTab"></tab>
@@ -481,6 +495,15 @@
 				:user_data="u"
 				:roles="tabData.UsersAndRoles.roles"
 				@delete-record="removeUser"
+			/>
+		</tab>
+		<tab v-else-if="currentTab == 'API'" :currentTab="currentTab">
+			<ApiTab
+				@confirm="confirmEvt"
+				@addNewApiKey="
+					popups.addEditApiKey = true
+					//tabData.addEditApiKey.add_data = $event;
+				"
 			/>
 		</tab>
 		<tab v-else-if="currentTab == 'Configuration'" :currentTab="currentTab" complex>
