@@ -2189,7 +2189,8 @@ async function init() {
                                             setTimeout(async () => {
                                                 try {
                                                     const sentReply = await reply?.interaction?.webhook?.fetchMessage();
-                                                    sentReply.edit({ components: [] })
+                                                    if (sentReply)
+                                                        sentReply.edit({ components: [] })
                                                 } catch (error) {
                                                     console.error(error);
                                                 }
@@ -2812,7 +2813,7 @@ async function init() {
         const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
         const stConf = st.config;
         const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
-        const reward_group = st.config.reward_group_id?(await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })):null
+        const reward_group = st.config.reward_group_id ? (await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })) : null
         let playerGroups = [];
         // GROUP FORMAT: { name: "groupName", expiration: new Date() }
         playerGroups.push(...(await dbo.collection('whitelists').find({ steamid64: steamid64 }).toArray()).map(_e => {
