@@ -2188,7 +2188,7 @@ async function init() {
                                         if (!reply.interaction.ephemeral) {
                                             setTimeout(async () => {
                                                 try {
-                                                    const sentReply = await reply.interaction.webhook.fetchMessage();
+                                                    const sentReply = await reply?.interaction?.webhook?.fetchMessage();
                                                     sentReply.edit({ components: [] })
                                                 } catch (error) {
                                                     console.error(error);
