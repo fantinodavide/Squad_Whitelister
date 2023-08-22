@@ -2595,7 +2595,7 @@ async function init() {
                                         const stConf = st.config;
                                         const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
                                         const percentageCompleted = Math.floor(100 * dbResP.seeding_points / requiredPoints) || 0;
-                                        const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
+                                        // const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
 
                                         let msg = "Welcome " + dt.player.name + "\n\n";
 
@@ -2812,7 +2812,7 @@ async function init() {
         const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
         const stConf = st.config;
         const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
-        const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
+        const reward_group = st.config.reward_group_id?(await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })):null
         let playerGroups = [];
         // GROUP FORMAT: { name: "groupName", expiration: new Date() }
         playerGroups.push(...(await dbo.collection('whitelists').find({ steamid64: steamid64 }).toArray()).map(_e => {
@@ -2873,7 +2873,7 @@ async function init() {
         const dbResP = await dbo.collection("players").aggregate(pipeline).toArray()
         for (let w of dbResP) {
             const percentageCompleted = Math.round(100 * w.seeding_points / requiredPoints);
-            if (percentageCompleted >= 100) playerGroups.push({ id: reward_group._id?.toString(), name: reward_group.group_name, expiration: stConf.tracking_mode == 'fixed_reset' ? new Date(stConf.next_reset) : false, approved: stConf.reward_enabled == 'true', source: 'Seeding' })
+            if (percentageCompleted >= 100 && reward_group) playerGroups.push({ id: reward_group._id?.toString(), name: reward_group.group_name, expiration: stConf.tracking_mode == 'fixed_reset' ? new Date(stConf.next_reset) : false, approved: stConf.reward_enabled == 'true', source: 'Seeding' })
 
             for (let g of w.groups) {
                 playerGroups.push({
@@ -3161,36 +3161,36 @@ async function init() {
     }
     function upgradeConfig(currentConfig, baseConfig) {
         console.log('upgrading conf');
-        
+
         for (let k in baseConfig) {
-            if (currentConfig[k] === undefined) {
-                currentConfig[k] = JSON.parse(JSON.stringify(baseConfig[k])); // Deep clone
+            if (currentConfig[ k ] === undefined) {
+                currentConfig[ k ] = JSON.parse(JSON.stringify(baseConfig[ k ])); // Deep clone
                 continue;
             }
-        
-            if (Array.isArray(baseConfig[k])) {
-                if (!Array.isArray(currentConfig[k])) {
+
+            if (Array.isArray(baseConfig[ k ])) {
+                if (!Array.isArray(currentConfig[ k ])) {
                     // If currentConfig[k] is not an array, make its current value the first entry of the new array
-                    currentConfig[k] = [currentConfig[k]];
+                    currentConfig[ k ] = [ currentConfig[ k ] ];
                 }
-        
-                for (let i = 0; i < baseConfig[k].length; i++) {
-                    if (i >= currentConfig[k].length) {
-                        currentConfig[k].push(JSON.parse(JSON.stringify(baseConfig[k][i]))); // Deep clone
+
+                for (let i = 0; i < baseConfig[ k ].length; i++) {
+                    if (i >= currentConfig[ k ].length) {
+                        currentConfig[ k ].push(JSON.parse(JSON.stringify(baseConfig[ k ][ i ]))); // Deep clone
                     } else {
-                        upgradeConfig(currentConfig[k][i], baseConfig[k][i]);
+                        upgradeConfig(currentConfig[ k ][ i ], baseConfig[ k ][ i ]);
                     }
                 }
-            } else if (typeof baseConfig[k] === "object") {
-                if (typeof currentConfig[k] !== "object" || currentConfig[k] === null) {
-                    currentConfig[k] = {};
+            } else if (typeof baseConfig[ k ] === "object") {
+                if (typeof currentConfig[ k ] !== "object" || currentConfig[ k ] === null) {
+                    currentConfig[ k ] = {};
                 }
-                upgradeConfig(currentConfig[k], baseConfig[k]);
-            } else if (typeof currentConfig[k] !== typeof baseConfig[k]) {
-                currentConfig[k] = baseConfig[k];
+                upgradeConfig(currentConfig[ k ], baseConfig[ k ]);
+            } else if (typeof currentConfig[ k ] !== typeof baseConfig[ k ]) {
+                currentConfig[ k ] = baseConfig[ k ];
             }
         }
-    }    
+    }
 
     function setApprovedStatus(parm, res = null) {
         mongoConn((dbo) => {
