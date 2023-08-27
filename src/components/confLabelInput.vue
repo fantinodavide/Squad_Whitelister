@@ -31,7 +31,11 @@
 			log: console.log,
 			handleInput: function (e: any) {
 				let ret = e.target.value;
-				if (e.target.type == 'checkbox') ret = e.target.checked;
+				if (e.target.type === 'checkbox') {
+					ret = e.target.checked;
+				} else if (e.target.type === 'number') {
+					ret = parseFloat(ret);
+				}
 				this.$emit('update:modelValue', ret);
 			},
 			getInputType: function (o: any) {
