@@ -2516,7 +2516,7 @@ async function init() {
                 //     console.log("Player disconnected: ", dt)
                 // })
                 subcomponent_data.squadjs[ sqJsK ].socket.on("CHAT_MESSAGE", async (dt) => {
-
+                    // console.log(`Message from connection ${sqJsK}`, dt)
                     switch (dt.message.toLowerCase().replace(/^(!|\/)/, '')) {
                         case 'test':
                             break;
@@ -2574,6 +2574,7 @@ async function init() {
                     }
                 })
                 async function welcomeMessage(dt, timeoutDelay = 5000) {
+                    // console.log('Sending welcome message', dt)
                     mongoConn(async dbo => {
                         const pipeline = [
                             { $match: { steamid64: dt.player.steamID } },
@@ -2659,6 +2660,7 @@ async function init() {
     }
 
     async function seedingTimeTracking() {
+        console.log('Seeding Tracker started')
         const checkIntervalMinutes = 1;
         let firstStart = true;
         if (firstStart) {
@@ -2691,7 +2693,9 @@ async function init() {
             const activeSeedingConnections = []
 
             for (let sqJsK in subcomponent_data.squadjs) {
+                if (!subcomponent_status.squadjs[ sqJsK ]) continue;
                 // const singleServerPlayers = (await util.promisify(subcomponent_data.squadjs[ sqJsK ].socket.emit)("rcon.getListPlayers"))
+
                 const singleServerPlayers = (await emitPromise(subcomponent_data.squadjs[ sqJsK ].socket, "rcon.getListPlayers", {}))
                     .map((p) => ({ ...p, sqJsConnectionIndex: +sqJsK }));
                 // console.log('singleServerPlayers', singleServerPlayers)
