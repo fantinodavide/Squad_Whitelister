@@ -199,7 +199,7 @@
 	>
 		<h3>{{ importSteps[currentStep].title }}</h3>
 		<div v-show="currentStep == 0" style="flex-grow: 1; display: flex; flex-direction: column; width: 100%">
-			<textarea :ref="(r) => (refs.textarea = r)" style="flex-grow: 1" placeholder="Paste here your whitelist" @keydown.enter="preventDefault"></textarea>
+			<textarea :ref="(r) => (refs.textarea = r)" style="flex-grow: 1" placeholder="Paste here your whitelist"></textarea>
 			<div class="rowBtnContainer">
 				<label>Replace<input :ref="(r) => (refs.replace.from = r)" type="text" placeholder="Replace" optional /></label
 				><label>With<input :ref="(r) => (refs.replace.with = r)" type="text" placeholder="With" optional /><button @click="replaceTextArea">Replace</button></label>

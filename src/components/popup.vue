@@ -110,7 +110,7 @@
 </script>
 
 <template>
-	<div class="popupContainer" @keyup.enter="checkInputs" @keyup.escape="!hideCancel ? $emit('cancelBtnClick') : ''">
+	<div class="popupContainer" @keyup.enter="($event.target && ($event.target as HTMLElement).nodeName !== 'TEXTAREA') && checkInputs" @keyup.escape="!hideCancel ? $emit('cancelBtnClick') : ''">
 		<h1>{{ title }}</h1>
 		<slot />
 		<div class="btnContainer">
