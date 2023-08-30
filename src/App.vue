@@ -7,6 +7,7 @@
 	import tabBrowserBtn from './components/tabBrowserButton.vue';
 	import tab from './components/tab.vue';
 	import AddNewClan from './components/addNewClan.vue';
+	import EditClan from './components/editClan.vue';
 	import blackoutBackground from './components/blackoutBackground.vue';
 	import AddNewGameGroup from './components/addNewGameGroup.vue';
 	import ClanCard from './components/clanCard.vue';
