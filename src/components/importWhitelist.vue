@@ -175,6 +175,9 @@
 				const m = comment.match(/\@.{3,32}(#[0-9]{4})/);
 				return m ? m[0] : '';
 			},
+			preventDefault(event: Event) {
+				event.preventDefault();
+			},
 		},
 		created() {
 			this.getGameGroups();
@@ -196,7 +199,7 @@
 	>
 		<h3>{{ importSteps[currentStep].title }}</h3>
 		<div v-show="currentStep == 0" style="flex-grow: 1; display: flex; flex-direction: column; width: 100%">
-			<textarea :ref="(r) => (refs.textarea = r)" style="flex-grow: 1" placeholder="Paste here your whitelist"></textarea>
+			<textarea :ref="(r) => (refs.textarea = r)" style="flex-grow: 1" placeholder="Paste here your whitelist" @keydown.enter="preventDefault"></textarea>
 			<div class="rowBtnContainer">
 				<label>Replace<input :ref="(r) => (refs.replace.from = r)" type="text" placeholder="Replace" optional /></label
 				><label>With<input :ref="(r) => (refs.replace.with = r)" type="text" placeholder="With" optional /><button @click="replaceTextArea">Replace</button></label>
@@ -239,7 +242,7 @@
 
 	#popup textarea {
 		flex-grow: 1;
-		white-space: nowrap;
+		white-space: pre-wrap;
 	}
 	.grTranslation {
 		display: flex;
