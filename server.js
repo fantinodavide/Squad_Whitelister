@@ -2817,8 +2817,18 @@ async function init() {
         const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
         const stConf = st.config;
         const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
-        const reward_group = st.config.reward_group_id ? (await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })) : null
+        console.log('CREATING objIdRewardGroup from value:', st.config.reward_group_id)
+        let objIdRewardGroup;// = ObjectID(st.config.reward_group_id)
+        try {
+            objIdRewardGroup = ObjectID(st.config.reward_group_id)
+        } catch (error) {
+            objIdRewardGroup = null;
+            console.log('FAILED TO CREATE objIdRewardGroup from value:', st.config.reward_group_id, "\n", stConf)
+        }
         let playerGroups = [];
+        let reward_group;
+        if (objIdRewardGroup)
+            reward_group = st.config.reward_group_id ? (await dbo.collection('groups').findOne({ _id: objIdRewardGroup })) : null
         // GROUP FORMAT: { name: "groupName", expiration: new Date() }
         playerGroups.push(...(await dbo.collection('whitelists').find({ steamid64: steamid64 }).toArray()).map(_e => {
             const g = allGroups.find(_g => _g._id.toString() == _e.id_group.toString());
@@ -3129,7 +3139,8 @@ async function init() {
                     players: [
                         'discord_user_id',
                         'steamid64',
-                        'seeding_points'
+                        'seeding_points',
+                        'discord_roles_ids'
                     ],
                     sessions: [
                         'token'
