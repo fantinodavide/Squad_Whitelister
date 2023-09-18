@@ -214,7 +214,7 @@ async function init() {
                                 console.error("Couldn't start HTTP server");
                             }
 
-                            if (foundKey && foundCert) {
+                            if ((foundKey && foundCert) && ((process.env.HTTPS_SERVER_DISABLED !== 'true' && process.env.HTTPS_SERVER_DISABLED !== '1') || !process.env.HTTPS_SERVER_DISABLED)) {
                                 console.log("Using Certificate:", foundCert, foundKey)
                                 const httpsOptions = {
                                     key: fs.readFileSync(foundKey),
