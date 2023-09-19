@@ -3003,8 +3003,11 @@ async function init() {
         }
 
         if (!fs.existsSync(configPath)) {
+            console.log(`Creating config file at path: ${configPath}`)
             get_free_port(emptyConfFile.web_server.http_port, function (http_port) {
+                console.log(`Found for free HTTP port: ${http_port}`)
                 emptyConfFile.web_server.http_port = http_port;
+                console.log(`Set HTTP port: ${emptyConfFile.web_server.http_port}`)
                 get_free_port(emptyConfFile.web_server.https_port, function (https_port) {
                     emptyConfFile.web_server.https_port = https_port;
                     console.log("Configuration file created, set your parameters and run again \"node server\".\nTerminating execution...");
@@ -3312,8 +3315,9 @@ async function init() {
     }
     function get_free_port(checkPort, callback = () => { }, max_port_tries = 15) {
         console.log("Looking for free port close to " + checkPort);
+        const ip = config?.web_server?.bind_ip || '0.0.0.0';
         try {
-            fp(checkPort, config.web_server.bind_ip, _tryStart)
+            fp(checkPort, ip, _tryStart)
         } catch (err) { }
 
         let tries = 0;
@@ -3324,7 +3328,7 @@ async function init() {
             let tmpSrv = http.createServer();
             let error = false;
 
-            await tmpSrv.listen(port, config.web_server.bind_ip).on("error", (e) => {
+            await tmpSrv.listen(port, ip).on("error", (e) => {
                 console.error(" > Failed", e.port);
                 error = true;
                 let new_try_port = (checkPort == 443 ? 4443 : 8080) + (tries * 100);
