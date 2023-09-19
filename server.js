@@ -2694,6 +2694,10 @@ async function init() {
             const dbo = await mongoConn();
             const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
             const stConf = st.config;
+            if (!stConf) {
+                console.log('Seeding tracker configuration not set, unable to proceed.')
+                return;
+            }
             const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
             const players = [];
             const activeSeedingConnections = []
@@ -3040,7 +3044,7 @@ async function init() {
                     option: 86400000
                 },
                 reward_needed_time: {
-                    value: 0,
+                    value: 1,
                     option: 3600000
                 },
                 reward_group_id: "",
@@ -3069,9 +3073,9 @@ async function init() {
             if (!(await dbo.collection("configs").findOne({ category: "seeding_tracker", config: { $exists: true } })))
                 dbo.collection("configs").updateOne({ category: "seeding_tracker" }, { $set: { config: { tracking_mode: 'incremental' } } }, { upsert: true })
 
-            listCollection(() => { repairListFormat(callback) });
-
             await repairSeedingTrackerConfigFormat();
+
+            listCollection(() => { repairListFormat(callback) });
             // dbo.collection("configs").deleteMany({ category: "seeding_tracker", tracking_mode: { $exists: false } })
 
             function listCollection(cb) {
