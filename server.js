@@ -201,8 +201,14 @@ async function init() {
                     const certPath = [ 'certificates/certificate.crt', 'certificates/fullchain.pem', 'certificates/default.crt' ];
                     let foundKey = getFirstExistentFileInArray(privKPath);
                     let foundCert = getFirstExistentFileInArray(certPath);
-                    get_free_port(config.web_server.http_port, (free_http_port) => {
-                        get_free_port(config.web_server.https_port, (free_https_port) => {
+                    const envServerPort = null;// process.env[ 'SERVER_PORT' ];
+                    const envHttpPort = null;// process.env[ 'HTTP_PORT' ];
+                    const envHttpsPort = process.env[ 'HTTPS_PORT' ];
+
+                    const httpPort = envServerPort ? parseInt(envServerPort) : (envHttpPort ? parseInt(envHttpPort) : config.web_server.http_port);
+                    const httpsPort = envHttpsPort ? parseInt(envHttpsPort) : config.web_server.https_port;
+                    get_free_port(httpPort, (free_http_port) => {
+                        get_free_port(httpsPort, (free_https_port) => {
                             if (free_http_port) {
                                 server.http = app.listen(free_http_port, config.web_server.bind_ip, function () {
                                     var host = server.http.address().address
@@ -3203,7 +3209,11 @@ async function init() {
                 }
                 upgradeConfig(currentConfig[ k ], baseConfig[ k ]);
             } else if (typeof currentConfig[ k ] !== typeof baseConfig[ k ]) {
-                currentConfig[ k ] = baseConfig[ k ];
+                if (typeof baseConfig[ k ] === 'number' && !isNaN(+currentConfig[ k ])) {
+                    currentConfig[ k ] = +currentConfig[ k ];
+                } else {
+                    currentConfig[ k ] = baseConfig[ k ];
+                }
             }
         }
     }

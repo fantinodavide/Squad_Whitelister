@@ -30,6 +30,7 @@ Add run argument `--self-pm` to automatically restart after an update or crash
 - `MONGODB_CONNECTION_STRING` ex. mongodb://user:password@host:port/database.
 - `HIDDEN_CONFIG_TABS` ex. web_server;database
 - `HTTPS_SERVER_DISABLED` completely disables the HTTPS server, HTTP server will be used as only server
+- `HTTPS_PORT` overrides the HTTPS port set from the configuration file
 
 #### [**Screenshots**](/screenshots) ####
 
