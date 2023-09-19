@@ -3293,7 +3293,7 @@ async function init() {
     function get_free_port(checkPort, callback = () => { }, max_port_tries = 15) {
         console.log("Looking for free port close to " + checkPort);
         try {
-            fp(checkPort, _tryStart)
+            fp(checkPort, config.web_server.bind_ip, _tryStart)
         } catch (err) { }
 
         let tries = 0;
@@ -3304,7 +3304,7 @@ async function init() {
             let tmpSrv = http.createServer();
             let error = false;
 
-            await tmpSrv.listen(port).on("error", (e) => {
+            await tmpSrv.listen(port, config.web_server.bind_ip).on("error", (e) => {
                 console.error(" > Failed", e.port);
                 error = true;
                 let new_try_port = (checkPort == 443 ? 4443 : 8080) + (tries * 100);
