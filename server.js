@@ -743,20 +743,6 @@ async function init() {
                                                             groupId: devGroupName,
                                                             clanTag: "SQUAD Whitelister Developer",
                                                             discordUsername: "@=BIA=JetDave#1001"
-                                                        },
-                                                        {
-                                                            username: "Radix",
-                                                            steamid64: "76561198301315305",
-                                                            groupId: devGroupName,
-                                                            clanTag: "SQUAD Whitelister Developer",
-                                                            discordUsername: ""
-                                                        },
-                                                        {
-                                                            username: "Phil_Caine",
-                                                            steamid64: "76561198272599483",
-                                                            groupId: devGroupName,
-                                                            clanTag: "SQUAD Whitelister Developer",
-                                                            discordUsername: ""
                                                         }
                                                     )
                                                 formatDocument();
