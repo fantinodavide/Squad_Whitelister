@@ -2026,17 +2026,17 @@ async function init() {
                 }
             });
 
-            client.on('raw', (packet) => {
+            client.on('raw', async (packet) => {
+                const user_id = packet.d.user.id;
                 switch (packet.t) {
                     case 'GUILD_MEMBER_UPDATE':
-                        const user_id = packet.d.user.id;
                         let user_roles = packet.d.roles;
                         mongoConn((dbo) => {
                             dbo.collection("players").updateOne({ discord_user_id: user_id }, { $set: { discord_user_id: user_id, discord_username: packet.d.user.username + "#" + packet.d.user.discriminator, discord_roles_ids: user_roles } }, { upsert: true })
                         })
                         break;
-                    case 'INTERACTION_CREATE':
-                        // console.log(packet.d)
+                    case 'GUILD_MEMBER_REMOVE':
+                        dbo.collection("players").updateOne({ discord_user_id: user_id }, { $set: { discord_user_id: user_id, discord_username: packet.d.user.username + "#" + packet.d.user.discriminator, discord_roles_ids: [] } })
                         break;
                     default:
                     // console.log(packet.t)
@@ -2371,6 +2371,8 @@ async function init() {
                         } catch (error) {
                             console.error(error)
                         }
+                    } else {
+                        dbo.collection("players").updateOne({ discord_user_id: member_id }, { $set: { discord_roles_ids: [] } })
                     }
                 } catch (error) {
                     console.error(error)
