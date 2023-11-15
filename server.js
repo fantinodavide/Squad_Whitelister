@@ -2372,7 +2372,9 @@ async function init() {
                             console.error(error)
                         }
                     } else {
-                        dbo.collection("players").updateOne({ discord_user_id: member_id }, { $set: { discord_roles_ids: [] } })
+                        mongoConn((dbo) => {
+                            dbo.collection("players").updateOne({ discord_user_id: member_id }, { $set: { discord_roles_ids: [] } })
+                        })
                     }
                 } catch (error) {
                     console.error(error)
