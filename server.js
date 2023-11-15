@@ -2027,7 +2027,7 @@ async function init() {
             });
 
             client.on('raw', async (packet) => {
-                const user_id = packet.d.user.id;
+                const user_id = packet.d?.user?.id || "";
                 switch (packet.t) {
                     case 'GUILD_MEMBER_UPDATE':
                         let user_roles = packet.d.roles;

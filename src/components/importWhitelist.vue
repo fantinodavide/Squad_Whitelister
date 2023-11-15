@@ -44,7 +44,7 @@
 			},
 		},
 		methods: {
-			confirmBtnClick: function (dt: any) {
+			confirmBtnClick: async function (dt: any) {
 				if (this.currentStep == 0) {
 					const listImport = this.$el
 						.querySelector('textarea')
@@ -88,9 +88,9 @@
 						};
 						console.log('Importing whitelist', player);
 
-						setTimeout(() => {
-							this.requestAddToWhitelist(player);
-						}, delay * c++);
+						await this.requestAddToWhitelist(player);
+						// setTimeout(() => {
+						// }, delay * c++);
 					}
 				}
 				// console.log(dt);
@@ -113,7 +113,7 @@
 				// });
 			},
 			requestAddToWhitelist: function (dt: any) {
-				$.ajax({
+				return $.ajax({
 					url: '/api/whitelist/write/addPlayer',
 					type: 'post',
 					data: JSON.stringify(dt),
@@ -168,7 +168,7 @@
 				// 	if (tag && !tags.includes(tag[0])) tags.push(tag.replace(/\[/g, '\\[').replace(/\]/g, '\\]'));
 				// }
 				// repReg += tags.join('|');
-				this.refs.textarea.value = this.refs.textarea.value.replace(/\[.{1,}\] */g, '');
+				this.refs.textarea.value = this.refs.textarea.value.replace(/\[[^\[\]]{1,}\] */g, '');
 				// console.log(regRes, tags, repReg);
 			},
 			getDiscord: function (comment: string) {
@@ -218,7 +218,7 @@
 		</div>
 		<div v-if="currentStep == 2" class="overflow">
 			<div v-for="p of parListImport" class="grTranslation" :key="p.steamid">
-				<input :name="p.steamid" type="text" :value="p.comment.replace(/\@.{3,32}#[0-9]{4}/, '')" />
+				<input :name="p.steamid" type="text" :value="p.comment.replace(/\@.{3,32}(#(0{1}|\d{4}))/, '')" />
 				<span class="tag">{{ game_groups.filter((g) => g._id == conv_gameGroups[p.group])[0].group_name }}</span>
 				<span class="tag">{{ p.steamid }} </span>
 				<span class="tag" v-if="p.discordUsername != ''">{{ p.discordUsername }} </span>
