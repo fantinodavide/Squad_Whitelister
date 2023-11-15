@@ -1,6 +1,6 @@
 {
   "name": "squad-whitelister",
-  "version": "1.4.8",
+  "version": "1.4.9",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
