@@ -172,7 +172,7 @@
 				// console.log(regRes, tags, repReg);
 			},
 			getDiscord: function (comment: string) {
-				const m = comment.match(/\@.{3,32}(#[0-9]{4})/);
+				const m = comment.match(/\@.{3,32}(#(0{1}|\d{4}))/);
 				return m ? m[0] : '';
 			},
 			preventDefault(event: Event) {
