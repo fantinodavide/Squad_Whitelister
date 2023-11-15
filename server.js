@@ -582,7 +582,6 @@ async function init() {
                                         else if (dbRes != null) {
                                             for (let w of dbRes) {
                                                 let discordUsername = (w.serverPlayerData && w.serverPlayerData[ 0 ] ? w.serverPlayerData[ 0 ].discord_username : null) || w.discord_username || "";
-                                                if (discordUsername != "" && !discordUsername.startsWith("@")) discordUsername = "@" + discordUsername;
                                                 output.push({
                                                     username: w.username,
                                                     steamid64: w.steamid64,
@@ -716,6 +715,7 @@ async function init() {
                                                         continue;
                                                     }
                                                     w.groupId = `${w.groupId}`;
+                                                    if (w.discordUsername != "" && !w.discordUsername.startsWith("@")) w.discordUsername = "@" + w.discordUsername;
                                                     wlRes += `Admin=${w.steamid64}:${groups[ w.groupId ].group_name} // [${w.clanTag}] ${w.username} ${w.discordUsername}\n`
 
                                                     if (!requiredGroupIds.includes(w.groupId)) requiredGroupIds.push(w.groupId)
