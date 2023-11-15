@@ -1998,6 +1998,9 @@ async function init() {
 
                 subcomponent_status.discord_bot = true;
 
+                const guild = await client.guilds.cache.get(config.discord_bot.server_id)
+                const allMembers = await guild.members.fetch();
+
                 temporizedRoleUpdate();
                 setInterval(temporizedRoleUpdate, 5 * 60 * 1000)
 
