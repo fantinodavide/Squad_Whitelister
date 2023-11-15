@@ -2022,7 +2022,7 @@ async function init() {
                         })
                         break;
                     case 'GUILD_MEMBER_REMOVE':
-                        dbo.collection("players").updateOne({ discord_user_id: user_id }, { $set: { discord_user_id: user_id, discord_username: packet.d.user.username + "#" + packet.d.user.discriminator, discord_roles_ids: [] } })
+                        dbo.collection("players").updateOne({ discord_user_id: user_id }, { $set: { discord_roles_ids: [] } })
                         break;
                     default:
                     // console.log(packet.t)
