@@ -132,6 +132,9 @@ async function init() {
 
     var discordBot;
 
+    const wlOutputCache = new Map();
+    const wlOutputCacheLastUpdates = new Map();
+
     start();
 
     function start() {
@@ -172,8 +175,13 @@ async function init() {
                 restartProcess(0, 1, args);
             }, 10000)
             mongoConn((dbo) => {
+                if (dbo)
+                    console.log(" > Successfully connected");
+                else {
+                    console.error(" > Unable to connect");
+                    restartProcess(5, 1, null, true);
+                }
                 mongodb_conn = dbo;
-                console.log(" > Successfully connected");
 
                 clearTimeout(tm);
                 if (callback) callback();
@@ -181,11 +189,14 @@ async function init() {
         }
     }
     function main() {
-        checkUpdates(config.other.automatic_updates, () => {
+        checkUpdates(config.other.automatic_updates, async () => {
             console.log(" > Starting up");
             setInterval(() => { checkUpdates(config.other.automatic_updates) }, config.other.update_check_interval_seconds * 1000);
 
             resetSeedingTime();
+
+            await initWlCaches();
+            setInterval(refreshWlCaches, config.other.lists_cache_refresh_seconds * 1000)
 
             discordBot(async () => {
                 await SquadJSWebSocket();
@@ -511,261 +522,304 @@ async function init() {
         })
         // app.use('/wl/*', removeExpiredPlayers);
         app.get('/:basePath/:clan_code?', async (req, res, next) => {
-            const startTime = Date.now();
             await removeExpiredPlayers()
-            mongoConn((dbo) => {
-                dbo.collection("lists").findOne({ output_path: req.params.basePath }, (err, dbResList) => {
-                    if (err) serverError(res, err);
-                    else if (dbResList != null) {
-                        res.type('text/plain');
+            const output = await generateOutput(req.params.basePath, req.params.clan_code, req.query?.usernamesOnly || false);
+            if (!output) return next();
+            res.type('text/plain');
+            res.send(output)
+        })
 
-                        let findFilter = req.params.clan_code ? { clan_code: req.params.clan_code } : {};
-                        let wlRes = "";
-                        let groups = [];
-                        let clansById = [];
-                        let clansIds = [];
-                        let requiredGroupIds = [];
-                        let output = [];
-                        const usernamesOnly = req.query.usernamesOnly != null;
-                        const devGroupName = randomString(6);
-                        // let clansByCode = [];
-                        dbo.collection("clans").find(findFilter).toArray((err, dbRes) => {
-                            for (let c of dbRes) {
-                                clansById[ c._id.toString() ] = c;
-                                clansIds.push(c._id)
-                            }
-                            dbo.collection("groups").find().sort({ group_name: 1 }).toArray((err, dbGroups) => {
-                                for (let g of dbGroups) {
-                                    groups[ g._id.toString() ] = g;
-                                }
-                                groups[ devGroupName ] = {
-                                    group_name: devGroupName,
-                                    group_permissions: [ "reserve" ],
-                                }
-                                // if (config.other.whitelist_developers && !usernamesOnly) wlRes += "Group=" + devGroupName + ":reserve\n\n";
-                                // if (config.other.whitelist_developers && !usernamesOnly) requiredGroupIds.push(devGroupName)
+        async function generateOutput(basePath, clan_code = "", usernamesOnly = false, forceCacheReset = false) {
+            const cacheKey = `/${basePath}/${clan_code}?${usernamesOnly}`
+            let usingCache = false;
+            let output;
 
-                                let findF2 = { approved: true, id_clan: { $in: clansIds }, id_list: dbResList._id };
-                                // console.log(findF2);
-                                const pipel = [
-                                    {
-                                        $match: findF2
-                                    },
-                                    {
-                                        $lookup: {
-                                            from: "players",
-                                            let: {
-                                                steamid64: "$steamid64"
-                                            },
-                                            pipeline: [
-                                                {
-                                                    $match: {
-                                                        $expr: { $eq: [ "$steamid64", "$$steamid64" ] },
-                                                        discord_user_id: { $exists: true }
-                                                    }
-                                                }
-                                            ],
-                                            as: "serverPlayerData",
-                                        }
-                                    },
-                                    {
-                                        $sort: {
-                                            id_clan: 1,
-                                            id_group: 1,
-                                            username_l: 1,
-                                        }
+            const cachedData = wlOutputCache.get(cacheKey);
+            if (cachedData) {
+                usingCache = true;
+                output = cachedData;
+            }
+
+            const startTime = Date.now();
+
+            if (!cachedData || forceCacheReset)
+                output = await getRawListOutput(basePath, clan_code, usernamesOnly)
+
+            if (!output) return null;
+
+            const endTime = Date.now();
+            const generationDuration = endTime - startTime;
+            if ((generationDuration > 1000 && !usingCache) || forceCacheReset) {
+                // console.log(`Storing cache for ${cacheKey}`, basePath, clan_code, usernamesOnly)
+                wlOutputCache.set(cacheKey, output)
+                wlOutputCacheLastUpdates.set(cacheKey, new Date())
+            }
+
+            if (usingCache) {
+                let cachedDataHeader =
+                    `//////////////////////////////////////////////
+                // Cached
+                // Last update: ${wlOutputCacheLastUpdates.get(cacheKey).toLocaleString()}
+                //////////////////////////////////////////////
+                `.replace(/^\s*/mg, '')
+
+                output = cachedDataHeader + "\n" + output;
+            }
+
+            return output;
+        }
+        function getRawListOutput(basePath, clan_code = "", usernamesOnly = false) {
+            let output = new Promise((resolve, reject) => {
+                mongoConn((dbo) => {
+                    dbo.collection("lists").findOne({ output_path: basePath }, (err, dbResList) => {
+                        if (err) serverError(res, err);
+                        else if (dbResList != null) {
+
+                            let findFilter = clan_code && clan_code != "" ? { clan_code: clan_code } : {};
+                            let wlRes = "";
+                            let groups = [];
+                            let clansById = [];
+                            let clansIds = [];
+                            let requiredGroupIds = [];
+                            let output = [];
+                            const devGroupName = randomString(6);
+                            // let clansByCode = [];
+                            dbo.collection("clans").find(findFilter).toArray((err, dbRes) => {
+                                for (let c of dbRes) {
+                                    clansById[ c._id.toString() ] = c;
+                                    clansIds.push(c._id)
+                                }
+                                dbo.collection("groups").find().sort({ group_name: 1 }).toArray((err, dbGroups) => {
+                                    for (let g of dbGroups) {
+                                        groups[ g._id.toString() ] = g;
                                     }
-                                ]
-                                // dbo.collection("whitelists").find(findF2).sort({ id_clan: 1, id_group: 1 }).toArray((err, dbRes) => {
-                                dbo.collection("whitelists").aggregate(pipel).toArray((err, dbRes) => {
-                                    if (err) serverError(res, err);
-                                    else if (dbRes != null) {
-                                        for (let w of dbRes) {
-                                            let discordUsername = (w.serverPlayerData && w.serverPlayerData[ 0 ] ? w.serverPlayerData[ 0 ].discord_username : null) || w.discord_username || "";
-                                            output.push({
-                                                username: w.username,
-                                                steamid64: w.steamid64,
-                                                groupId: w.id_group,
-                                                clanTag: clansById[ w.id_clan ].tag,
-                                                discordUsername: discordUsername
-                                            })
-                                        }
+                                    groups[ devGroupName ] = {
+                                        group_name: devGroupName,
+                                        group_permissions: [ "reserve" ],
+                                    }
+                                    // if (config.other.whitelist_developers && !usernamesOnly) wlRes += "Group=" + devGroupName + ":reserve\n\n";
+                                    // if (config.other.whitelist_developers && !usernamesOnly) requiredGroupIds.push(devGroupName)
 
-                                        if (!req.params.clan_code) {
-                                            const pipeline = [
-                                                {
-                                                    $match: {
-                                                        steamid64: { $ne: null },
-                                                        discord_roles_ids: { $exists: true }
-                                                    }
+                                    let findF2 = { approved: true, id_clan: { $in: clansIds }, id_list: dbResList._id };
+                                    // console.log(findF2);
+                                    const pipel = [
+                                        {
+                                            $match: findF2
+                                        },
+                                        {
+                                            $lookup: {
+                                                from: "players",
+                                                let: {
+                                                    steamid64: "$steamid64"
                                                 },
-                                                {
-                                                    $lookup: {
-                                                        from: "lists",
-                                                        let: {
-                                                            pl_roles: "$discord_roles_ids"
-                                                        },
-                                                        pipeline: [
-                                                            {
-                                                                $match: {
-                                                                    output_path: req.params.basePath
-                                                                }
-                                                            },
-                                                            {
-                                                                $addFields: {
-                                                                    int_r: { $setIntersection: [ "$discord_roles", "$$pl_roles" ] }
-                                                                }
-                                                            },
-                                                            {
-                                                                $match: {
-                                                                    int_r: { $ne: [] },
-                                                                }
-                                                            },
-                                                        ],
-                                                        as: "lists",
+                                                pipeline: [
+                                                    {
+                                                        $match: {
+                                                            $expr: { $eq: [ "$steamid64", "$$steamid64" ] },
+                                                            discord_user_id: { $exists: true }
+                                                        }
                                                     }
-                                                },
-                                                {
-                                                    $lookup: {
-                                                        from: "groups",
-                                                        let: {
-                                                            pl_roles: "$discord_roles_ids"
-                                                        },
-                                                        pipeline: [
-                                                            {
-                                                                $addFields: {
-                                                                    int_r: { $setIntersection: [ "$discord_roles", "$$pl_roles" ] }
-                                                                }
+                                                ],
+                                                as: "serverPlayerData",
+                                            }
+                                        },
+                                        {
+                                            $sort: {
+                                                id_clan: 1,
+                                                id_group: 1,
+                                                username_l: 1,
+                                            }
+                                        }
+                                    ]
+                                    // dbo.collection("whitelists").find(findF2).sort({ id_clan: 1, id_group: 1 }).toArray((err, dbRes) => {
+                                    dbo.collection("whitelists").aggregate(pipel).toArray((err, dbRes) => {
+                                        if (err) serverError(res, err);
+                                        else if (dbRes != null) {
+                                            for (let w of dbRes) {
+                                                let discordUsername = (w.serverPlayerData && w.serverPlayerData[ 0 ] ? w.serverPlayerData[ 0 ].discord_username : null) || w.discord_username || "";
+                                                output.push({
+                                                    username: w.username,
+                                                    steamid64: w.steamid64,
+                                                    groupId: w.id_group,
+                                                    clanTag: clansById[ w.id_clan ].tag,
+                                                    discordUsername: discordUsername
+                                                })
+                                            }
+
+                                            if (!clan_code) {
+                                                const pipeline = [
+                                                    {
+                                                        $match: {
+                                                            steamid64: { $ne: null },
+                                                            discord_roles_ids: { $exists: true }
+                                                        }
+                                                    },
+                                                    {
+                                                        $lookup: {
+                                                            from: "lists",
+                                                            let: {
+                                                                pl_roles: "$discord_roles_ids"
                                                             },
-                                                            {
-                                                                $match: {
-                                                                    // discord_roles: { $ne: [] },
-                                                                    int_r: { $ne: [] },
-                                                                }
+                                                            pipeline: [
+                                                                {
+                                                                    $match: {
+                                                                        output_path: basePath
+                                                                    }
+                                                                },
+                                                                {
+                                                                    $addFields: {
+                                                                        int_r: { $setIntersection: [ "$discord_roles", "$$pl_roles" ] }
+                                                                    }
+                                                                },
+                                                                {
+                                                                    $match: {
+                                                                        int_r: { $ne: [] },
+                                                                    }
+                                                                },
+                                                            ],
+                                                            as: "lists",
+                                                        }
+                                                    },
+                                                    {
+                                                        $lookup: {
+                                                            from: "groups",
+                                                            let: {
+                                                                pl_roles: "$discord_roles_ids"
                                                             },
-                                                        ],
-                                                        as: "groups",
+                                                            pipeline: [
+                                                                {
+                                                                    $addFields: {
+                                                                        int_r: { $setIntersection: [ "$discord_roles", "$$pl_roles" ] }
+                                                                    }
+                                                                },
+                                                                {
+                                                                    $match: {
+                                                                        // discord_roles: { $ne: [] },
+                                                                        int_r: { $ne: [] },
+                                                                    }
+                                                                },
+                                                            ],
+                                                            as: "groups",
+                                                        }
+                                                    },
+                                                    {
+                                                        $project: {
+                                                            discord_roles_ids: 0,
+                                                            "groups.discord_roles": 0,
+                                                            "groups.intersection_roles": 0,
+                                                            "groups.int_r": 0,
+                                                            "groups.require_appr": 0,
+                                                        }
+                                                    },
+                                                    {
+                                                        $match: {
+                                                            lists: { $ne: [] }
+                                                        }
                                                     }
-                                                },
-                                                {
-                                                    $project: {
-                                                        discord_roles_ids: 0,
-                                                        "groups.discord_roles": 0,
-                                                        "groups.intersection_roles": 0,
-                                                        "groups.int_r": 0,
-                                                        "groups.require_appr": 0,
+                                                ]
+                                                dbo.collection("players").aggregate(pipeline).toArray((err, dbRes) => {
+                                                    if (err) {
+                                                        res.sendStatus(500);
+                                                        console.error(err)
+                                                    } else {
+                                                        for (let w of dbRes) {
+                                                            if (usernamesOnly)
+                                                                wlRes += w.username + "\n"
+                                                            else
+                                                                for (let g of w.groups) {
+                                                                    // wlRes += "Admin=" + w.steamid64 + ":" + g.group_name + " // [Discord Role] " + w.username + (w.discord_username != null ? " " + w.discord_username : "") + "\n"
+                                                                    output.push({
+                                                                        username: w.username,
+                                                                        steamid64: w.steamid64,
+                                                                        groupId: g._id,
+                                                                        clanTag: "Discord Role",
+                                                                        discordUsername: (w.discord_username != null ? w.discord_username : "")
+                                                                    })
+                                                                }
+                                                        }
                                                     }
-                                                },
-                                                {
-                                                    $match: {
-                                                        lists: { $ne: [] }
-                                                    }
-                                                }
-                                            ]
-                                            dbo.collection("players").aggregate(pipeline).toArray((err, dbRes) => {
-                                                if (err) {
-                                                    res.sendStatus(500);
-                                                    console.error(err)
-                                                } else {
-                                                    for (let w of dbRes) {
-                                                        if (usernamesOnly)
-                                                            wlRes += w.username + "\n"
-                                                        else
-                                                            for (let g of w.groups) {
-                                                                // wlRes += "Admin=" + w.steamid64 + ":" + g.group_name + " // [Discord Role] " + w.username + (w.discord_username != null ? " " + w.discord_username : "") + "\n"
-                                                                output.push({
+                                                    dbo.collection("configs").findOne({ category: "seeding_tracker" }, (err, dbRes) => {
+                                                        if (dbRes && dbRes.config.reward_enabled && dbRes.config.reward_enabled == 'true') {
+                                                            const sdConf = dbRes.config;
+                                                            const minPoints = sdConf.reward_needed_time.value * sdConf.reward_needed_time.option / 1000 / 60;
+                                                            dbo.collection("players").find({ steamid64: { $ne: null }, seeding_points: { $gte: minPoints } }).toArray((err, dbRes) => {
+                                                                if (err) serverError(res, err);
+                                                                const mapData = dbRes.map((w) => ({
                                                                     username: w.username,
                                                                     steamid64: w.steamid64,
-                                                                    groupId: g._id,
-                                                                    clanTag: "Discord Role",
+                                                                    groupId: sdConf.reward_group_id,
+                                                                    clanTag: "Seeder",
                                                                     discordUsername: (w.discord_username != null ? w.discord_username : "")
-                                                                })
-                                                            }
-                                                    }
-                                                }
-                                                dbo.collection("configs").findOne({ category: "seeding_tracker" }, (err, dbRes) => {
-                                                    if (dbRes && dbRes.config.reward_enabled && dbRes.config.reward_enabled == 'true') {
-                                                        const sdConf = dbRes.config;
-                                                        const minPoints = sdConf.reward_needed_time.value * sdConf.reward_needed_time.option / 1000 / 60;
-                                                        dbo.collection("players").find({ steamid64: { $ne: null }, seeding_points: { $gte: minPoints } }).toArray((err, dbRes) => {
-                                                            if (err) serverError(res, err);
-                                                            const mapData = dbRes.map((w) => ({
-                                                                username: w.username,
-                                                                steamid64: w.steamid64,
-                                                                groupId: sdConf.reward_group_id,
-                                                                clanTag: "Seeder",
-                                                                discordUsername: (w.discord_username != null ? w.discord_username : "")
-                                                            }))
-                                                            output.push(...mapData);
+                                                                }))
+                                                                output.push(...mapData);
+                                                                endFile()
+                                                            })
+                                                        } else
                                                             endFile()
-                                                        })
-                                                    } else
-                                                        endFile()
+                                                    })
+
                                                 })
-
-                                            })
-                                        } else endFile()
+                                            } else endFile()
 
 
-                                        function formatDocument() {
-                                            for (let w of output) {
-                                                if (!groups[ w.groupId ]) {
-                                                    console.log("Could not find group with id", w.groupId, groups[ w.groupId ])
-                                                    dbo.collection("whitelists").deleteMany({ id_group: w.groupId })
-                                                    continue;
-                                                }
-                                                w.groupId = `${w.groupId}`;
-                                                if (w.discordUsername != "" && !w.discordUsername.startsWith("@")) w.discordUsername = "@" + w.discordUsername;
-                                                wlRes += `Admin=${w.steamid64}:${groups[ w.groupId ].group_name} // [${w.clanTag}] ${w.username} ${w.discordUsername}\n`
-
-                                                if (!requiredGroupIds.includes(w.groupId)) requiredGroupIds.push(w.groupId)
-                                            }
-                                            wlRes = "\n" + wlRes
-                                            for (let gid of requiredGroupIds) {
-                                                const g = groups[ gid ]
-                                                wlRes = `Group=${g.group_name}:${g.group_permissions.join(',')}\n` + wlRes;
-                                            }
-                                        }
-
-                                        function appendSeeders() {
-                                            dbo.collection("players").aggregate(pipeline).toArray((err, dbRes) => { })
-
-                                            wlRes += "Admin="
-                                        }
-
-                                        function endFile() {
-                                            // if (config.other.whitelist_developers && !usernamesOnly) wlRes += "Admin=76561198419229279:" + devGroupName + " // [SQUAD Whitelister Developer]JetDave @=BIA=JetDave#1001\n";
-                                            if (config.other.whitelist_developers && !usernamesOnly && !req.params.clan_code)
-                                                output.push(
-                                                    {
-                                                        username: "JetDave",
-                                                        steamid64: "76561198419229279",
-                                                        groupId: devGroupName,
-                                                        clanTag: "SQUAD Whitelister Developer",
-                                                        discordUsername: "@=BIA=JetDave#1001"
+                                            function formatDocument() {
+                                                for (let w of output) {
+                                                    if (!groups[ w.groupId ]) {
+                                                        console.log("Could not find group with id", w.groupId, groups[ w.groupId ])
+                                                        dbo.collection("whitelists").deleteMany({ id_group: w.groupId })
+                                                        continue;
                                                     }
-                                                )
-                                            formatDocument();
-                                            const endTime = Date.now();
+                                                    w.groupId = `${w.groupId}`;
+                                                    if (w.discordUsername != "" && !w.discordUsername.startsWith("@")) w.discordUsername = "@" + w.discordUsername;
+                                                    wlRes += `Admin=${w.steamid64}:${groups[ w.groupId ].group_name} // [${w.clanTag}] ${w.username} ${w.discordUsername}\n`
 
-                                            if (startTime - endTime > 1000) {
-                                                const useCache = true;
+                                                    if (!requiredGroupIds.includes(w.groupId)) requiredGroupIds.push(w.groupId)
+                                                }
+                                                wlRes = "\n" + wlRes
+                                                for (let gid of requiredGroupIds) {
+                                                    const g = groups[ gid ]
+                                                    wlRes = `Group=${g.group_name}:${g.group_permissions.join(',')}\n` + wlRes;
+                                                }
                                             }
-                                            // console.log("GIDS", requiredGroupIds)
-                                            res.send(wlRes)
+
+                                            function appendSeeders() {
+                                                dbo.collection("players").aggregate(pipeline).toArray((err, dbRes) => { })
+
+                                                wlRes += "Admin="
+                                            }
+
+                                            function endFile() {
+                                                // if (config.other.whitelist_developers && !usernamesOnly) wlRes += "Admin=76561198419229279:" + devGroupName + " // [SQUAD Whitelister Developer]JetDave @=BIA=JetDave#1001\n";
+
+                                                if (config.other.whitelist_developers && !usernamesOnly && !clan_code)
+                                                    output.push(
+                                                        {
+                                                            username: "JetDave",
+                                                            steamid64: "76561198419229279",
+                                                            groupId: devGroupName,
+                                                            clanTag: "SQUAD Whitelister Developer",
+                                                            discordUsername: "@=BIA=JetDave#1001"
+                                                        }
+                                                    )
+                                                formatDocument();
+
+                                                resolve(wlRes);
+                                            }
+                                        } else {
+                                            resolve("")
                                         }
-                                    } else {
-                                        res.send("");
-                                    }
+                                    })
                                 })
                             })
-                        })
-                    } else {
-                        next();
-                    }
+                        } else {
+                            resolve(null)
+                        }
+                    })
                 })
             })
-        })
+            return output;
+        }
+
         app.get('/dsTest', (req, res, next) => {
             res.type('text/plain');
             const pipeline = [
@@ -1743,6 +1797,26 @@ async function init() {
 
         function getApiRoutes() {
             return app._router.stack.filter((e) => e.route).map((e) => e.route).map((r) => r.path).filter((r) => r.startsWith("/api/") && !r.startsWith("/api/admin"));
+        }
+
+        async function refreshWlCaches() {
+            const allCachedKeys = wlOutputCache.keys();
+            for (let key of allCachedKeys) {
+                const parsedKey = key.match(/\/(.+)\/(.*)\?(true|false)/i);
+                // console.log(`Refreshing cache for: ${key}`, parsedKey[ 1 ], parsedKey[ 2 ], parsedKey[ 3 ] == "true")
+                await generateOutput(parsedKey[ 1 ], parsedKey[ 2 ], parsedKey[ 3 ] == "true", true)
+            }
+        }
+        async function initWlCaches() {
+            console.log('Initializing WL List Caches')
+            const dbo = await mongoConn();
+            const lists = await dbo.collection("lists").find().toArray();
+            for (let list of lists) {
+                const cacheKey = `/${list.output_path}/?false`;
+                await generateOutput(list.output_path, "", false);
+                let isCached = wlOutputCache.get(cacheKey) != null
+                console.log(` > "${list.title}": ${isCached ? "CACHED" : "NOT CACHED"}`)
+            }
         }
 
         function removeExpiredPlayers(next = null) {
@@ -2918,28 +2992,34 @@ async function init() {
         return "https://steamcommunity.com/profiles/" + steamid64
     }
 
-    async function mongoConn(connCallback = () => { }, override = false) {
-        if (!mongodb_global_connection || override) {
-            let url;
-            let dbName// = config.database.mongo.database;
+    function mongoConn(connCallback = () => { }, override = false) {
+        return new Promise((resolve, reject) => {
+            if (!mongodb_global_connection || override) {
+                let url;
+                let dbName// = config.database.mongo.database;
 
-            if (process.env.MONGODB_CONNECTION_STRING) url = process.env.MONGODB_CONNECTION_STRING
-            else {
-                if (config.database.mongo.host.includes("://")) url = config.database.mongo.host;
-                else url = "mongodb://" + config.database.mongo.host + ":" + config.database.mongo.port;
-                dbName = config.database.mongo.database;
+                if (process.env.MONGODB_CONNECTION_STRING) url = process.env.MONGODB_CONNECTION_STRING
+                else {
+                    if (config.database.mongo.host.includes("://")) url = config.database.mongo.host;
+                    else url = "mongodb://" + config.database.mongo.host + ":" + config.database.mongo.port;
+                    dbName = config.database.mongo.database;
+                }
+
+                let client = MongoClient.connect(url, function (err, db) {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    var dbo = dbName ? db.db(dbName) : db.db();
+                    connCallback(dbo);
+                    resolve(dbo)
+                });
+            } else {
+                connCallback(mongodb_conn)
+                resolve(mongodb_conn)
             }
 
-            let client = MongoClient.connect(url, function (err, db) {
-                if (err) console.error(err)
-                var dbo = dbName ? db.db(dbName) : db.db();
-                connCallback(dbo);
-                return dbo
-            });
-        } else {
-            connCallback(mongodb_conn)
-            return mongodb_conn
-        }
+        })
     }
 
     function getDateFromEpoch(ep) {
@@ -3004,7 +3084,8 @@ async function init() {
                 update_check_interval_seconds: 3600,
                 whitelist_developers: true,
                 install_beta_versions: false,
-                logs_max_file_count: 10
+                logs_max_file_count: 10,
+                lists_cache_refresh_seconds: 60
             }
         }
 
