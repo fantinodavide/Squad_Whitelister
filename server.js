@@ -2081,13 +2081,12 @@ async function init() {
 
                 subcomponent_status.discord_bot = true;
 
-                const guild = await client.guilds.cache.get(config.discord_bot.server_id)
-                const allMembers = await guild.members.fetch();
-
                 temporizedRoleUpdate();
                 setInterval(temporizedRoleUpdate, 5 * 60 * 1000)
 
-                function temporizedRoleUpdate() {
+                async function temporizedRoleUpdate() {
+                    const guild = await client.guilds.cache.get(config.discord_bot.server_id)
+                    const allMembers = await guild.members.fetch();
                     mongoConn((dbo) => {
                         dbo.collection("players").find({ discord_user_id: { $exists: true } }).toArray((err, dbRes) => {
                             for (let m of dbRes) {
