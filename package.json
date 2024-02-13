@@ -10,7 +10,8 @@
     "releasezipold": "npm run build && powershell Compress-Archive dist release.zip -Force && powershell Compress-Archive server.js release.zip -Update && powershell Compress-Archive package-lock.json release.zip -Update && powershell Compress-Archive package.json release.zip -Update",
     "releasezip": "npm run build && npm run release && powershell Compress-Archive release release.zip -Force",
     "release": "rmdir /S /Q release && xcopy /E /I /Y dist release\\dist && terser --compress --mangle -o release/server.js -- server.js && xcopy /I /Y docker-compose.yml release && xcopy /I /Y certificates release\\certificates && node packageInfoFilter.js",
-    "releasedocker": "npm run release && docker build . && docker save squadwhitelister > docker-image.tar"
+    "releasedocker": "npm run release && docker build . && docker save squadwhitelister > docker-image.tar",
+    "prepare": "husky"
   },
   "dependencies": {
     "axios": "^0.26.1",
@@ -25,6 +26,7 @@
     "fs": "^0.0.1-security",
     "fs-extra": "^10.1.0",
     "https": "^1.0.0",
+    "husky": "^9.0.10",
     "jquery": "^3.6.0",
     "js-levenshtein": "^1.1.6",
     "log4js": "^6.4.4",

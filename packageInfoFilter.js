@@ -5,6 +5,7 @@ console.log("CREATING package.json")
 delete packageJSON.devDependencies;
 delete packageJSON.scripts;
 delete packageJSON.dependencies.vue;
+delete packageJSON.dependencies.husky;
 delete packageJSON.dependencies[ "vue-marquee-text-component" ];
 
 // console.log(packageJSON)
