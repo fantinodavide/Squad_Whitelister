@@ -2778,10 +2778,12 @@ async function init() {
             const activeSeedingConnections = []
 
             for (let sqJsK in subcomponent_data.squadjs) {
+                console.log(`[DEBUG] Seeding tracker (${sqJsK}) status: ${subcomponent_status.squadjs[ sqJsK ]}`)
                 if (!subcomponent_status.squadjs[ sqJsK ]) continue;
                 // const singleServerPlayers = (await util.promisify(subcomponent_data.squadjs[ sqJsK ].socket.emit)("rcon.getListPlayers"))
 
                 const singleServerPlayers = (await emitPromise(subcomponent_data.squadjs[ sqJsK ].socket, "rcon.getListPlayers", {}))
+                console.log(`[DEBUG] Seeding tracker (${sqJsK}): ${singleServerPlayers.map(p => p.name).join(', ')}`)
 
                 for (let p of singleServerPlayers) {
                     p.sqJsConnectionIndex = sqJsK
