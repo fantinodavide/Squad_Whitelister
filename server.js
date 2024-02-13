@@ -2782,13 +2782,14 @@ async function init() {
                 // const singleServerPlayers = (await util.promisify(subcomponent_data.squadjs[ sqJsK ].socket.emit)("rcon.getListPlayers"))
 
                 const singleServerPlayers = (await emitPromise(subcomponent_data.squadjs[ sqJsK ].socket, "rcon.getListPlayers", {}))
-                    .map((p) => ({ ...p, sqJsConnectionIndex: +sqJsK }));
-                // console.log('singleServerPlayers', singleServerPlayers)
+
+                for (let p of singleServerPlayers) {
+                    p.sqJsConnectionIndex = sqJsK
+                    players.push(p);
+                }
 
                 if (singleServerPlayers && singleServerPlayers.length >= (stConf.seeding_start_player_count || 2) && singleServerPlayers.length <= stConf.seeding_player_threshold)
                     activeSeedingConnections[ sqJsK ] = true;
-
-                players.push(...singleServerPlayers);
             }
             // console.log('Online Players', players)
 
