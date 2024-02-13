@@ -199,7 +199,7 @@ async function init() {
             setInterval(refreshWlCaches, config.other.lists_cache_refresh_seconds * 1000)
 
             discordBot(async () => {
-                await SquadJSWebSocket();
+                SquadJSWebSocket();
 
                 seedingTimeTracking();
 
@@ -2725,7 +2725,8 @@ async function init() {
 
         }
 
-        await Promise.all(conns)
+        // return await Promise.all(conns)
+        return true;
     }
 
     function emitPromise(socket, event, data) {
