@@ -2729,8 +2729,9 @@ async function init() {
         return true;
     }
 
-    function emitPromise(socket, event, data) {
+    function emitPromise(socket, event, data, timeout = 2) {
         return new Promise((resolve, reject) => {
+            setTimeout(() => reject("Timed out"), timeout * 1000)
             socket.emit(event, data, (response) => {
                 if (response.error) {
                     reject(new Error(response.error));
@@ -2743,18 +2744,15 @@ async function init() {
 
     async function seedingTimeTracking() {
         console.log('Seeding Tracker: Starting')
-        const checkIntervalMinutes = 0.1;
+        const checkIntervalMinutes = 0.2;
 
         _check()
         console.log('Seeding Tracker: Started')
 
         setInterval(_check, checkIntervalMinutes * 60 * 1000)
         async function _check() {
-            console.log(`Seeding tracker starting global check`)
             const dbo = await mongoConn();
-            console.log(`Seeding tracker retrieved dbo`)
             const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
-            console.log(`Seeding tracker db data`, st)
             const stConf = st.config;
             if (!stConf) {
                 console.log('Seeding tracker configuration not set, unable to proceed.')
@@ -2765,12 +2763,19 @@ async function init() {
             const activeSeedingConnections = []
 
             for (let sqJsK in subcomponent_data.squadjs) {
-                console.log(`Seeding tracker (${sqJsK}) status: ${subcomponent_status.squadjs[ sqJsK ]}`)
+                // console.log(`Seeding tracker (${sqJsK}) status: ${subcomponent_status.squadjs[ sqJsK ]}`)
                 if (!subcomponent_status.squadjs[ sqJsK ]) continue;
                 // const singleServerPlayers = (await util.promisify(subcomponent_data.squadjs[ sqJsK ].socket.emit)("rcon.getListPlayers"))
 
-                const singleServerPlayers = (await emitPromise(subcomponent_data.squadjs[ sqJsK ].socket, "rcon.getListPlayers", {}))
-                console.log(`Seeding tracker (${sqJsK}): ${singleServerPlayers.map(p => p.name).join(', ')}`)
+                let singleServerPlayers
+
+                activeSeedingConnections[ sqJsK ] = false;
+                try {
+                    singleServerPlayers = await emitPromise(subcomponent_data.squadjs[ sqJsK ].socket, "rcon.getListPlayers", {})
+                } catch (err) {
+                    // console.error(`Seeding tracker (${sqJsK}): ${err}`)
+                    continue;
+                }
 
                 for (let p of singleServerPlayers) {
                     p.sqJsConnectionIndex = sqJsK
@@ -2783,7 +2788,6 @@ async function init() {
             // console.log('Online Players', players)
 
             firstStart = false;
-            // console.log("Checking seeders");
             if (activeSeedingConnections.includes(true)) {
                 mongoConn(async dbo => {
 
@@ -2796,22 +2800,18 @@ async function init() {
 
                             await dbo.collection("players").updateMany({ steamid64: { $nin: players.map(p => p.steamID) }, seeding_points: { $gt: deduction_points } }, { $inc: { seeding_points: -deduction_points } })
                         }
-                        // console.log("current seeders", objArrToValArr(players, "name"));
 
                         for (let p of players) {
                             if (!activeSeedingConnections[ p.sqJsConnectionIndex ]) continue;
-                            console.log(`Seeding tracker (${sqJsK}): Server is seeding`)
 
                             const oldPlayerData = await dbo.collection("players").findOne({ steamid64: p.steamID });
                             dbo.collection("players").findOneAndUpdate({ steamid64: p.steamID }, { $set: { steamid64: p.steamID, username: p.name }, $inc: { seeding_points: 1 } }, { upsert: true, returnDocument: 'after' }, async (err, dbRes) => {
                                 if (err) serverError(null, err)
                                 else if (stConf.reward_enabled == "true") {
-                                    // console.log(dbRes);
                                     const stepOld = Math.min(Math.floor(10 * oldPlayerData?.seeding_points / requiredPoints), 10) || 0;
                                     const percentageCompletedOld = stepOld * 10;
                                     const step = Math.min(Math.floor(10 * dbRes.value?.seeding_points / requiredPoints), 10) || 0;
                                     const percentageCompleted = step * 10
-                                    // console.log(p.name, stepOld, step)
 
                                     if (step > 0 && step > stepOld) {
                                         if (percentageCompleted < 100) {
