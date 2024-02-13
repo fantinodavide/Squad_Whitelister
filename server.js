@@ -2742,36 +2742,19 @@ async function init() {
     }
 
     async function seedingTimeTracking() {
-        console.log('Seeding Tracker started')
-        const checkIntervalMinutes = 1;
-        let firstStart = true;
-        if (firstStart) {
-
-            // welcomeMessage({
-            //     player: {
-            //         steamID: "76561198419229279",
-            //         name: "JetDave"
-            //     }
-            // }, 0)
-
-
-        }
-
-
-
+        console.log('Seeding Tracker: Starting')
+        const checkIntervalMinutes = 0.1;
 
         _check()
+        console.log('Seeding Tracker: Started')
 
-        // setInterval(() => {
-        //     _check(allOnlinePlayers, activeSeedingConnections)
-        // }, checkIntervalMinutes * 60 * 1000)
         setInterval(_check, checkIntervalMinutes * 60 * 1000)
         async function _check() {
-            console.log(`[DEBUG] Seeding tracker starting global check`)
+            console.log(`Seeding tracker starting global check`)
             const dbo = await mongoConn();
-            console.log(`[DEBUG] Seeding tracker retrieved dbo`)
+            console.log(`Seeding tracker retrieved dbo`)
             const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
-            console.log(`[DEBUG] Seeding tracker db data`, st)
+            console.log(`Seeding tracker db data`, st)
             const stConf = st.config;
             if (!stConf) {
                 console.log('Seeding tracker configuration not set, unable to proceed.')
@@ -2782,12 +2765,12 @@ async function init() {
             const activeSeedingConnections = []
 
             for (let sqJsK in subcomponent_data.squadjs) {
-                console.log(`[DEBUG] Seeding tracker (${sqJsK}) status: ${subcomponent_status.squadjs[ sqJsK ]}`)
+                console.log(`Seeding tracker (${sqJsK}) status: ${subcomponent_status.squadjs[ sqJsK ]}`)
                 if (!subcomponent_status.squadjs[ sqJsK ]) continue;
                 // const singleServerPlayers = (await util.promisify(subcomponent_data.squadjs[ sqJsK ].socket.emit)("rcon.getListPlayers"))
 
                 const singleServerPlayers = (await emitPromise(subcomponent_data.squadjs[ sqJsK ].socket, "rcon.getListPlayers", {}))
-                console.log(`[DEBUG] Seeding tracker (${sqJsK}): ${singleServerPlayers.map(p => p.name).join(', ')}`)
+                console.log(`Seeding tracker (${sqJsK}): ${singleServerPlayers.map(p => p.name).join(', ')}`)
 
                 for (let p of singleServerPlayers) {
                     p.sqJsConnectionIndex = sqJsK
@@ -2817,6 +2800,7 @@ async function init() {
 
                         for (let p of players) {
                             if (!activeSeedingConnections[ p.sqJsConnectionIndex ]) continue;
+                            console.log(`Seeding tracker (${sqJsK}): Server is seeding`)
 
                             const oldPlayerData = await dbo.collection("players").findOne({ steamid64: p.steamID });
                             dbo.collection("players").findOneAndUpdate({ steamid64: p.steamID }, { $set: { steamid64: p.steamID, username: p.name }, $inc: { seeding_points: 1 } }, { upsert: true, returnDocument: 'after' }, async (err, dbRes) => {
