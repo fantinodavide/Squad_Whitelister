@@ -2767,8 +2767,11 @@ async function init() {
         // }, checkIntervalMinutes * 60 * 1000)
         setInterval(_check, checkIntervalMinutes * 60 * 1000)
         async function _check() {
+            console.log(`[DEBUG] Seeding tracker starting global check`)
             const dbo = await mongoConn();
+            console.log(`[DEBUG] Seeding tracker retrieved dbo`)
             const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
+            console.log(`[DEBUG] Seeding tracker db data`, st)
             const stConf = st.config;
             if (!stConf) {
                 console.log('Seeding tracker configuration not set, unable to proceed.')
