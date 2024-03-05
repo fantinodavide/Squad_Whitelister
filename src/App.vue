@@ -214,7 +214,7 @@
 					});
 			},
 			confirmEvt: function (e: any) {
-				this.confirmShow(e.title, e.text, e.callback);
+				this.confirmShow(e.title, e.text || e.message, e.callback);
 			},
 			confirmShow: function (title = '', text = '', callback: any) {
 				this.popups.confirm = true;
@@ -498,12 +498,13 @@
 				@delete-record="removeUser"
 			/>
 		</tab>
-		<tab v-else-if="currentTab == 'API'" :currentTab="currentTab">
+		<tab v-else-if="currentTab == 'API'" :currentTab="currentTab" :roles="roles">
 			<ApiTab
+				:roles="roles"
 				@confirm="confirmEvt"
 				@addNewApiKey="
-					popups.addEditApiKey = true
-					//tabData.addEditApiKey.add_data = $event;
+					popups.addEditApiKey = true;
+					tabData.api_keys.add_data = $event;
 				"
 			/>
 		</tab>
