@@ -9,9 +9,8 @@
 		data() {
 			return {
 				discord_roles: [] as Array<any>,
-				extRet: {
-					discord_roles: [] as Array<any>,
-				},
+				extRet: {},
+				sanRoles: {} as any,
 			};
 		},
 		props: {
@@ -31,8 +30,9 @@
 		},
 		methods: {
 			confirmBtnClick: function (dt: any) {
-				const postUrl = this.editing ? '/api/api_keys/write/edit' : '/api/api_keys/write/create';
-				dt = { ...dt, ...this.add_data };
+				const postUrl = '/api/keys';
+				dt = { ...dt };
+				console.log('🚀 ~ dt:', dt);
 
 				const compPopup: any = this.$refs.popupLogin;
 				console.log(this.$refs);
@@ -44,8 +44,8 @@
 					contentType: 'application/json',
 					timeout: 3000,
 					success: (dt) => {
-						if (dt.status == 'inserted_new_api-key') {
-							this.add_data.callback();
+						if (dt.status == 'created') {
+							this.add_data.callback(dt.data);
 							this.$emit('cancelBtnClick');
 						} else {
 							console.error(dt);
@@ -61,7 +61,9 @@
 		},
 		components: { popup, SelectMultiple },
 		created() {
-			delete this.roles[0];
+			const copiedRoles = { ...this.roles };
+			delete copiedRoles[0];
+			this.sanRoles = copiedRoles;
 		},
 	};
 </script>
@@ -69,9 +71,9 @@
 <template>
 	<popup ref="popupLogin" title="New Api Key" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick" :extRetProp="extRet">
 		<input name="name" type="text" placeholder="Name" />
-		<select name="role">
+		<select name="access_level">
 			<option hidden selected value>Select a role</option>
-			<option v-for="r of roles" :value="r.access_level" :key="r">{{ r.name }}</option>
+			<option v-for="r of sanRoles" :value="r.access_level" :key="r">{{ r.name }}</option>
 		</select>
 	</popup>
 </template>

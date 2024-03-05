@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-	import whitelistUserCard from './whitelistUserCard.vue';
+	import apiKeyCard from './apiKeyCard.vue';
 	import App from '@/App.vue';
 	import addEditApiKey from './addEditApiKey.vue';
 
@@ -19,6 +19,7 @@
 				},
 				elements: [] as Array<any>,
 				app_roles: [] as any,
+				editor: false,
 			};
 		},
 		props: {
@@ -26,23 +27,58 @@
 				required: true,
 				default: {} as any,
 			},
+			roles: {
+				required: true,
+				default: [] as any,
+			},
 		},
 		methods: {
 			log: console.log,
+			appendAfterDone: function (e: any) {
+				console.log(e);
+				this.elements.unshift(e);
+			},
+			removeElement(removedElm: any) {
+				this.elements = this.elements.filter((e) => e._id != removedElm._id);
+			},
+			checkPerms: function (callback: any = null) {
+				fetch('/api/keys/checkPerm')
+					.then((res) => res.json())
+					.then((dt) => {
+						console.log('editor?', dt);
+						this.editor = true;
+						if (callback) callback();
+					});
+			},
+			async getAllApiKeys() {
+				try {
+					this.elements = await (await fetch('/api/keys')).json();
+				} catch (error) {}
+			},
 		},
 		async created() {
-			this.app_roles = await App.methods?.getRolesRet();
+			this.checkPerms();
+			this.getAllApiKeys();
 		},
-		components: { whitelistUserCard },
+		components: { apiKeyCard },
 	};
 </script>
 
 <template>
 	<div></div>
-	<!-- <input type="search" placeholder="Search Player" name="plrSearch" v-model="models.search" /> -->
+	<input type="search" placeholder="Search Key" name="searchKey" v-model="models.search" />
 
-	<!-- <button class="addHorizontal" @click="$emit('addNewApiKey', { callback: appendPlayer })"></button> -->
-	<!-- <whitelistUserCard v-for="w of wl_players" v-show="w.username.toLowerCase().startsWith(models.search.toLowerCase()) || levenshtein(w.username.toLowerCase(), models.search.toLowerCase()) <= 2 || models.search == ''" :ref="(r:any)=>{record_refs.push(r)}" :wl_data="w" :hoverMenuVisible="editor" @confirm="$emit('confirm', $event)" @removedPlayer="removePlayer" /> -->
+	<button class="addHorizontal" @click="$emit('addNewApiKey', { callback: appendAfterDone })"></button>
+	<apiKeyCard
+		v-for="w of elements"
+		v-show="w.name.toLowerCase().startsWith(models.search.toLowerCase()) || levenshtein(w.name.toLowerCase(), models.search.toLowerCase()) <= 2 || models.search == ''"
+		:wl_data="w"
+		:roles="roles"
+		:key="w"
+		:hoverMenuVisible="editor"
+		@confirm="$emit('confirm', $event)"
+		@removedApiKey="removeElement"
+	/>
 </template>
 
 <style scoped>

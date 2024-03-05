@@ -473,12 +473,12 @@ async function init() {
                     type: "tab",
                     max_access_level: 5
                 },
-                // {
-                //     name: "API",
-                //     order: 35,
-                //     type: "tab",
-                //     max_access_level: 5
-                // },
+                {
+                    name: "API",
+                    order: 35,
+                    type: "tab",
+                    max_access_level: 5
+                },
                 {
                     name: "Configuration",
                     order: 40,
@@ -1396,7 +1396,8 @@ async function init() {
                                 steamid64: parm.steamid64,
                                 id_group: ObjectID(parm.group),
                                 discord_username: !parm.discordUsername.startsWith('@') && parm.discordUsername != "" ? "@" + parm.discordUsername : "" + parm.discordUsername,
-                                inserted_by: ObjectID(req.userSession.id_user),
+                                inserted_by: ObjectID(req.userSession.id_user || req.userSession.id),
+                                insertedViaApiKey: !req.userSession.id_user && !!req.userSession.id,
                                 expiration: (parm.durationHours && parm.durationHours != "") ? new Date(Date.now() + (parseFloat(parm.durationHours) * 60 * 60 * 1000)) : false,
                                 insert_date: new Date(),
                                 approved: false,
@@ -1769,6 +1770,77 @@ async function init() {
             } while (error);
         })
 
+        app.use('/api/keys/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
+        app.use('/api/keys/checkPerm', (req, res, next) => { res.send(true) })
+        app.get('/api/keys/:id?', async (req, res, next) => {
+            const pipeline = [
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: "inserted_by",
+                        foreignField: "_id",
+                        as: "inserted_by"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "players",
+                        localField: "steamid64",
+                        foreignField: "steamid64",
+                        as: "serverData"
+                    }
+                },
+                {
+                    $sort: { access_level: -1 }
+                }
+            ]
+
+            const dbo = await mongoConn();
+            if (req.params.id) {
+                pipeline.unshift({ $match: { _id: ObjectID(req.params.id) } })
+                const key = (await dbo.collection("keys").aggregate(pipeline).toArray())[ 0 ];
+                res.send(key);
+                return;
+            }
+
+            const keys = await dbo.collection("keys").aggregate(pipeline).toArray();
+            res.send(keys)
+        })
+        app.post('/api/keys/', async (req, res, next) => {
+            const dbo = await mongoConn();
+            const data = {
+                name: req.body.name,
+                token: randomString(128),
+                access_level: +req.body.access_level,
+                inserted_by: req.userSession.id_user
+            }
+            const nameCheck = await dbo.collection("keys").findOne({ name: data.name });
+            if (nameCheck) {
+                res.status(401).send({ message: "An API key with the same name already exists!", field: "name" })
+                return;
+            }
+            const tokenCheck = await dbo.collection("keys").findOne({ name: data.name });
+            if (tokenCheck) {
+                res.status(401).send({ message: "An API key with the same name token already exists, please try again!" })
+                return;
+            }
+            dbo.collection("keys").insertOne(data, async (err, dbRes) => {
+                if (err) {
+                    res.sendStatus(500);
+                    console.error(err)
+                } else {
+                    const output = await dbo.collection("keys").findOne({ _id: ObjectID(dbRes.insertedId) });
+                    res.send({ status: "created", data: output });
+                }
+            })
+        })
+        app.delete('/api/keys/:id', async (req, res, next) => {
+            const dbo = await mongoConn();
+            const r = await dbo.collection("keys").deleteOne({ _id: ObjectID(req.params.id) });
+            res.send(r);
+            return;
+        })
+
         app.use('/admin*', authorizeAdmin)
 
         app.use('/admin', function (req, res, next) {
@@ -1835,13 +1907,24 @@ async function init() {
         }
 
         function getSession(req, res, callback = null) {
-            const parm = req.cookies;
-            if (parm.stok != null && parm.stok != "") {
+            const isApiKey = !!req.query.apiKey;
+            const token = isApiKey ? req.query.apiKey : req.cookies.stok;
+            const collection = isApiKey ? "keys" : "sessions";
+
+            if (token != null && token != "") {
                 mongoConn((dbo) => {
-                    dbo.collection("sessions").findOne({ token: parm.stok }, { projection: { _id: 0 } }, (err, dbRes) => {
+                    dbo.collection(collection).findOne({ token: token }, { projection: { _id: 0 } }, (err, dbRes) => {
                         if (err) res.sendStatus(500);
-                        else if (dbRes != null && dbRes.session_expiration > new Date()) {
+                        else if (dbRes != null && (dbRes.session_expiration > new Date() || (isApiKey && !dbRes.session_expiration))) {
                             req.userSession = dbRes;
+
+                            if (isApiKey && dbRes) {
+                                if (callback)
+                                    callback();
+
+                                return;
+                            }
+
                             dbo.collection("users").findOne({ _id: dbRes.id_user }, { projection: { _id: 0 } }, (err, dbRes) => {
                                 if (dbRes != null) {
                                     req.userSession = { ...req.userSession, ...dbRes }
@@ -2737,6 +2820,7 @@ async function init() {
                     }
                 } else {
                     console.log(` > ${+sqJsK + 1} Not configured. Skipping.`);
+                    res()
                     if (cb) cb();
                 }
 
@@ -3275,6 +3359,9 @@ async function init() {
                         'steamid64',
                         'id_group',
                         'id_list'
+                    ],
+                    keys: [
+                        'token'
                     ]
                 }
 
