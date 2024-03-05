@@ -56,6 +56,8 @@
 				const x: any = new Date();
 				if (y - x > 0) {
 					const hours = Math.floor((y - x) / 1000 / 60 / 60);
+					const days = Math.round(hours / 24);
+					const months = Math.round(days / 30);
 					if (hours < 24) {
 						const minutes = Math.floor((y - x) / 1000 / 60 - hours * 60);
 						const secs = Math.floor((y - x) / 1000 - hours * 60 * 60 - minutes * 60);
@@ -68,9 +70,9 @@
 						if (secs < 0) oSec = '00';
 						console.log('Expiration', this.wl_data.username, this.wl_data.expiration, hours, minutes, secs, oHours, oMin, oSec);
 						return oHours + ':' + oMin + ':' + oSec;
-					} else {
-						return Math.round(hours / 24) + ' days';
-					}
+					} else if (months <= 0) {
+						return days + ' days';
+					} else return months + ' months';
 				}
 				return '';
 			},
@@ -101,7 +103,9 @@
 			<span class="tag noBg redTrans" style="color: #ddd !important"
 				><a target="__blank" :href="'https://steamcommunity.com/profiles/' + wl_data.steamid64">{{ wl_data.steamid64 }}</a></span
 			>
-			<span class="tag noBg redTrans" v-if="wl_data.discord_username || (wl_data.serverData && wl_data.serverData[0] && wl_data.serverData[0]?.discord_username)">{{ '@' + (wl_data.serverData && wl_data.serverData[0] && wl_data.serverData[0]?.discord_username ? wl_data.serverData[0]?.discord_username : wl_data.discord_username).replace(/^\@/, '') }}</span>
+			<span class="tag noBg redTrans" v-if="wl_data.discord_username || (wl_data.serverData && wl_data.serverData[0] && wl_data.serverData[0]?.discord_username)">{{
+				'@' + (wl_data.serverData && wl_data.serverData[0] && wl_data.serverData[0]?.discord_username ? wl_data.serverData[0]?.discord_username : wl_data.discord_username).replace(/^\@/, '')
+			}}</span>
 			<span class="tag" v-if="wl_data.inserted_by"><img :src="managerIcon" />{{ wl_data.inserted_by[0].username }}</span>
 			<span class="tag" v-if="wl_data.expiration">{{ expirationTime }}</span>
 			<span class="tag" v-for="t of extraTags" :key="t">{{ t }}</span>
