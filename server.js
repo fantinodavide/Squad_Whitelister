@@ -1520,7 +1520,7 @@ async function init() {
             })
         })
         app.use('/api/players/read/*', (req, res, next) => {
-            if (req.userSession && req.userSession.access_level < 30) next()
+            if (req.userSession && req.userSession.access_level <= 30) next()
             else res.sendStatus(401)
         })
         app.get('/api/players/read/from/steamId/:id', (req, res, next) => {
