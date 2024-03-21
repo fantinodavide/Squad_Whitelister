@@ -32,6 +32,8 @@ Add run argument `--self-pm` to automatically restart after an update or crash
 - `HTTPS_SERVER_DISABLED` completely disables the HTTPS server, HTTP server will be used as only server
 - `HTTPS_PORT` overrides the HTTPS port set from the configuration file
 
+#### [**API Documentation**](/docs/api/README.md)
+
 #### [**Screenshots**](/screenshots) ####
 
 #### conf.json Example
