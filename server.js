@@ -2820,8 +2820,8 @@ async function init() {
                     }
                 } else {
                     console.log(` > ${+sqJsK + 1} Not configured. Skipping.`);
-                    res()
                     if (cb) cb();
+                    res(false)
                 }
 
             })
