@@ -25,7 +25,6 @@
 		"node-stream-zip": "^1.15.0",
 		"node-zip": "^1.1.1",
 		"path": "^0.12.7",
-		"socket.io-client": "^4.5.1",
-		"swagger-autogen": "^2.23.7"
+		"socket.io-client": "^4.5.1"
 	}
 }

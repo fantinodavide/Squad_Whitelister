@@ -77,8 +77,6 @@ async function init() {
     const Discord = await irequire("discord.js");
     const { io } = await irequire("socket.io-client");
     const dns = await irequire('dns')
-    const swaggerAutogenPkg = await irequire('swagger-autogen')
-    const swaggerAutogen = swaggerAutogenPkg({ writeOutputFile: false, disableLogs: true })
     const util = require('util');
     const lookup = util.promisify(dns.lookup);
 
@@ -1365,6 +1363,10 @@ async function init() {
         })
         app.post('/api/whitelist/write/addPlayer', (req, res, next) => {
             const parm = req.body;
+
+            if(!parm.discordUsername)
+                parm.discordUsername = ""
+
             mongoConn((dbo) => {
                 let findFilter = (req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code, admins: req.userSession.id_user.toString() } : { _id: ObjectID(parm.sel_clan_id) });
                 const pipeline = [
@@ -1918,44 +1920,48 @@ async function init() {
             })
         }
 
-        function getSession(req, res, callback = null) {
-            const isApiKey = !!req.query.apiKey;
-            const token = isApiKey ? req.query.apiKey : req.cookies.stok;
+        async function getSession(req, res, callback) {
+            const apiKey = req.query?.apiKey || req.body?.apiKey;
+            const isApiKey = !!apiKey;
+            const token = isApiKey ? apiKey : req.cookies.stok;
             const collection = isApiKey ? "keys" : "sessions";
 
-            if (token != null && token != "") {
-                mongoConn((dbo) => {
-                    dbo.collection(collection).findOne({ token: token }, { projection: { _id: 0 } }, (err, dbRes) => {
-                        if (err) res.sendStatus(500);
-                        else if (dbRes != null && (dbRes.session_expiration > new Date() || (isApiKey && !dbRes.session_expiration))) {
-                            req.userSession = dbRes;
+            if (!token || token == "")
+                return callback();
 
-                            if (isApiKey && dbRes) {
-                                if (callback)
-                                    callback();
+            const dbo = await mongoConn();
 
-                                return;
-                            }
+            let session = {
+                session_expiration: new Date(Date.now() + 120000),
+                login_date: new Date()
+            };
 
-                            dbo.collection("users").findOne({ _id: dbRes.id_user }, { projection: { _id: 0 } }, (err, dbRes) => {
-                                if (dbRes != null) {
-                                    req.userSession = { ...req.userSession, ...dbRes }
-                                    if (callback)
-                                        callback();
-                                } else {
-                                    res.send({ status: "login_required" }).status(401)
-                                }
+            const sessionDbData = await dbo.collection(collection).findOne({ token: token }, { projection: { _id: 0 } });
+            if (!sessionDbData)
+                return callback()
 
-                            })
-                        } else {
-                            if (callback)
-                                callback();
-                        }
-                    })
-                })
-            } else {
-                callback();
+            session = { ...session, ...sessionDbData };
+
+            if (isApiKey) {
+                session.id_user = session.inserted_by
+                delete session.inserted_by;
             }
+
+            const user = await dbo.collection("users").findOne({ _id: session.id_user }, { projection: { _id: 0 } })
+            if (!user)
+                return callback()
+
+            if (isApiKey)
+                delete user.access_level
+
+            session = { ...session, ...user };
+
+            if (session.session_expiration <= new Date())
+                return callback();
+
+            req.userSession = session;
+
+            return callback();
         }
         function requireLogin(req, res, callback = null) {
             const parm = Object.keys(req.query).length > 0 ? req.query : req.body;
@@ -2923,7 +2929,7 @@ async function init() {
                         if (!activeSeedingConnections[ p.sqJsConnectionIndex ]) continue;
 
                         const oldPlayerData = await dbo.collection("players").findOne({ steamid64: p.steamID });
-                        dbo.collection("players").findOneAndUpdate({ steamid64: p.steamID }, { $set: { steamid64: p.steamID, username: p.name }, $inc: { seeding_points: 1 } }, { upsert: true, returnDocument: 'after' }, async (err, dbRes) => {
+                        dbo.collection("players").findOneAndUpdate({ steamid64: p.steamID }, { $set: { steamid64: p.steamID, username: p.name, latest_seeding_activity: new Date() }, $inc: { seeding_points: 1 } }, { upsert: true, returnDocument: 'after' }, async (err, dbRes) => {
                             if (err) serverError(null, err)
                             else if (stConf.reward_enabled == "true") {
                                 const stepOld = Math.min(Math.floor(10 * oldPlayerData?.seeding_points / requiredPoints), 10) || 0;
@@ -3144,12 +3150,8 @@ async function init() {
     function toUpperFirstChar(string) {
         return string.charAt(0).toUpperCase() + string.slice(1);
     }
-
     async function generateApiDocs() {
-        console.log('API Docs generation')
-        apiDocsJson = await swaggerAutogen('./swagger-output.json', [ __filename ]);
-        console.log(' > Completed')
-        return apiDocsJson;
+        apiDocsJson = fs.readFileSync(path.join(__dirname, 'docs/api/docs.json')).toString()
     }
     function initConfigFile(callback) {
 
