@@ -498,7 +498,7 @@
 				@delete-record="removeUser"
 			/>
 		</tab>
-		<tab v-else-if="currentTab == 'API'" :currentTab="currentTab" :roles="roles">
+		<tab v-else-if="currentTab == 'API'" :currentTab="currentTab" :roles="roles" complex>
 			<ApiTab
 				:roles="roles"
 				@confirm="confirmEvt"

@@ -47,6 +47,8 @@ var subcomponent_data = {
     }
 }
 
+var apiDocsJson = null
+
 async function init() {
     const packageJSON = await irequire('./package.json');
     const versionN = packageJSON.version;
@@ -75,6 +77,8 @@ async function init() {
     const Discord = await irequire("discord.js");
     const { io } = await irequire("socket.io-client");
     const dns = await irequire('dns')
+    const swaggerAutogenPkg = await irequire('swagger-autogen')
+    const swaggerAutogen = swaggerAutogenPkg({ writeOutputFile: false, disableLogs: true })
     const util = require('util');
     const lookup = util.promisify(dns.lookup);
 
@@ -191,7 +195,10 @@ async function init() {
     function main() {
         checkUpdates(config.other.automatic_updates, async () => {
             console.log(" > Starting up");
+
             setInterval(() => { checkUpdates(config.other.automatic_updates) }, config.other.update_check_interval_seconds * 1000);
+
+            await generateApiDocs();
 
             resetSeedingTime();
 
@@ -1841,6 +1848,11 @@ async function init() {
             return;
         })
 
+        app.use('/api/keys/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
+        app.get('/api/docs', async (req, res, next) => {
+            res.send(apiDocsJson)
+        })
+
         app.use('/admin*', authorizeAdmin)
 
         app.use('/admin', function (req, res, next) {
@@ -3131,6 +3143,13 @@ async function init() {
 
     function toUpperFirstChar(string) {
         return string.charAt(0).toUpperCase() + string.slice(1);
+    }
+
+    async function generateApiDocs() {
+        console.log('API Docs generation')
+        apiDocsJson = await swaggerAutogen('./swagger-output.json', [ __filename ]);
+        console.log(' > Completed')
+        return apiDocsJson;
     }
     function initConfigFile(callback) {
 

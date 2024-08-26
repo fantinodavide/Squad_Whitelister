@@ -381,8 +381,29 @@ b {
 *[readonly]:focus {
 	outline: none;
 }
+
 *[readonly] {
 	cursor: default;
 	/* text-align: right; */
 	width: min-content !important;
+}
+
+pre[class*='language-'] {
+	background: #0003 !important;
+}
+
+.hljs-punctuation {
+	color: #ddd !important;
+}
+
+span[class*='hljs-'] {
+	color: color-mix(in srgb, var(--accent-color) 30%, white 60%);
+}
+
+.hljs-attr {
+	color: color-mix(in srgb, var(--accent-color) 50%, white 30%) !important;
+}
+
+code {
+	padding: 10px;
 }
