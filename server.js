@@ -1921,7 +1921,7 @@ async function init() {
         }
 
         async function getSession(req, res, callback) {
-            const apiKey = req.query?.apiKey || req.body?.apiKey;
+            const apiKey = req.query.apiKey || req.body.apiKey;
             const isApiKey = !!apiKey;
             const token = isApiKey ? apiKey : req.cookies.stok;
             const collection = isApiKey ? "keys" : "sessions";
