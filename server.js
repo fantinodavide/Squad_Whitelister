@@ -1364,7 +1364,7 @@ async function init() {
         app.post('/api/whitelist/write/addPlayer', (req, res, next) => {
             const parm = req.body;
 
-            if(!parm.discordUsername)
+            if (!parm.discordUsername)
                 parm.discordUsername = ""
 
             mongoConn((dbo) => {
@@ -1550,6 +1550,37 @@ async function init() {
                         res.send(dbRes);
                     }
                 })
+            })
+        })
+        app.use('/api/players/write/*', (req, res, next) => {
+            if (req.userSession && req.userSession.access_level <= 10) next()
+            else res.sendStatus(401)
+        })
+
+        app.post('/api/players/write/seeding_score', (req, res, next) => {
+            /* 
+                #swagger.parameters['body'] = {
+                    in: 'body',
+                    schema: {
+                        steamIDs: ['76561198034319030', '76561198034319031'],
+                        incremental: true,
+                        points: 10
+                    }
+                }
+            */
+            mongoConn(async (dbo) => {
+                if (!Array.isArray(req.body.steamIDs) || typeof req.body.incremental !== 'boolean') {
+                    return res.status(400).send('Invalid input');
+                }
+                const steamIDs = req.body.steamIDs
+                const mode = req.body.incremental ? '$inc' : '$set'
+                const points = req.body.points
+                const updData = await dbo.collection("players").updateMany({ steamid64: { $in: steamIDs } }, { [ mode ]: { seeding_points: points } })
+                    .catch(err => {
+                        res.sendStatus(500);
+                        return;
+                    })
+                res.send(updData)
             })
         })
         app.use('/api/approval/write/*', (req, res, next) => {
