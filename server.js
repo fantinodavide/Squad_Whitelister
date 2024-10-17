@@ -1047,6 +1047,8 @@ async function init() {
             res.send(resData);
 
             // if (true || [ 'web_server', 'database', 'discord_bot', 'squadjs' ].includes(parm.category)) restartProcess(0, 0);
+            if ([ 'custom_permissions', 'app_personalization' ].includes(parm.category))
+                return;
 
             restartProcess(0, 0, args);
         })
