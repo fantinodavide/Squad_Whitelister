@@ -397,7 +397,7 @@
 		<tab v-else-if="currentTab == 'Updating'" :currentTab="currentTab">
 			<popup ref="popupLogin" title="Update in progress" :hide-confirm="true" :hide-cancel="true" style="margin: auto" />
 		</tab>
-		<tab v-else-if="currentTab == 'Clans'" :currentTab="currentTab" :horizontal="true" @vnodeMounted="getClans">
+		<tab v-else-if="currentTab == 'Clans'" :currentTab="currentTab" :horizontal="true" @vue:mounted="getClans">
 			<button class="addNewClan clanCard" @click="popups.addingNewClan = true"></button>
 			<ClanCard
 				@confirm="removeClan"
@@ -418,7 +418,7 @@
 		<tab
 			v-else-if="currentTab == 'Groups'"
 			:currentTab="currentTab"
-			@vnodeMounted="
+			@vue:mounted="
 				() => {
 					getGameGroups();
 					checkPerms('/api/gameGroups/write/checkPerm', (dt) => {
@@ -477,7 +477,7 @@
 		<tab
 			v-else-if="currentTab == 'Users and Roles'"
 			:currentTab="currentTab"
-			@vnodeMounted="
+			@vue:mounted="
 				() => {
 					getUsers();
 					getRoles();
