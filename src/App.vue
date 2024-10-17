@@ -365,7 +365,7 @@ export default {
 				" />
 			<registration v-if="popups.registration" @cancelBtnClick="popups.registration = false" />
 			<changepassword v-if="popups.changepassword" @cancelBtnClick="popups.changepassword = false" />
-			<editGameGroup v-if="popups.editGameGroup || popups.addingNewGameGroup" @cancelBtnClick="popups.editGameGroup = false; popups.addingNewGameGroup = false; inEditingGroup = null" :group_data="game_groups[ inEditingGroup ]" @new_game_group="appendNewGroup" @edited="game_groups[ inEditingGroup ] = $event" />
+			<editGameGroup v-if="popups.editGameGroup || popups.addingNewGameGroup" @cancelBtnClick="popups.editGameGroup = false; popups.addingNewGameGroup = false; inEditingGroup = -1" :group_data="game_groups[ inEditingGroup ]" @new_game_group="appendNewGroup" @edited="game_groups[ inEditingGroup ] = $event" />
 			<confirmPopup
 				:ref="(el: any) => {
 						pointers.confirmPopup = el;
