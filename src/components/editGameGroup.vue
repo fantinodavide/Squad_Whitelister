@@ -1,86 +1,94 @@
 <script setup lang="ts">
-	import { assertExpressionStatement } from '@babel/types';
-	import $ from 'jquery';
-	import popup from './popup.vue';
-	import SelectMultiple from './selectMultiple.vue';
+import { assertExpressionStatement } from '@babel/types';
+import $ from 'jquery';
+import popup from './popup.vue';
+import SelectMultiple from './selectMultiple.vue';
 </script>
 
 <script lang="ts">
-	export default {
-		data() {
-			return {
-				permissions: [
-					{ id: 'balance', name: 'Balance' },
-					{ id: 'ban', name: 'Ban' },
-					{ id: 'cameraman', name: 'Cameraman' },
-					{ id: 'canseeadminchat', name: 'Can see Admin Chat' },
-					{ id: 'changemap', name: 'Change Map' },
-					{ id: 'chat', name: 'Chat' },
-					{ id: 'cheat', name: 'Cheat' },
-					{ id: 'clientdemos', name: 'Client Demos' },
-					{ id: 'config', name: 'Config' },
-					{ id: 'debug', name: 'Debug' },
-					{ id: 'demos', name: 'Demos' },
-					{ id: 'featuretest', name: 'Feature Test' },
-					{ id: 'forceteamchange', name: 'Force Team Change' },
-					{ id: 'immune', name: 'Immune' },
-					{ id: 'kick', name: 'Kick' },
-					{ id: 'manageserver', name: 'Manage Server' },
-					{ id: 'pause', name: 'Pause' },
-					{ id: 'private', name: 'Private' },
-					{ id: 'reserve', name: 'Reserve' },
-					{ id: 'startvote', name: 'Start Vote' },
-					{ id: 'teamchange', name: 'Team Change' },
-				],
+export default {
+	data() {
+		return {
+			permissions: [
+				{ id: 'balance', name: 'Balance' },
+				{ id: 'ban', name: 'Ban' },
+				{ id: 'cameraman', name: 'Cameraman' },
+				{ id: 'canseeadminchat', name: 'Can see Admin Chat' },
+				{ id: 'changemap', name: 'Change Map' },
+				{ id: 'chat', name: 'Chat' },
+				{ id: 'cheat', name: 'Cheat' },
+				{ id: 'clientdemos', name: 'Client Demos' },
+				{ id: 'config', name: 'Config' },
+				{ id: 'debug', name: 'Debug' },
+				{ id: 'demos', name: 'Demos' },
+				{ id: 'featuretest', name: 'Feature Test' },
+				{ id: 'forceteamchange', name: 'Force Team Change' },
+				{ id: 'immune', name: 'Immune' },
+				{ id: 'kick', name: 'Kick' },
+				{ id: 'manageserver', name: 'Manage Server' },
+				{ id: 'pause', name: 'Pause' },
+				{ id: 'private', name: 'Private' },
+				{ id: 'reserve', name: 'Reserve' },
+				{ id: 'startvote', name: 'Start Vote' },
+				{ id: 'teamchange', name: 'Team Change' },
+			],
+			discord_roles: [] as Array<any>,
+			extRet: {
 				discord_roles: [] as Array<any>,
-				extRet: {
-					discord_roles: [] as Array<any>,
-					group_permissions: [] as Array<any>,
+				group_permissions: [] as Array<any>,
+			},
+		};
+	},
+	props: {
+		group_data: {
+			type: Object,
+			default: {},
+		},
+	},
+	methods: {
+		confirmBtnClick(dt: any) {
+			console.log(dt);
+			$.ajax({
+				url: '/api/gameGroups/write/editGroup',
+				type: 'post',
+				dataType: 'json',
+				data: JSON.stringify({ _id: this.group_data._id, ...dt }),
+				contentType: 'application/json',
+				success: (dt) => {
+					console.log(dt);
+					this.$emit('edited', dt);
+					this.$emit('cancelBtnClick');
 				},
-			};
+				error: (err) => {
+					console.error(err);
+					const compPopup: any = this.$refs.popupComp;
+					compPopup.blinkAll();
+					//.blinkBgColor(this.$refs.popupLogin.getInputs());
+				},
+			});
 		},
-		props: {
-			group_data: {
-				type: Object,
-				default: {},
-			},
-		},
-		methods: {
-			confirmBtnClick(dt: any) {
-				console.log(dt);
-				$.ajax({
-					url: '/api/gameGroups/write/editGroup',
-					type: 'post',
-					dataType: 'json',
-					data: JSON.stringify({ _id: this.group_data._id, ...dt }),
-					contentType: 'application/json',
-					success: (dt) => {
-						console.log(dt);
-						this.$emit('edited', dt);
-						this.$emit('cancelBtnClick');
-					},
-					error: (err) => {
-						console.error(err);
-						const compPopup: any = this.$refs.popupComp;
-						compPopup.blinkAll();
-						//.blinkBgColor(this.$refs.popupLogin.getInputs());
-					},
+		getAllDiscordRoles: function () {
+			fetch('/api/discord/read/getRoles')
+				.then((res) => res.json())
+				.then((dt) => {
+					this.discord_roles = dt;
 				});
-			},
-			getAllDiscordRoles: function () {
-				fetch('/api/discord/read/getRoles')
-					.then((res) => res.json())
-					.then((dt) => {
-						this.discord_roles = dt;
-					});
-			},
 		},
-		created() {
-			this.getAllDiscordRoles();
-			console.log(this.group_data);
-		},
-		components: { popup, SelectMultiple },
-	};
+		getCustomPermissions: async function () {
+			fetch('/api/custom_permissions/read/getAll')
+				.then((res) => res.json())
+				.then((dt) => {
+					this.permissions = this.permissions.concat(dt.map((e: any) => ({ id: e.permission, name: e.name })))
+				});
+		}
+	},
+	created() {
+		this.getCustomPermissions();
+		this.getAllDiscordRoles();
+		console.log(this.group_data);
+	},
+	components: { popup, SelectMultiple },
+};
 </script>
 
 <template>

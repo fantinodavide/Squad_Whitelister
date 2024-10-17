@@ -1091,6 +1091,11 @@ async function init() {
             })
         })
 
+        app.use('/api/custom_permissions/read/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 30) next(); else res.sendStatus(403) })
+        app.get('/api/custom_permissions/read/getAll', (req, res, next) => {
+            res.send(config.custom_permissions)
+        })
+
         app.use('/api/lists/read/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
         app.get('/api/lists/read/getAll', (req, res, next) => {
             mongoConn((dbo) => {
@@ -3225,6 +3230,12 @@ async function init() {
                         port: 3000,
                         token: ""
                     }
+                }
+            ],
+            custom_permissions: [
+                {
+                    name: "Example Custom Permission",
+                    permission: "example_custom_perm"
                 }
             ],
             other: {
