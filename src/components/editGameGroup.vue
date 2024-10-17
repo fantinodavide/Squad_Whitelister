@@ -40,23 +40,25 @@ export default {
 		};
 	},
 	props: {
-		group_data: {
-			type: Object,
-			default: {},
-		},
+		group_data: null as any,
 	},
 	methods: {
 		confirmBtnClick(dt: any) {
 			console.log(dt);
+			const createUrl = '/api/gameGroups/write/newGroup';
+			const updateUrl = '/api/gameGroups/write/editGroup'
 			$.ajax({
-				url: '/api/gameGroups/write/editGroup',
+				url: this.group_data ? updateUrl : createUrl,
 				type: 'post',
 				dataType: 'json',
 				data: JSON.stringify({ _id: this.group_data._id, ...dt }),
 				contentType: 'application/json',
 				success: (dt) => {
 					console.log(dt);
-					this.$emit('edited', dt);
+					if (this.group_data)
+						this.$emit('edited', dt);
+					else
+						this.$emit('new_game_group', dt);
 					this.$emit('cancelBtnClick');
 				},
 				error: (err) => {
@@ -92,15 +94,15 @@ export default {
 </script>
 
 <template>
-	<popup ref="popupComp" title="Edit Group" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick" :extRetProp="extRet">
-		<input name="group_name" type="text" placeholder="Group Name" :value="group_data.group_name" regex="^[a-zA-Z\d]{2,}$" />
+	<popup ref="popupComp" :title="`${group_data ? 'Edit' : 'Add'} Group`" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confirmBtnClick" :extRetProp="extRet">
+		<input name="group_name" type="text" placeholder="Group Name" :value="group_data?.group_name" regex="^[a-zA-Z\d]{2,}$" />
 		<!-- <select name="group_permissions" multiple>
 			<option v-for="p in permissions.sort()" :value="p" :selected="group_data.group_permissions.includes(p)">{{ p }}</option>
 		</select> -->
-		<SelectMultiple :elements="permissions" oIdKey="id" oTitleKey="name" title="Permissions" :preselect="group_data.group_permissions" @selectChanged="extRet.group_permissions = $event" />
-		<SelectMultiple :elements="discord_roles" oIdKey="id" oTitleKey="name" title="Discord Roles" :preselect="group_data.discord_roles" @selectChanged="extRet.discord_roles = $event" />
+		<SelectMultiple :elements="permissions" oIdKey="id" oTitleKey="name" title="Permissions" :preselect="group_data?.group_permissions" @selectChanged="extRet.group_permissions = $event" />
+		<SelectMultiple :elements="discord_roles" oIdKey="id" oTitleKey="name" title="Discord Roles" :preselect="group_data?.discord_roles" @selectChanged="extRet.discord_roles = $event" />
 
-		<label>Require Approval<input name="require_appr" type="checkbox" placeholder="Require Approval" :checked="group_data.require_appr" /></label>
+		<label>Require Approval<input name="require_appr" type="checkbox" placeholder="Require Approval" :checked="group_data?.require_appr" /></label>
 	</popup>
 </template>
 
