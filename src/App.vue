@@ -373,6 +373,7 @@ export default {
 					"
 				v-show="popups.confirm"
 				@cancelBtnClick="popups.confirm = false" />
+			<AddNewClan v-if="popups.addingNewClan" @cancelBtnClick="popups.addingNewClan = false" @new_clan="appendNewClan" />
 			<editClan v-if="popups.editClan" @cancelBtnClick="popups.editClan = false" :clan_data="clans[ inEditingClan ]" @clan_edited="clans[ inEditingClan ] = $event" />
 			<editClanUsers v-if="popups.editClanUsers" :clan_data="clans[ inUserEditingClan ]" @cancelBtnClick="popups.editClanUsers = false" />
 			<addNewWhitelistUser v-if="popups.addNewWhitelistUser" @cancelBtnClick="popups.addNewWhitelistUser = false" :add_data="tabData.Whitelist.add_data" />
