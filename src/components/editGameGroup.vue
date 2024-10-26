@@ -47,11 +47,14 @@ export default {
 			console.log(dt);
 			const createUrl = '/api/gameGroups/write/newGroup';
 			const updateUrl = '/api/gameGroups/write/editGroup'
+			const data = { ...dt }
+			if (this.group_data)
+				data._id = this.group_data._id
 			$.ajax({
 				url: this.group_data ? updateUrl : createUrl,
 				type: 'post',
 				dataType: 'json',
-				data: JSON.stringify({ _id: this.group_data._id, ...dt }),
+				data: JSON.stringify(data),
 				contentType: 'application/json',
 				success: (dt) => {
 					console.log(dt);
