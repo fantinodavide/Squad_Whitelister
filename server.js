@@ -2715,7 +2715,7 @@ async function init() {
                     // })
                     subcomponent_data.squadjs[ sqJsK ].socket.on("disconnect", async () => {
                         subcomponent_status.squadjs[ sqJsK ] = false;
-                        console.log("SquadJS WebSocket\n > Disconnected\n > Trying to reconnect")
+                        console.log(`SquadJS WebSocket ${+sqJsK + 1}\n > Disconnected\n > Trying to reconnect`)
                         startReconnectionInterval(sqJsK);
                     });
 
@@ -2935,7 +2935,7 @@ async function init() {
                 try {
                     singleServerPlayers = await emitPromise(subcomponent_data.squadjs[ sqJsK ].socket, "rcon.getListPlayers", {}, 5)
                 } catch (err) {
-                    console.error(`Seeding tracker (${sqJsK}): ${err}`)
+                    console.error(`Seeding tracker (${+sqJsK + 1}): ${err}`)
                     if (++subcomponent_data.squadjs[ sqJsK ].recentErrors > 5 && subcomponent_status.squadjs)
                         subcomponent_data.squadjs[ sqJsK ].socket.disconnect()
                     continue;
