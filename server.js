@@ -2698,6 +2698,7 @@ async function init() {
                         clearInterval(subcomponent_data.squadjs[ sqJsK ].reconnect_int);
                         subcomponent_status.squadjs[ sqJsK ] = true;
                         subcomponent_data.squadjs[ sqJsK ].failedReconnections = 0;
+                        subcomponent_data.squadjs[ sqJsK ].recentErrors = 0;
 
                         if (!squadjs.initDone) {
                             squadjs.initDone = true;
@@ -2936,6 +2937,8 @@ async function init() {
                     singleServerPlayers = await emitPromise(subcomponent_data.squadjs[ sqJsK ].socket, "rcon.getListPlayers", {}, 5)
                 } catch (err) {
                     console.error(`Seeding tracker (${sqJsK}): ${err}`)
+                    if (++subcomponent_data.squadjs[ sqJsK ].recentErrors > 5 && subcomponent_status.squadjs)
+                        subcomponent_data.squadjs[ sqJsK ].disconnect()
                     continue;
                 }
 
