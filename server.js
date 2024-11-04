@@ -2691,12 +2691,13 @@ async function init() {
                     subcomponent_data.squadjs[ sqJsK ].socket.on("connect", async () => {
                         // conns[ sqJsK ].resolve(true);
                         if (tm) tm = clearTimeout(tm);
-                        
+
                         console.log(`  > Connected`);
 
                         // subcomponent_data.squadjs[ sqJsK ].socket.emit("rcon.warn", "76561198419229279", "Whitelister Test Connected", () => { })
                         clearInterval(subcomponent_data.squadjs[ sqJsK ].reconnect_int);
                         subcomponent_status.squadjs[ sqJsK ] = true;
+                        subcomponent_data.squadjs[ sqJsK ].failedReconnections = 0;
 
                         if (!squadjs.initDone) {
                             squadjs.initDone = true;
