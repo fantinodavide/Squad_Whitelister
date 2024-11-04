@@ -2661,7 +2661,7 @@ async function init() {
 
             await new Promise(async (res, rej) => {
 
-                console.error(` > Connection ${+sqJsK + 1}`);
+                console.error(` > Connection ${+sqJsK + 1}: ${sqJsConn.websocket.host}:${sqJsConn.websocket.port}`);
 
                 if (sqJsConn.websocket && sqJsConn.websocket.token != "" && sqJsConn.websocket.host != "") {
 
