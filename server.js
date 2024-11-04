@@ -2690,7 +2690,8 @@ async function init() {
                     })
                     subcomponent_data.squadjs[ sqJsK ].socket.on("connect", async () => {
                         // conns[ sqJsK ].resolve(true);
-                        clearTimeout(tm);
+                        if (tm) tm = clearTimeout(tm);
+                        
                         console.log(`  > Connected`);
 
                         // subcomponent_data.squadjs[ sqJsK ].socket.emit("rcon.warn", "76561198419229279", "Whitelister Test Connected", () => { })
