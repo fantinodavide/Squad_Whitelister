@@ -2937,7 +2937,7 @@ async function init() {
                 } catch (err) {
                     console.error(`Seeding tracker (${sqJsK}): ${err}`)
                     if (++subcomponent_data.squadjs[ sqJsK ].recentErrors > 5 && subcomponent_status.squadjs)
-                        subcomponent_data.squadjs[ sqJsK ].disconnect()
+                        subcomponent_data.squadjs[ sqJsK ].socket.disconnect()
                     continue;
                 }
 
