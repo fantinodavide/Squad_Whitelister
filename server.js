@@ -2933,7 +2933,7 @@ async function init() {
 
                 activeSeedingConnections[ sqJsK ] = false;
                 try {
-                    singleServerPlayers = await emitPromise(subcomponent_data.squadjs[ sqJsK ].socket, "rcon.getListPlayers", {})
+                    singleServerPlayers = await emitPromise(subcomponent_data.squadjs[ sqJsK ].socket, "rcon.getListPlayers", {}, 5)
                 } catch (err) {
                     console.error(`Seeding tracker (${sqJsK}): ${err}`)
                     continue;
