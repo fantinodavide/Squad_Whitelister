@@ -2869,7 +2869,7 @@ async function init() {
                                             }
 
 
-                                            if (subcomponent_status.squadjs && config.send_welcome_message) {
+                                            if (subcomponent_status.squadjs && config.app_personalization.send_welcome_message) {
                                                 setTimeout(() => {
                                                     subcomponent_data.squadjs[ sqJsK ].socket.emit("rcon.warn", dt.player.steamID, msg, (d) => { })
                                                 }, timeoutDelay)
