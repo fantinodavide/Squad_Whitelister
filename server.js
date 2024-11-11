@@ -127,6 +127,9 @@ async function init() {
         initDone: false
     }
     var urlCalls = []
+    /**
+     * @description Variable that stores the content of the Whitelister configuration file
+     */
     var config;
 
     const mongodb_global_connection = true;
@@ -2866,7 +2869,7 @@ async function init() {
                                             }
 
 
-                                            if (subcomponent_status.squadjs) {
+                                            if (subcomponent_status.squadjs && config.send_welcome_message) {
                                                 setTimeout(() => {
                                                     subcomponent_data.squadjs[ sqJsK ].socket.emit("rcon.warn", dt.player.steamID, msg, (d) => { })
                                                 }, timeoutDelay)
@@ -3224,6 +3227,7 @@ async function init() {
                 logo_url: "https://joinsquad.com/wp-content/themes/squad/img/logo.png",
                 logo_border_radius: "10",
                 title_hidden_in_header: false,
+                send_welcome_message: true
             },
             discord_bot: {
                 token: "",
