@@ -1052,7 +1052,7 @@ async function init() {
 
             restartProcess(0, 0, args);
         })
-        app.use('/api/dbconfig/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
+        app.use('/api/dbconfig/read/getFull*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
         app.get('/api/dbconfig/read/getFull', async (req, res, next) => {
             const parm = req.body;
             mongoConn(dbo => {
@@ -1065,6 +1065,7 @@ async function init() {
                 })
             })
         })
+        app.use('/api/dbconfig/read/:category', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 30) next() })
         app.get('/api/dbconfig/read/:category', async (req, res, next) => {
             const parm = req.body;
             mongoConn(dbo => {
@@ -1347,7 +1348,7 @@ async function init() {
             })
         })
         app.use('/api/whitelist/write/*', (req, res, next) => {
-            if (req.userSession && req.userSession.access_level < 30) next()
+            if (req.userSession && req.userSession.access_level <= 30) next()
             else {
                 mongoConn((dbo, client) => {
                     let findFilter = req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code, admins: req.userSession.id_user.toString() } : {};
@@ -1521,7 +1522,7 @@ async function init() {
             })
         })
         app.use('/api/seeding/read/*', (req, res, next) => {
-            if (req.userSession && req.userSession.access_level < 30) next()
+            if (req.userSession && req.userSession.access_level <= 30) next()
             else res.sendStatus(401)
         })
         app.get('/api/seeding/read/getPlayers', (req, res, next) => {
@@ -1591,7 +1592,7 @@ async function init() {
             })
         })
         app.use('/api/approval/write/*', (req, res, next) => {
-            if (req.userSession && req.userSession.access_level < 30) next()
+            if (req.userSession && req.userSession.access_level <= 30) next()
             else res.sendStatus(401)
         })
         app.use('/api/approval/write/setApprovedStatus', (req, res, next) => {
