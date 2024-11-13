@@ -2242,12 +2242,11 @@ async function init() {
 
             client.on('raw', async (packet) => {
                 const user_id = packet.d?.user?.id || "";
+                const dbo = await mongoConn()
                 switch (packet.t) {
                     case 'GUILD_MEMBER_UPDATE':
                         let user_roles = packet.d.roles;
-                        mongoConn((dbo) => {
-                            dbo.collection("players").updateOne({ discord_user_id: user_id }, { $set: { discord_user_id: user_id, discord_username: packet.d.user.username + "#" + packet.d.user.discriminator, discord_roles_ids: user_roles } }, { upsert: true })
-                        })
+                        dbo.collection("players").updateOne({ discord_user_id: user_id }, { $set: { discord_user_id: user_id, discord_username: packet.d.user.username + "#" + packet.d.user.discriminator, discord_roles_ids: user_roles } }, { upsert: true })
                         break;
                     case 'GUILD_MEMBER_REMOVE':
                         dbo.collection("players").updateOne({ discord_user_id: user_id }, { $set: { discord_roles_ids: [] } })
