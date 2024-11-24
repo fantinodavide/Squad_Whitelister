@@ -3216,7 +3216,7 @@ async function init() {
                 name: "Whitelister",
                 favicon: "",
                 accent_color: "#ffc40b",
-                logo_url: "https://joinsquad.com/wp-content/themes/squad/img/logo.png",
+                logo_url: "/wp_logo.png",
                 logo_border_radius: "10",
                 title_hidden_in_header: false,
             },

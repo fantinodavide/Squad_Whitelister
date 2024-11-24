@@ -57,7 +57,7 @@ Add run argument `--self-pm` to automatically restart after an update or crash
 		"name": "Whitelister",
 		"favicon": "",
 		"accent_color": "#ffc40b",
-		"logo_url": "https://joinsquad.com/wp-content/themes/squad/img/logo.png"
+		"logo_url": "/wp_logo.png"
 	},
 	"other": {
 		"automatic_updates": true,
