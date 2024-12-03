@@ -20,7 +20,8 @@
 				"humao.rest-client",
 				"ChakrounAnas.turbo-console-log",
 				"Vue.volar",
-				"ms-azuretools.vscode-docker"
+				"ms-azuretools.vscode-docker",
+				"Wscats.vue"
 			]
 		}
 	},
