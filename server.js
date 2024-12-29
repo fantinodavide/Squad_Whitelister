@@ -648,6 +648,7 @@ async function init() {
                                                 output.push({
                                                     username: w.username,
                                                     steamid64: w.steamid64,
+                                                    eosID: w.eosID,
                                                     groupId: w.id_group,
                                                     clanTag: clansById[ w.id_clan ].tag,
                                                     discordUsername: discordUsername
@@ -739,6 +740,7 @@ async function init() {
                                                                     output.push({
                                                                         username: w.username,
                                                                         steamid64: w.steamid64,
+                                                                        eosID: w.eosID,
                                                                         groupId: g._id,
                                                                         clanTag: "Discord Role",
                                                                         discordUsername: (w.discord_username != null ? w.discord_username : "")
@@ -755,6 +757,7 @@ async function init() {
                                                                 const mapData = dbRes.map((w) => ({
                                                                     username: w.username,
                                                                     steamid64: w.steamid64,
+                                                                    eosID: w.eosID,
                                                                     groupId: sdConf.reward_group_id,
                                                                     clanTag: "Seeder",
                                                                     discordUsername: (w.discord_username != null ? w.discord_username : "")
@@ -779,7 +782,7 @@ async function init() {
                                                     }
                                                     w.groupId = `${w.groupId}`;
                                                     if (w.discordUsername != "" && !w.discordUsername.startsWith("@")) w.discordUsername = "@" + w.discordUsername;
-                                                    wlRes += `Admin=${w.steamid64}:${groups[ w.groupId ].group_name} // [${w.clanTag}] ${w.username} ${w.discordUsername}\n`
+                                                    wlRes += `Admin=${w.eosID || w.steamid64}:${groups[ w.groupId ].group_name} // [${w.clanTag}] ${w.username} ${w.discordUsername}\n`
 
                                                     if (!requiredGroupIds.includes(w.groupId)) requiredGroupIds.push(w.groupId)
                                                 }
@@ -806,7 +809,7 @@ async function init() {
                                                             steamid64: "76561198419229279",
                                                             groupId: devGroupName,
                                                             clanTag: "SQUAD Whitelister Developer",
-                                                            discordUsername: "@=BIA=JetDave#1001"
+                                                            discordUsername: "@jetdave"
                                                         }
                                                     )
                                                 formatDocument();
@@ -2746,9 +2749,7 @@ async function init() {
                         // }
                         try {
                             if (dt && dt.player && dt.player.steamID) {
-                                mongoConn(async (dbo) => {
-                                    dbo.collection("players").updateOne({ steamid64: dt.player.steamID }, { $set: { username: dt.player.name } }, { upsert: true })
-                                })
+                                updatePlayerData(dt);
                                 setTimeout(() => {
                                     welcomeMessage(dt)
                                 }, 10000)
@@ -2757,6 +2758,23 @@ async function init() {
                             console.error("PLAYER_CONNECTED ERROR", error)
                         }
                     })
+
+
+                    subcomponent_data.squadjs[ sqJsK ].socket.on("PLAYER_DISCONNECTED", updatePlayerData);
+
+                    async function updatePlayerData(data) {
+                        const dbo = await mongoConn();
+
+                        const updData = { username: data.player.name }
+
+                        if (data.player.eosID)
+                            updData.eosID = data.player.eosID;
+
+                        return await Promise.all([
+                            dbo.collection("players").updateOne({ steamid64: data.player.steamID }, { $set: updData }, { upsert: true }),
+                            data.player.eosID ? dbo.collection("whitelists").updateMany({ steamid64: data.player.steamID, eosID: { $exists: false } }, { $set: { eosID: data.player.eosID } }) : null
+                        ].filter(e => e != null))
+                    }
                     // subcomponent_data.squadjs[ sqJsK ].socket.on("PLAYER_DISCONNECTED", async (dt) => {
                     //     console.log("Player disconnected: ", dt)
                     // })
@@ -3414,6 +3432,7 @@ async function init() {
                     players: [
                         'discord_user_id',
                         'steamid64',
+                        'eosID',
                         'seeding_points',
                         'discord_roles_ids'
                     ],
@@ -3430,6 +3449,7 @@ async function init() {
                     whitelists: [
                         'id_clan',
                         'steamid64',
+                        'eosID',
                         'id_group',
                         'id_list'
                     ],
