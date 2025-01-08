@@ -228,15 +228,17 @@ async function init() {
                     const httpsPort = envHttpsPort ? parseInt(envHttpsPort) : config.web_server.https_port;
                     get_free_port(httpPort, (free_http_port) => {
                         get_free_port(httpsPort, (free_https_port) => {
-                            if (free_http_port) {
-                                server.http = app.listen(free_http_port, config.web_server.bind_ip, function () {
-                                    var host = server.http.address().address
-                                    console.log("HTTP server listening at http://%s:%s", host, free_http_port)
-                                    server.configs.http.port = free_http_port
-                                    logConfPortNotFree(config.web_server.http_port, free_http_port)
-                                })
-                            } else {
-                                console.error("Couldn't start HTTP server");
+                            if((process.env.HTTP_SERVER_DISABLED !== 'true' && process.env.HTTP_SERVER_DISABLED !== '1')){
+                                if (free_http_port) {
+                                    server.http = app.listen(free_http_port, config.web_server.bind_ip, function () {
+                                        var host = server.http.address().address
+                                        console.log("HTTP server listening at http://%s:%s", host, free_http_port)
+                                        server.configs.http.port = free_http_port
+                                        logConfPortNotFree(config.web_server.http_port, free_http_port)
+                                    })
+                                } else {
+                                    console.error("Couldn't start HTTP server");
+                                }
                             }
 
                             if ((foundKey && foundCert) && ((process.env.HTTPS_SERVER_DISABLED !== 'true' && process.env.HTTPS_SERVER_DISABLED !== '1') || !process.env.HTTPS_SERVER_DISABLED)) {
