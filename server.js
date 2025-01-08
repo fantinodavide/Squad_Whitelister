@@ -259,8 +259,9 @@ async function init() {
                                 } else {
                                     console.error("Couldn't start HTTPS server");
                                 }
-                                startupDone();
                             }
+                            
+                            startupDone();
                         })
                     })
 
