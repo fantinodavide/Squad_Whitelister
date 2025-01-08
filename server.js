@@ -260,7 +260,7 @@ async function init() {
                                     console.error("Couldn't start HTTPS server");
                                 }
                             }
-                            
+
                             startupDone();
                         })
                     })
@@ -1552,6 +1552,16 @@ async function init() {
         app.get('/api/players/read/from/steamId/:id', (req, res, next) => {
             mongoConn((dbo) => {
                 dbo.collection("players").findOne({ steamid64: req.params.id }, (err, dbRes) => {
+                    if (err) serverError(res, err);
+                    else {
+                        res.send(dbRes);
+                    }
+                })
+            })
+        })
+        app.get('/api/players/read/from/eosId/:id', (req, res, next) => {
+            mongoConn((dbo) => {
+                dbo.collection("players").findOne({ eosID: req.params.id }, (err, dbRes) => {
                     if (err) serverError(res, err);
                     else {
                         res.send(dbRes);
