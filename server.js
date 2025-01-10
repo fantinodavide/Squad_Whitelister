@@ -225,7 +225,11 @@ async function init() {
                     const envHttpsPort = process.env[ 'HTTPS_PORT' ];
 
                     const httpServerDisabled = process.env.HTTP_SERVER_DISABLED === 'true' || process.env.HTTP_SERVER_DISABLED === '1' || config.web_server.http_server_disabled
+                    if (httpServerDisabled)
+                        console.log('HTTP server disabled')
                     const httpsServerDisabled = process.env.HTTPS_SERVER_DISABLED === 'true' || process.env.HTTPS_SERVER_DISABLED === '1' || config.web_server.https_server_disabled
+                    if (httpsServerDisabled)
+                        console.log('HTTPS server disabled')
 
                     const httpPort = envServerPort ? parseInt(envServerPort) : (envHttpPort ? parseInt(envHttpPort) : config.web_server.http_port);
                     const httpsPort = envHttpsPort ? parseInt(envHttpsPort) : config.web_server.https_port;
