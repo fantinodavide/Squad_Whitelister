@@ -230,16 +230,17 @@
 	</div>
 	<div class="selectorContainer">
 		<select name="clan_selector" :disabled="whitelist_clans.length <= 1" @change="selectClanChanged">
+			<option v-if="whitelist_clans.length == 0" selected default hidden>Select or create a clan</option>
 			<option v-for="c of whitelist_clans" :value="c._id" :selected="user_session && user_session.clan_code && user_session.clan_code == c.clan_code">{{ c.full_name }}</option>
 		</select>
-		<button v-if="editor" @click="$emit('import_whitelist', { sel_list_id: sel_list_id, sel_clan: sel_clan, callback: appendPlayer })">Import</button>
-		<button v-if="editor" @click="$emit('confirm_clearing', { callback: clearAllList })">Clear</button>
-		<button v-if="editor" style="padding: 10px" @click="openClanOutput"><img :src="newTabIcon" /></button>
+		<button v-if="editor && whitelist_clans.length > 0" @click="$emit('import_whitelist', { sel_list_id: sel_list_id, sel_clan: sel_clan, callback: appendPlayer })">Import</button>
+		<button v-if="editor && whitelist_clans.length > 0" @click="$emit('confirm_clearing', { callback: clearAllList })">Clear</button>
+		<button v-if="editor && whitelist_clans.length > 0" style="padding: 10px" @click="openClanOutput"><img :src="newTabIcon" /></button>
 		<span class="playerCounter">{{ wl_players.length }}/ {{ sel_clan_obj?.player_limit && sel_clan_obj?.player_limit != '' ? sel_clan_obj.player_limit : '&infin;' }}</span>
 	</div>
-	<input type="search" placeholder="Search Player" name="plrSearch" v-model="models.searchPlayer" />
+	<input v-if="whitelist_clans.length > 0" type="search" placeholder="Search Player" name="plrSearch" v-model="models.searchPlayer" />
 
-	<button v-if="editor" class="addHorizontal" @click="$emit('addNewWhitelistUser', { sel_list_id: sel_list_id, sel_clan: sel_clan, callback: appendPlayer })"></button>
+	<button v-if="editor && whitelist_clans.length > 0" class="addHorizontal" @click="$emit('addNewWhitelistUser', { sel_list_id: sel_list_id, sel_clan: sel_clan, callback: appendPlayer })"></button>
 	<whitelistUserCard v-for="w of wl_players" v-show="w.username.toLowerCase().startsWith(models.searchPlayer.toLowerCase()) || levenshtein(w.username.toLowerCase(), models.searchPlayer.toLowerCase()) <= 2 || models.searchPlayer == ''" :ref="(r:any)=>{record_refs.push(r)}" :wl_data="w" :hoverMenuVisible="editor" @confirm="$emit('confirm', $event)" @removedPlayer="removePlayer" />
 </template>
 
