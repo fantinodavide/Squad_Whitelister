@@ -106,7 +106,7 @@
 			<span class="tag noBg redTrans" v-if="wl_data.discord_username || (wl_data.serverData && wl_data.serverData[0] && wl_data.serverData[0]?.discord_username)">{{
 				'@' + (wl_data.serverData && wl_data.serverData[0] && wl_data.serverData[0]?.discord_username ? wl_data.serverData[0]?.discord_username : wl_data.discord_username).replace(/^\@/, '')
 			}}</span>
-			<span class="tag" v-if="wl_data.inserted_by"><img :src="managerIcon" />{{ wl_data.inserted_by[0].username }}</span>
+			<span class="tag" v-if="wl_data.inserted_by && wl_data.inserted_by[0]"><img :src="managerIcon" />{{ wl_data.inserted_by[0].username }}</span>
 			<span class="tag" v-if="wl_data.expiration">{{ expirationTime }}</span>
 			<span class="tag" v-for="t of extraTags" :key="t">{{ t }}</span>
 			<!-- <span class="steamid64">{{ wl_data.steamid64 }}</span> -->
