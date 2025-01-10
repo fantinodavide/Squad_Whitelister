@@ -132,7 +132,7 @@ export default {
 					// this.$nextTick(() => {
 					// 	this.setCurrentTab(this.tabs[0]['name']);
 					// });1
-					this.setCurrentTab(this.tabs[ 0 ][ 'name' ]);
+					// this.setCurrentTab(this.tabs[ 0 ][ 'name' ]);
 				});
 		},
 		logout: function () {
@@ -160,11 +160,16 @@ export default {
 						console.log(elm);
 						elm.focus();
 					}, 10);
-				this.setCurrentTab(required ? 'Login' : this.tabs[ 0 ][ 'name' ]);
+				if (required)
+					this.setCurrentTab('Login');
 			}
 		},
 		setCurrentTab: function (ct: string) {
+			if (this.currentTab == ct)
+				return;
 			this.currentTab = ct;
+			const path = '/' + ct.toLowerCase().replace(/ /g, '-');
+			window.history.pushState({}, '', path);
 		},
 		appendNewClan: function (dt: any) {
 			console.log('Appending new clan', dt.clan_data);
@@ -308,9 +313,39 @@ export default {
 		},
 		log: console.log,
 	},
-	async created() {
+	beforeUnmount() {
+		window.removeEventListener('popstate', this.handlePopState);
+	},
+	async mounted() {
 		this.getVersion();
 		await this.getTabs();
+
+		const path = window.location.pathname.slice(1);
+		if (path) {
+			const matchingTab: any = this.tabs.find((tab: any) => tab.name.toLowerCase().replace(/ /g, '-') === path);
+			console.log(matchingTab)
+			if (matchingTab)
+				this.currentTab = matchingTab.name;
+			else
+				this.currentTab = this.tabs[ 0 ][ 'name' ];
+		} else
+			this.currentTab = this.tabs[ 0 ][ 'name' ];
+
+		window.addEventListener('popstate', (event) => {
+			const path = window.location.pathname.slice(1);
+			if (path) {
+				const matchingTab: any = this.tabs.find((tab: any) => tab.name.toLowerCase().replace(/ /g, '-') === path);
+				console.log(matchingTab)
+				if (matchingTab)
+					this.currentTab = matchingTab.name;
+				else
+					this.currentTab = this.tabs[ 0 ][ 'name' ];
+			} else
+				this.currentTab = this.tabs[ 0 ][ 'name' ];
+		});
+
+		console.log("this.currentTab", this.currentTab)
+
 		this.checkSession();
 		this.getAppPersonalization();
 		// console.log('levenshtein', levenshtein, 'mobile', md.mobile());
@@ -368,8 +403,8 @@ export default {
 			<editGameGroup v-if="popups.editGameGroup || popups.addingNewGameGroup" @cancelBtnClick="popups.editGameGroup = false; popups.addingNewGameGroup = false; inEditingGroup = -1" :group_data="game_groups[ inEditingGroup ]" @new_game_group="appendNewGroup" @edited="game_groups[ inEditingGroup ] = $event" />
 			<confirmPopup
 				:ref="(el: any) => {
-						pointers.confirmPopup = el;
-					}
+					pointers.confirmPopup = el;
+				}
 					"
 				v-show="popups.confirm"
 				@cancelBtnClick="popups.confirm = false" />
@@ -411,11 +446,11 @@ export default {
 			v-else-if="currentTab == 'Groups'"
 			:currentTab="currentTab"
 			@vue:mounted="() => {
-					getGameGroups();
-					checkPerms('/api/gameGroups/write/checkPerm', (dt) => {
-						tabData.Groups.editor = dt ? true : false;
-					});
-				}
+				getGameGroups();
+				checkPerms('/api/gameGroups/write/checkPerm', (dt) => {
+					tabData.Groups.editor = dt ? true : false;
+				});
+			}
 				">
 			<button v-if="tabData.Groups.editor" class="addNewGameGroup" @click="popups.addingNewGameGroup = true"></button>
 			<gameGroupCard
@@ -466,9 +501,9 @@ export default {
 			v-else-if="currentTab == 'Users and Roles'"
 			:currentTab="currentTab"
 			@vue:mounted="() => {
-					getUsers();
-					getRoles();
-				}
+				getUsers();
+				getRoles();
+			}
 				">
 			<input type="search" placeholder="Search User" name="usrSearch" id="" v-model="tabData.UsersAndRoles.userSearch" />
 			<userCard

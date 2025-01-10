@@ -312,6 +312,7 @@ async function init() {
         app.use(forceHTTPS);
         app.use('/', getSession);
         app.use(detectRequestUrl);
+        app.use(express.static(__dirname + '/dist'));
 
         app.post('/api/changepassword', (req, res, next) => {
             const parm = req.body;
@@ -432,7 +433,6 @@ async function init() {
         app.get('/api/getVersion', (req, res, next) => {
             res.send(versionN);
         })
-        app.use('/', express.static(__dirname + '/dist'));
 
         app.get('/api/getAppPersonalization', function (req, res, next) {
             res.send(config.app_personalization);
@@ -536,9 +536,11 @@ async function init() {
         })
         // app.use('/wl/*', removeExpiredPlayers);
         app.get('/:basePath/:clan_code?', async (req, res, next) => {
-            await removeExpiredPlayers()
             const output = await generateOutput(req.params.basePath, req.params.clan_code, req.query?.usernamesOnly || false);
-            if (!output) return next();
+
+            if (!output)
+                return next();
+
             res.type('text/plain');
             res.send(output)
         })
@@ -556,8 +558,10 @@ async function init() {
 
             const startTime = Date.now();
 
-            if (!cachedData || forceCacheReset)
+            if (!cachedData || forceCacheReset) {
+                await removeExpiredPlayers()
                 output = await getRawListOutput(basePath, clan_code, usernamesOnly)
+            }
 
             if (!output) return null;
 
@@ -1938,6 +1942,9 @@ async function init() {
             restartProcess(req.query.delay ? req.query.delay : 0, 0, args);
         })
 
+        app.get('*', (req, res) => {
+            res.sendFile(__dirname + '/dist/index.html');
+        });
         app.use((req, res, next) => {
             res.redirect(404, "/");
         });
