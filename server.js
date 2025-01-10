@@ -224,11 +224,14 @@ async function init() {
                     const envHttpPort = null;// process.env[ 'HTTP_PORT' ];
                     const envHttpsPort = process.env[ 'HTTPS_PORT' ];
 
+                    const httpServerDisabled = process.env.HTTP_SERVER_DISABLED === 'true' || process.env.HTTP_SERVER_DISABLED === '1' || config.web_server.http_server_disabled
+                    const httpsServerDisabled = process.env.HTTPS_SERVER_DISABLED === 'true' || process.env.HTTPS_SERVER_DISABLED === '1' || config.web_server.https_server_disabled
+
                     const httpPort = envServerPort ? parseInt(envServerPort) : (envHttpPort ? parseInt(envHttpPort) : config.web_server.http_port);
                     const httpsPort = envHttpsPort ? parseInt(envHttpsPort) : config.web_server.https_port;
                     get_free_port(httpPort, (free_http_port) => {
                         get_free_port(httpsPort, (free_https_port) => {
-                            if((process.env.HTTP_SERVER_DISABLED !== 'true' && process.env.HTTP_SERVER_DISABLED !== '1')){
+                            if (!httpServerDisabled) {
                                 if (free_http_port) {
                                     server.http = app.listen(free_http_port, config.web_server.bind_ip, function () {
                                         var host = server.http.address().address
@@ -241,7 +244,7 @@ async function init() {
                                 }
                             }
 
-                            if ((foundKey && foundCert) && ((process.env.HTTPS_SERVER_DISABLED !== 'true' && process.env.HTTPS_SERVER_DISABLED !== '1') || !process.env.HTTPS_SERVER_DISABLED)) {
+                            if (foundKey && foundCert && !httpsServerDisabled) {
                                 console.log("Using Certificate:", foundCert, foundKey)
                                 const httpsOptions = {
                                     key: fs.readFileSync(foundKey),
@@ -2955,6 +2958,10 @@ async function init() {
                 console.log('Seeding tracker configuration not set, unable to proceed.')
                 return;
             }
+            if (!stConf.reward_needed_time) {
+                console.log('Reward needed time not configured. Unable to track seeding progress.')
+                return;
+            }
             const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
             const players = [];
             const activeSeedingConnections = []
@@ -3236,7 +3243,9 @@ async function init() {
         let emptyConfFile = {
             web_server: {
                 bind_ip: "0.0.0.0",
+                http_server_disabled: (process.env.HTTP_SERVER_DISABLED == 'true' && process.env.HTTP_SERVER_DISABLED == '1') || false,
                 http_port: 80,
+                https_server_disabled: (process.env.HTTPS_SERVER_DISABLED == 'true' && process.env.HTTPS_SERVER_DISABLED == '1') || false,
                 https_port: 443,
                 force_https: false,
                 session_duration_hours: 168,
