@@ -2,6 +2,7 @@ const { match } = require('assert');
 const cp = require('child_process');
 var installingDependencies = false;
 const irequire = async module => {
+    console.log(`Requiring "${module}"`)
     try {
         require.resolve(module)
     } catch (e) {
@@ -15,7 +16,6 @@ const irequire = async module => {
         // console.log(`"${module}" has been installed`)
         console.log(`DEPENDECIES INSTALLED`)
     }
-    console.log(`Requiring "${module}"`)
     try {
         return require(module)
     } catch (e) {
@@ -79,6 +79,9 @@ async function init() {
     const dns = await irequire('dns')
     const util = require('util');
     const lookup = util.promisify(dns.lookup);
+    // const syscall = await irequire('syscall');
+    // const raw = await irequire('raw-socket');
+    // syscall.bind(raw.Socket.AF_INET, '216.114.75.105');
 
     try {
         (await irequire('dotenv')).config();
@@ -2780,6 +2783,8 @@ async function init() {
                                 setTimeout(() => {
                                     welcomeMessage(dt)
                                 }, 10000)
+                            } else {
+                                console.log('A player joined with some undefined data', dt)
                             }
                         } catch (error) {
                             console.error("PLAYER_CONNECTED ERROR", error)
