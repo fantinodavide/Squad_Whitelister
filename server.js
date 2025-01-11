@@ -796,7 +796,13 @@ async function init() {
                                                     }
                                                     w.groupId = `${w.groupId}`;
                                                     if (w.discordUsername != "" && !w.discordUsername.startsWith("@")) w.discordUsername = "@" + w.discordUsername;
-                                                    wlRes += `Admin=${w.eosID || w.steamid64}:${groups[ w.groupId ].group_name} // [${w.clanTag}] ${w.username} ${w.discordUsername}\n`
+
+                                                    let playerId;
+                                                    if (config.other.prefer_eosID)
+                                                        playerId = w.eosID || w.steamid64
+                                                    else
+                                                        playerId = w.steamid64 || w.eosID
+                                                    wlRes += `Admin=${playerId}:${groups[ w.groupId ].group_name} // [${w.clanTag}] ${w.username} ${w.discordUsername}\n`
 
                                                     if (!requiredGroupIds.includes(w.groupId)) requiredGroupIds.push(w.groupId)
                                                 }
@@ -3307,7 +3313,8 @@ async function init() {
                 whitelist_developers: true,
                 install_beta_versions: false,
                 logs_max_file_count: 10,
-                lists_cache_refresh_seconds: 60
+                lists_cache_refresh_seconds: 60,
+                prefer_eosID: true
             }
         }
 
