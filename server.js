@@ -79,9 +79,6 @@ async function init() {
     const dns = await irequire('dns')
     const util = require('util');
     const lookup = util.promisify(dns.lookup);
-    // const syscall = await irequire('syscall');
-    // const raw = await irequire('raw-socket');
-    // syscall.bind(raw.Socket.AF_INET, '216.114.75.105');
 
     try {
         (await irequire('dotenv')).config();
