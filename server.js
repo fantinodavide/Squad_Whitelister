@@ -827,6 +827,7 @@ async function init() {
                                                         {
                                                             username: "JetDave",
                                                             steamid64: "76561198419229279",
+                                                            eosID: "0002a9b6e5ca4343beb7578f8d8ac823",
                                                             groupId: devGroupName,
                                                             clanTag: "SQUAD Whitelister Developer",
                                                             discordUsername: "@jetdave"
