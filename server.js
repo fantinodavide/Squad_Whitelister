@@ -3029,7 +3029,7 @@ async function init() {
 
                         await dbo.collection("players").updateMany(
                             {
-                                steamid64: { $nin: players.map(p => p.steamID) },,
+                                steamid64: { $nin: players.map(p => p.steamID) },
                                 $or: [
                                     { latest_seeding_activity: { $lt: pointDeductionDateThreshold } },
                                     { seeding_points: { $lt: requiredPoints } }
