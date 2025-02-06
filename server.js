@@ -3025,7 +3025,9 @@ async function init() {
                         if (st.config.time_deduction.option == 'point_minute') deduction_points = st.config.time_deduction.value
                         else if (st.config.time_deduction.option == 'perc_minute') deduction_points = st.config.time_deduction.value * requiredPoints / 100;
 
-                        await dbo.collection("players").updateMany({ steamid64: { $nin: players.map(p => p.steamID) }, seeding_points: { $gt: deduction_points } }, { $inc: { seeding_points: -deduction_points } })
+                        const pointDeductionDateThreshold = new Date(Date.now() - (st.config.minimum_reward_duration_hours * 3600_000))
+
+                        await dbo.collection("players").updateMany({ steamid64: { $nin: players.map(p => p.steamID) }, seeding_points: { $gt: deduction_points }, latest_seeding_activity: { $lt: pointDeductionDateThreshold } }, { $inc: { seeding_points: -deduction_points } })
                     }
 
                     for (let p of players) {
@@ -3371,7 +3373,8 @@ async function init() {
                 time_deduction: {
                     value: 1,
                     option: "perc_minute"
-                }
+                },
+                minimum_reward_duration_hours: 1
             }
         }
 
