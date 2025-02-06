@@ -2102,7 +2102,7 @@ async function init() {
             let curDate = new Date();
             console.log("Current version: ", versionN, "\n > Checking for updates", curDate.toLocaleString());
             axios
-                .get(releasesUrl)
+                .get(releasesUrl, { timeout: 10000 })
                 .then(res => {
                     const gitResData = res.data[ 0 ];
                     const checkV = gitResData.tag_name.toUpperCase().replace("V", "").split(".");
