@@ -3025,9 +3025,26 @@ async function init() {
                         if (st.config.time_deduction.option == 'point_minute') deduction_points = st.config.time_deduction.value
                         else if (st.config.time_deduction.option == 'perc_minute') deduction_points = st.config.time_deduction.value * requiredPoints / 100;
 
-                        const pointDeductionDateThreshold = new Date(Date.now() - (st.config.minimum_reward_duration_hours * 3600_000))
+                        const pointDeductionDateThreshold = new Date(Date.now() - (st.config.minimum_reward_duration.value * st.config.minimum_reward_duration.option))
 
-                        await dbo.collection("players").updateMany({ steamid64: { $nin: players.map(p => p.steamID) }, seeding_points: { $gt: deduction_points }, latest_seeding_activity: { $lt: pointDeductionDateThreshold } }, { $inc: { seeding_points: -deduction_points } })
+                        await dbo.collection("players").updateMany(
+                            {
+                                steamid64: { $nin: players.map(p => p.steamID) },
+                                latest_seeding_activity: { $lt: pointDeductionDateThreshold }
+                            },
+                            [
+                                {
+                                    $set: {
+                                        seeding_points: {
+                                            $max: [
+                                                0,
+                                                { $subtract: [ "$seeding_points", deduction_points ] }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        )
                     }
 
                     for (let p of players) {
@@ -3374,7 +3391,10 @@ async function init() {
                     value: 1,
                     option: "perc_minute"
                 },
-                minimum_reward_duration_hours: 1
+                minimum_reward_duration: {
+                    value: 1,
+                    option: 3600000
+                },
             }
         }
 
