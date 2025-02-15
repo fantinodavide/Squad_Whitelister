@@ -2765,7 +2765,7 @@ async function init() {
                             const intervalSecondsOverride = Math.min(120, (Math.floor(failedReconnections / 5) + 1) * 10);
                             if (intervalSeconds < intervalSecondsOverride) {
                                 clearInterval(subcomponent_data.squadjs[ sqJsK ].reconnect_int);
-                                return startReconnectionInterval(sqJsK, intervalSecondsOverride);
+                                startReconnectionInterval(sqJsK, intervalSecondsOverride);
                             }
 
                             if (!subcomponent_status.squadjs) subcomponent_data.squadjs[ sqJsK ].connect()
@@ -2788,23 +2788,27 @@ async function init() {
                                     welcomeMessage(dt)
                                 }, 10000)
                             } else {
-                                console.log('A player joined with some undefined data', dt)
+                                console.log(`SquadJS has provided a PLAYER_CONNECTED event with missing data`, dt)
                             }
                         } catch (error) {
                             console.error("PLAYER_CONNECTED ERROR", error)
                         }
                     })
 
-
-                    subcomponent_data.squadjs[ sqJsK ].socket.on("PLAYER_DISCONNECTED", updatePlayerData);
-
                     async function updatePlayerData(data) {
+                        const player = data.player || data;
+                        if (
+                            !player.name ||
+                            !player.steamID ||
+                            !player.eosID
+                        ) return console.warn(`Trying to update player data, but some information are missing.`, player)
+
                         const dbo = await mongoConn();
 
-                        const updData = { username: data.player.name }
+                        const updData = { username: player.name }
 
-                        if (data.player.eosID)
-                            updData.eosID = data.player.eosID;
+                        if (player.eosID)
+                            updData.eosID = player.eosID;
 
                         return await Promise.all([
                             dbo.collection("players").updateOne({ steamid64: data.player.steamID }, { $set: updData }, { upsert: true }),
@@ -2816,6 +2820,7 @@ async function init() {
                     // })
                     subcomponent_data.squadjs[ sqJsK ].socket.on("CHAT_MESSAGE", async (dt) => {
                         // console.log(`Message from connection ${sqJsK}`, dt)
+                        updatePlayerData(dt);
                         switch (dt.message.toLowerCase().replace(/^(!|\/)/, '')) {
                             case 'test':
                                 break;
