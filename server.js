@@ -239,7 +239,7 @@ async function init() {
                                 if (free_http_port) {
                                     server.http = app.listen(free_http_port, config.web_server.bind_ip, function () {
                                         var host = server.http.address().address
-                                        console.log("HTTP server listening at http://%s:%s", host, free_http_port)
+                                        console.log(`HTTP server listening at http://${host}:${free_http_port}`)
                                         server.configs.http.port = free_http_port
                                         logConfPortNotFree(config.web_server.http_port, free_http_port)
                                     })
@@ -261,7 +261,7 @@ async function init() {
                                     });
                                     server.configs.https.port = free_https_port
                                     server.https.listen(free_https_port);
-                                    console.log("HTTPS server listening at https://%s:%s", config.web_server.bind_ip, free_https_port)
+                                    console.log(`HTTPS server listening at http://${host}:${free_https_port}`)
                                     logConfPortNotFree(config.web_server.https_port, free_https_port)
                                 } else {
                                     console.error("Couldn't start HTTPS server");
@@ -2692,257 +2692,350 @@ async function init() {
     }
 
     async function SquadJSWebSocket(cb = null) {
-        let conns = [];
-
-        console.log("Starting SquadJS WebSockets")
+        console.log("Starting SquadJS WebSockets");
         for (let sqJsK in config.squadjs) {
             subcomponent_status.squadjs[ sqJsK ] = false;
             const sqJsConn = config.squadjs[ sqJsK ];
 
             await new Promise(async (res, rej) => {
-
                 console.error(` > Connection ${+sqJsK + 1}: ${sqJsConn.websocket.host}:${sqJsConn.websocket.port}`);
 
                 if (sqJsConn.websocket && sqJsConn.websocket.token != "" && sqJsConn.websocket.host != "") {
-
-                    const tm = setTimeout(() => {
-                        console.error(`  > Timed out. Check your SquadJS WebSocket configuration.`);
-                        // console.log(`  > Proceding without SquadJS WebSocket ${+sqJsK + 1}.`);
-                        startReconnectionInterval(sqJsK);
-                        res(false);
-                        // conns[ sqJsK ].resolve(true);
-                    }, 3000)
-
-                    const res_ip = (await lookup(sqJsConn.websocket.host)).address
-                    // console.log(`Lookup ${ config.squadjs.websocket.host } => `, res_ip)
-                    if (!subcomponent_data.squadjs[ sqJsK ])
+                    if (!subcomponent_data.squadjs[ sqJsK ]) {
                         subcomponent_data.squadjs[ sqJsK ] = {
                             socket: null,
                             failedReconnections: 0,
-                            reconnect_int: null
-                        }
-
-                    subcomponent_data.squadjs[ sqJsK ].socket = io(`ws://${res_ip}:${sqJsConn.websocket.port}`, {
-                        auth: {
-                            token: sqJsConn.websocket.token
-                        },
-                        autoUnref: true
-                    })
-                    subcomponent_data.squadjs[ sqJsK ].socket.on("connect", async () => {
-                        // conns[ sqJsK ].resolve(true);
-                        clearTimeout(tm);
-                        console.log(`  > Connected`);
-
-                        // subcomponent_data.squadjs[ sqJsK ].socket.emit("rcon.warn", "76561198419229279", "Whitelister Test Connected", () => { })
-                        clearInterval(subcomponent_data.squadjs[ sqJsK ].reconnect_int);
-                        subcomponent_status.squadjs[ sqJsK ] = true;
-                        subcomponent_data.squadjs[ sqJsK ].failedReconnections = 0;
-                        subcomponent_data.squadjs[ sqJsK ].recentErrors = 0;
-
-                        if (!squadjs.initDone) {
-                            squadjs.initDone = true;
-                            // seedingTimeTracking();
-                        }
-
-                        res(true)
-                    });
-
-                    // subcomponent_data.squadjs[ sqJsK ].socket.on("newListener", async (dt) => {
-                    //     console.log(dt)
-                    // })
-                    // subcomponent_data.squadjs[ sqJsK ].socket.onAny(async (dt) => {
-                    //     console.log(dt)
-                    // })
-                    subcomponent_data.squadjs[ sqJsK ].socket.on("disconnect", async () => {
-                        subcomponent_status.squadjs[ sqJsK ] = false;
-                        console.log(`SquadJS WebSocket ${+sqJsK + 1}\n > Disconnected\n > Trying to reconnect`)
-                        startReconnectionInterval(sqJsK);
-                    });
-
-                    function startReconnectionInterval(sqJsK, intervalSeconds = 10) {
-                        subcomponent_data.squadjs[ sqJsK ].reconnect_int = setInterval(() => {
-                            const failedReconnections = ++subcomponent_data.squadjs[ sqJsK ].failedReconnections;
-                            const intervalSecondsOverride = Math.min(120, (Math.floor(failedReconnections / 5) + 1) * 10);
-                            if (intervalSeconds < intervalSecondsOverride) {
-                                clearInterval(subcomponent_data.squadjs[ sqJsK ].reconnect_int);
-                                return startReconnectionInterval(sqJsK, intervalSecondsOverride);
-                            }
-
-                            if (!subcomponent_status.squadjs) subcomponent_data.squadjs[ sqJsK ].connect()
-                        }, intervalSeconds * 1000)
+                            reconnect_int: null,
+                            recentErrors: 0,
+                            isConnecting: false,
+                            isReconnecting: false
+                        };
                     }
 
-                    subcomponent_data.squadjs[ sqJsK ].socket.on("PLAYER_CONNECTED", async (dt) => {
-                        // console.log("Player connected: ", dt)
-                        // if (dt.player.steamID == "76561198419229279") {
-                        //     setTimeout(() => {
-                        //         subcomponent_data.squadjs[ sqJsK ].socket.emit("rcon.warn", "76561198419229279", "This server is using the Whitelister tool", (d) => {
-                        //             console.log(d)
-                        //         })
-                        //     }, 5000)
-                        // }
-                        try {
-                            if (dt && dt.player && dt.player.steamID) {
-                                updatePlayerData(dt);
-                                setTimeout(() => {
-                                    welcomeMessage(dt)
-                                }, 10000)
-                            } else {
-                                console.log('A player joined with some undefined data', dt)
+                    try {
+                        const res_ip = (await lookup(sqJsConn.websocket.host)).address;
+
+                        const createConnection = () => {
+                            if (subcomponent_data.squadjs[ sqJsK ].isConnecting) {
+                                return;
                             }
-                        } catch (error) {
-                            console.error("PLAYER_CONNECTED ERROR", error)
-                        }
-                    })
 
+                            subcomponent_data.squadjs[ sqJsK ].isConnecting = true;
 
-                    subcomponent_data.squadjs[ sqJsK ].socket.on("PLAYER_DISCONNECTED", updatePlayerData);
+                            const tm = setTimeout(() => {
+                                console.error(`  > Connection ${+sqJsK + 1}: Timed out. Check your SquadJS WebSocket configuration.`);
+                                subcomponent_data.squadjs[ sqJsK ].isConnecting = false;
 
-                    async function updatePlayerData(data) {
-                        const dbo = await mongoConn();
-
-                        const updData = { username: data.player.name }
-
-                        if (data.player.eosID)
-                            updData.eosID = data.player.eosID;
-
-                        return await Promise.all([
-                            dbo.collection("players").updateOne({ steamid64: data.player.steamID }, { $set: updData }, { upsert: true }),
-                            data.player.eosID ? dbo.collection("whitelists").updateMany({ steamid64: data.player.steamID, eosID: { $exists: false } }, { $set: { eosID: data.player.eosID } }) : null
-                        ].filter(e => e != null))
-                    }
-                    // subcomponent_data.squadjs[ sqJsK ].socket.on("PLAYER_DISCONNECTED", async (dt) => {
-                    //     console.log("Player disconnected: ", dt)
-                    // })
-                    subcomponent_data.squadjs[ sqJsK ].socket.on("CHAT_MESSAGE", async (dt) => {
-                        // console.log(`Message from connection ${sqJsK}`, dt)
-                        switch (dt.message.toLowerCase().replace(/^(!|\/)/, '')) {
-                            case 'test':
-                                break;
-                            case 'playerinfo':
-                                const dbo = await mongoConn();
-                                const oldPlayerData = await dbo.collection("players").findOne({ steamid64: dt.player.steamID }, { projection: { _id: 0, seeding_points: 1 } })
-
-                                break;
-                            case 'profile':
-                                welcomeMessage(dt, 0)
-                                break;
-                            default:
-                                if (dt.message.length == 6 && !dt.message.includes(' ')) {
-                                    // console.log(dt);
-                                    mongoConn(async (dbo) => {
-                                        dbo.collection("profilesLinking").findOne({ code: dt.message }, async (err, dbRes) => {
-                                            if (err) serverError(null, err);
-                                            else if (dbRes) {
-                                                if (dbRes.expiration > new Date()) {
-                                                    const discordUser = await discordBot.users.fetch(dbRes.discordUserId);
-                                                    const discordUsername = discordUser.username + (discordUser.discriminator ? "#" + discordUser.discriminator : '');
-                                                    const oldPlayerData = await dbo.collection("players").findOne({ steamid64: dt.player.steamID }, { projection: { _id: 0, seeding_points: 1 } })
-                                                    dbo.collection("players").updateOne({ discord_user_id: dbRes.discordUserId }, { $set: { steamid64: dt.player.steamID, username: dt.player.name, discord_user_id: dbRes.discordUserId, discord_username: discordUsername, ...oldPlayerData } }, { upsert: true }, (err, dbResU) => {
-                                                        dbo.collection("players").deleteOne({ steamid64: dt.player.steamID, discord_user_id: { $exists: false } }, (err, dbResRem) => {
-                                                            if (err) return serverError(null, err)
-
-                                                            dbo.collection("profilesLinking").deleteOne({ _id: dbRes._id })
-                                                            if (err) serverError(null, err);
-                                                            else {
-                                                                subcomponent_data.squadjs[ sqJsK ].socket.emit("rcon.warn", dt.steamID, "Linked Discord profile: " + discordUsername, (d) => { })
-                                                                discordUser.send({
-                                                                    embeds: [
-                                                                        new Discord.EmbedBuilder()
-                                                                            .setColor(config.app_personalization.accent_color)
-                                                                            .setTitle("Profile Linked")
-                                                                            .setDescription("Your Discord profile has been linked to a Steam profile")
-                                                                            .addFields(
-                                                                                { name: "Steam Username", value: dt.name, inline: true },
-                                                                                { name: 'SteamID', value: Discord.hyperlink(dt.steamID, "https://steamcommunity.com/profiles/" + dt.steamID), inline: true })
-                                                                    ]
-                                                                })
-                                                            }
-                                                        });
-                                                    })
-                                                } else {
-                                                    dbo.collection("profilesLinking").deleteOne({ _id: dbRes._id })
-                                                }
-                                            }
-                                        })
-                                    })
-                                }
-                                break;
-                        }
-                    })
-                    async function welcomeMessage(dt, timeoutDelay = 5000) {
-                        // console.log('Sending welcome message', dt)
-                        mongoConn(async dbo => {
-                            const pipeline = [
-                                { $match: { steamid64: dt.player.steamID } },
-                                {
-                                    $lookup: {
-                                        from: "groups",
-                                        localField: "id_group",
-                                        foreignField: "_id",
-                                        as: "group_full_data"
+                                if (!subcomponent_status.squadjs[ sqJsK ]) {
+                                    if (!subcomponent_data.squadjs[ sqJsK ].isReconnecting) {
+                                        startReconnectionInterval(sqJsK);
+                                    }
+                                    if (!res.called) {
+                                        res.called = true;
+                                        res(false);
                                     }
                                 }
-                            ]
-                            dbo.collection("whitelists").aggregate(pipeline).toArray(async (err, dbRes) => {
-                                if (err) serverError(null, err);
-                                else {
-                                    dbo.collection("players").findOne({ steamid64: dt.player.steamID }, async (err, dbResP) => {
-                                        if (err) serverError(null, err);
-                                        else {
-                                            const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
-                                            const stConf = st.config;
-                                            const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
-                                            const percentageCompleted = Math.floor(100 * dbResP.seeding_points / requiredPoints) || 0;
-                                            // const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
+                            }, 5000);
 
-                                            let msg = "Welcome " + dt.player.name + "\n\n";
+                            if (subcomponent_data.squadjs[ sqJsK ].socket) {
+                                try {
+                                    subcomponent_data.squadjs[ sqJsK ].socket.removeAllListeners();
+                                    subcomponent_data.squadjs[ sqJsK ].socket.disconnect();
+                                } catch (e) { }
+                            }
 
-                                            if (subcomponent_status.squadjs) {
-                                                let groups = (await getPlayerGroups(dt.player.steamID)).filter(e => e.approved);
+                            subcomponent_data.squadjs[ sqJsK ].socket = io(`ws://${res_ip}:${sqJsConn.websocket.port}`, {
+                                auth: {
+                                    token: sqJsConn.websocket.token
+                                },
+                                autoUnref: true,
+                                reconnection: true,
+                                reconnectionAttempts: 3,
+                                reconnectionDelay: 5000,
+                                reconnectionDelayMax: 30000,
+                                timeout: 10000
+                            });
 
-                                                if (groups.length > 0) {
-                                                    msg += `Groups:\n`
-                                                    for (let g of groups) {
-                                                        msg += ` - ${g.name}`
-                                                        if (g.expiration) msg += `: ${((g.expiration - new Date()) / 1000 / 60 / 60).toFixed(1) + "h left"}`
-                                                        msg += '\n'
+                            subcomponent_data.squadjs[ sqJsK ].socket.on("connect", () => {
+                                clearTimeout(tm);
+                                console.log(`  > Connection ${+sqJsK + 1}: Connected successfully`);
+
+                                if (subcomponent_data.squadjs[ sqJsK ].reconnect_int) {
+                                    clearInterval(subcomponent_data.squadjs[ sqJsK ].reconnect_int);
+                                    subcomponent_data.squadjs[ sqJsK ].reconnect_int = null;
+                                    subcomponent_data.squadjs[ sqJsK ].isReconnecting = false;
+                                }
+
+                                subcomponent_status.squadjs[ sqJsK ] = true;
+                                subcomponent_data.squadjs[ sqJsK ].failedReconnections = 0;
+                                subcomponent_data.squadjs[ sqJsK ].recentErrors = 0;
+                                subcomponent_data.squadjs[ sqJsK ].isConnecting = false;
+
+                                if (!squadjs.initDone) {
+                                    squadjs.initDone = true;
+                                }
+
+                                if (!res.called) {
+                                    res.called = true;
+                                    res(true);
+                                }
+                            });
+
+                            subcomponent_data.squadjs[ sqJsK ].socket.on("connect_error", (err) => {
+                                // console.error(`  > Connection ${+sqJsK + 1}: Connect error:`, err.message);
+                                clearTimeout(tm);
+                                subcomponent_data.squadjs[ sqJsK ].isConnecting = false;
+                                subcomponent_data.squadjs[ sqJsK ].recentErrors++;
+
+                                if (!subcomponent_status.squadjs[ sqJsK ]) {
+                                    if (!subcomponent_data.squadjs[ sqJsK ].isReconnecting) {
+                                        startReconnectionInterval(sqJsK);
+                                    }
+                                    if (!res.called) {
+                                        res.called = true;
+                                        res(false);
+                                    }
+                                }
+                            });
+
+                            subcomponent_data.squadjs[ sqJsK ].socket.on("disconnect", (reason) => {
+                                subcomponent_status.squadjs[ sqJsK ] = false;
+                                subcomponent_data.squadjs[ sqJsK ].isConnecting = false;
+                                console.log(`SquadJS WebSocket ${+sqJsK + 1}\n > Disconnected (${reason})\n > Trying to reconnect`);
+
+                                if (!subcomponent_data.squadjs[ sqJsK ].isReconnecting) {
+                                    startReconnectionInterval(sqJsK);
+                                }
+                            });
+
+                            subcomponent_data.squadjs[ sqJsK ].socket.on("reconnect_failed", () => {
+                                console.error(`  > Connection ${+sqJsK + 1}: Built-in reconnection failed after maximum attempts`);
+                                if (!subcomponent_data.squadjs[ sqJsK ].isReconnecting) {
+                                    startReconnectionInterval(sqJsK);
+                                }
+                            });
+
+                            setupEventHandlers(sqJsK);
+                        };
+
+                        function startReconnectionInterval(sqJsK, intervalSeconds = 30) {
+                            if (subcomponent_data.squadjs[ sqJsK ].isReconnecting) {
+                                return;
+                            }
+
+                            if (subcomponent_data.squadjs[ sqJsK ].reconnect_int) {
+                                clearInterval(subcomponent_data.squadjs[ sqJsK ].reconnect_int);
+                                subcomponent_data.squadjs[ sqJsK ].reconnect_int = null;
+                            }
+
+                            subcomponent_data.squadjs[ sqJsK ].isReconnecting = true;
+                            console.log(`  > Setting up reconnection interval for connection ${+sqJsK + 1} (${intervalSeconds}s)`);
+
+                            subcomponent_data.squadjs[ sqJsK ].reconnect_int = setInterval(() => {
+                                if (subcomponent_status.squadjs[ sqJsK ] || subcomponent_data.squadjs[ sqJsK ].isConnecting) {
+                                    return;
+                                }
+
+                                subcomponent_data.squadjs[ sqJsK ].failedReconnections++;
+                                const failedCount = subcomponent_data.squadjs[ sqJsK ].failedReconnections;
+
+                                console.log(`SquadJS websocket ${+sqJsK + 1}\n  > Reconnection attempt ${failedCount} for connection ${+sqJsK + 1}`);
+
+                                if (failedCount % 5 === 0) {
+                                    const nextIntervalSeconds = Math.min(300, intervalSeconds * 2);
+
+                                    if (nextIntervalSeconds > intervalSeconds) {
+                                        console.log(`  > Increasing reconnection interval to ${nextIntervalSeconds}s`);
+                                        clearInterval(subcomponent_data.squadjs[ sqJsK ].reconnect_int);
+                                        subcomponent_data.squadjs[ sqJsK ].reconnect_int = null;
+                                        startReconnectionInterval(sqJsK, nextIntervalSeconds);
+                                        return;
+                                    }
+                                }
+
+                                createConnection();
+                            }, intervalSeconds * 1000);
+                        }
+
+                        function setupEventHandlers(sqJsK) {
+                            const socket = subcomponent_data.squadjs[ sqJsK ].socket;
+
+                            socket.on("PLAYER_CONNECTED", async (dt) => {
+                                try {
+                                    if (dt && dt.player && dt.player.steamID) {
+                                        updatePlayerData(dt);
+                                        setTimeout(() => {
+                                            welcomeMessage(dt);
+                                        }, 10000);
+                                    } else {
+                                        console.log('A player joined with some undefined data', dt);
+                                    }
+                                } catch (error) {
+                                    console.error("PLAYER_CONNECTED ERROR", error);
+                                }
+                            });
+
+                            socket.on("PLAYER_DISCONNECTED", updatePlayerData);
+
+                            socket.on("CHAT_MESSAGE", async (dt) => {
+                                switch (dt.message.toLowerCase().replace(/^(!|\/)/, '')) {
+                                    case 'test':
+                                        break;
+                                    case 'playerinfo':
+                                        const dbo = await mongoConn();
+                                        const oldPlayerData = await dbo.collection("players").findOne({ steamid64: dt.player.steamID }, { projection: { _id: 0, seeding_points: 1 } });
+                                        break;
+                                    case 'profile':
+                                        welcomeMessage(dt, 0);
+                                        break;
+                                    default:
+                                        if (dt.message.length == 6 && !dt.message.includes(' ')) {
+                                            mongoConn(async (dbo) => {
+                                                dbo.collection("profilesLinking").findOne({ code: dt.message }, async (err, dbRes) => {
+                                                    if (err) serverError(null, err);
+                                                    else if (dbRes) {
+                                                        if (dbRes.expiration > new Date()) {
+                                                            const discordUser = await discordBot.users.fetch(dbRes.discordUserId);
+                                                            const discordUsername = discordUser.username + (discordUser.discriminator ? "#" + discordUser.discriminator : '');
+                                                            const oldPlayerData = await dbo.collection("players").findOne({ steamid64: dt.player.steamID }, { projection: { _id: 0, seeding_points: 1 } });
+                                                            dbo.collection("players").updateOne({ discord_user_id: dbRes.discordUserId }, { $set: { steamid64: dt.player.steamID, username: dt.player.name, discord_user_id: dbRes.discordUserId, discord_username: discordUsername, ...oldPlayerData } }, { upsert: true }, (err, dbResU) => {
+                                                                dbo.collection("players").deleteOne({ steamid64: dt.player.steamID, discord_user_id: { $exists: false } }, (err, dbResRem) => {
+                                                                    if (err) return serverError(null, err);
+
+                                                                    dbo.collection("profilesLinking").deleteOne({ _id: dbRes._id });
+                                                                    if (err) serverError(null, err);
+                                                                    else {
+                                                                        socket.emit("rcon.warn", dt.steamID, "Linked Discord profile: " + discordUsername, (d) => { });
+                                                                        discordUser.send({
+                                                                            embeds: [
+                                                                                new Discord.EmbedBuilder()
+                                                                                    .setColor(config.app_personalization.accent_color)
+                                                                                    .setTitle("Profile Linked")
+                                                                                    .setDescription("Your Discord profile has been linked to a Steam profile")
+                                                                                    .addFields(
+                                                                                        { name: "Steam Username", value: dt.name, inline: true },
+                                                                                        { name: 'SteamID', value: Discord.hyperlink(dt.steamID, "https://steamcommunity.com/profiles/" + dt.steamID), inline: true })
+                                                                            ]
+                                                                        });
+                                                                    }
+                                                                });
+                                                            });
+                                                        } else {
+                                                            dbo.collection("profilesLinking").deleteOne({ _id: dbRes._id });
+                                                        }
+                                                    }
+                                                });
+                                            });
+                                        }
+                                        break;
+                                }
+                            });
+                        }
+
+                        async function updatePlayerData(data) {
+                            const dbo = await mongoConn();
+                            const updData = { username: data.player.name };
+
+                            if (data.player.eosID)
+                                updData.eosID = data.player.eosID;
+
+                            return await Promise.all([
+                                dbo.collection("players").updateOne({ steamid64: data.player.steamID }, { $set: updData }, { upsert: true }),
+                                data.player.eosID ? dbo.collection("whitelists").updateMany({ steamid64: data.player.steamID, eosID: { $exists: false } }, { $set: { eosID: data.player.eosID } }) : null
+                            ].filter(e => e != null));
+                        }
+
+                        async function welcomeMessage(dt, timeoutDelay = 5000) {
+                            mongoConn(async dbo => {
+                                const pipeline = [
+                                    { $match: { steamid64: dt.player.steamID } },
+                                    {
+                                        $lookup: {
+                                            from: "groups",
+                                            localField: "id_group",
+                                            foreignField: "_id",
+                                            as: "group_full_data"
+                                        }
+                                    }
+                                ];
+                                dbo.collection("whitelists").aggregate(pipeline).toArray(async (err, dbRes) => {
+                                    if (err) serverError(null, err);
+                                    else {
+                                        dbo.collection("players").findOne({ steamid64: dt.player.steamID }, async (err, dbResP) => {
+                                            if (err) serverError(null, err);
+                                            else {
+                                                const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' });
+                                                const stConf = st.config;
+                                                const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60);
+                                                const percentageCompleted = Math.floor(100 * (dbResP?.seeding_points || 0) / requiredPoints) || 0;
+
+                                                let msg = "Welcome " + dt.player.name + "\n\n";
+
+                                                if (subcomponent_status.squadjs) {
+                                                    let groups = (await getPlayerGroups(dt.player.steamID)).filter(e => e.approved);
+
+                                                    if (groups.length > 0) {
+                                                        msg += `Groups:\n`;
+                                                        for (let g of groups) {
+                                                            msg += ` - ${g.name}`;
+                                                            if (g.expiration) msg += `: ${((g.expiration - new Date()) / 1000 / 60 / 60).toFixed(1) + "h left"}`;
+                                                            msg += '\n';
+                                                        }
                                                     }
                                                 }
-                                            }
-                                            if (subcomponent_status.discord_bot) {
-                                                let discordUsername = "";
-                                                if (dbResP && dbResP.discord_user_id && dbResP.discord_user_id != "") {
-                                                    const discordUser = await discordBot.users.fetch(dbResP.discord_user_id);
-                                                    discordUsername = discordUser.username + (discordUser.discriminator ? "#" + discordUser.discriminator : '');
+
+                                                if (subcomponent_status.discord_bot) {
+                                                    let discordUsername = "";
+                                                    if (dbResP && dbResP.discord_user_id && dbResP.discord_user_id != "") {
+                                                        try {
+                                                            const discordUser = await discordBot.users.fetch(dbResP.discord_user_id);
+                                                            discordUsername = discordUser.username + (discordUser.discriminator ? "#" + discordUser.discriminator : '');
+                                                        } catch (e) {
+                                                            console.error(`Error fetching Discord user: ${e.message}`);
+                                                        }
+                                                    }
+
+                                                    if (stConf.reward_enabled == 'true') msg += "\nSeeding Reward: " + percentageCompleted + "%";
+                                                    msg += "\nDiscord Username: " + (discordUsername != "" ? discordUsername : "Not linked");
                                                 }
 
-                                                if (stConf.reward_enabled == 'true') msg += "\nSeeding Reward: " + percentageCompleted + "%"
-                                                msg += "\nDiscord Username: " + (discordUsername != "" ? discordUsername : "Not linked")
+                                                if (subcomponent_status.squadjs && config.app_personalization.send_welcome_message) {
+                                                    setTimeout(() => {
+                                                        try {
+                                                            subcomponent_data.squadjs[ sqJsK ].socket.emit("rcon.warn", dt.player.steamID, msg, (d) => { });
+                                                        } catch (e) {
+                                                            console.error(`Error sending welcome message: ${e.message}`);
+                                                        }
+                                                    }, timeoutDelay);
+                                                }
                                             }
+                                        });
+                                    }
+                                });
+                            });
+                        }
 
+                        createConnection();
 
-                                            if (subcomponent_status.squadjs && config.app_personalization.send_welcome_message) {
-                                                setTimeout(() => {
-                                                    subcomponent_data.squadjs[ sqJsK ].socket.emit("rcon.warn", dt.player.steamID, msg, (d) => { })
-                                                }, timeoutDelay)
-                                            }
-                                        }
-                                    })
-                                }
-                            })
-                        })
+                    } catch (error) {
+                        console.error(`Error in SquadJS WebSocket ${+sqJsK + 1} setup:`, error);
+                        subcomponent_data.squadjs[ sqJsK ].isConnecting = false;
+                        if (!subcomponent_data.squadjs[ sqJsK ].isReconnecting) {
+                            startReconnectionInterval(sqJsK);
+                        }
+                        if (!res.called) {
+                            res.called = true;
+                            res(false);
+                        }
                     }
                 } else {
                     console.log(` > ${+sqJsK + 1} Not configured. Skipping.`);
                     if (cb) cb();
-                    res(false)
+                    res(false);
                 }
-
-            })
+            });
         }
 
-        // return await Promise.all(conns)
         return true;
     }
 
@@ -3029,7 +3122,7 @@ async function init() {
 
                         await dbo.collection("players").updateMany(
                             {
-                                steamid64: { $nin: players.map(p => p.steamID) },,
+                                steamid64: { $nin: players.map(p => p.steamID) },
                                 $or: [
                                     { latest_seeding_activity: { $lt: pointDeductionDateThreshold } },
                                     { seeding_points: { $lt: requiredPoints } }
@@ -3337,7 +3430,8 @@ async function init() {
                 install_beta_versions: false,
                 logs_max_file_count: 10,
                 lists_cache_refresh_seconds: 60,
-                prefer_eosID: true
+                prefer_eosID: true,
+                prepend_date_time_in_console: false
             }
         }
 
@@ -3612,10 +3706,16 @@ async function init() {
     }
     function extendLogging() {
         console.log = (...params) => {
+            const dateTimePrefix = `[${(new Date()).toISOString()}]`;
+            if (config?.other?.prepend_date_time_in_console)
+                params.unshift(dateTimePrefix)
             consoleLogBackup(...params);
             logger.trace(...params)
         }
         console.error = (...params) => {
+            const dateTimePrefix = `[${(new Date()).toISOString()}]`;
+            if (config?.other?.prepend_date_time_in_console)
+                params.unshift(dateTimePrefix)
             consoleErrorBackup(...params);
             logger.error(...params)
         }
