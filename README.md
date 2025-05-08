@@ -4,7 +4,7 @@
   <h2>A Comprehensive Whitelist Management System for</h2>
   <h3>Squad | Post Scriptum | Beyond the Wire</h3>
   
-  [![Join Discord](https://img.shields.io/discord/123456789?color=7289DA&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.com/invite/5hfcjNYdCP)
+  [![Join Discord](https://img.shields.io/discord/980238753618599936?label=Join%20Discord&logo=discord&logoColor=white)](https://discord.com/invite/5hfcjNYdCP)
   [![Latest Release](https://img.shields.io/github/v/release/fantinodavide/Squad_Whitelister?label=Latest%20Release)](https://github.com/fantinodavide/Squad_Whitelister/releases/latest)
 </div>
 
