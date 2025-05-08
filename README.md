@@ -116,10 +116,6 @@ To link Whitelister to your game server's `RemoteAdminListHosts.cfg`:
 | `HTTPS_SERVER_DISABLED` | Disable HTTPS server | `true` |
 | `HTTPS_PORT` | Override HTTPS port | `8443` |
 
-## 📚 API Documentation
-
-Whitelister provides a comprehensive API for integration with other systems. See the [API Documentation](/docs/api/README.md) for details.
-
 ## 🛠️ Troubleshooting
 
 ### Common Issues
