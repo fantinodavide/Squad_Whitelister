@@ -1,0 +1,148 @@
+name: Update Documentation
+
+on:
+  push:
+    paths:
+      - 'CONFIG.md'
+    branches:
+      - dev
+  workflow_dispatch:
+
+jobs:
+  update-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Check if CONFIG.md has changed
+        id: check_changes
+        run: |
+          if git diff --name-only HEAD^ HEAD | grep -q "CONFIG.md"; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Validate CONFIG.md
+        if: steps.check_changes.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          # Create a script to validate the documentation
+          cat > validate-docs.js << 'EOF'
+          const fs = require('fs');
+          
+          // Read the current CONFIG.md
+          const configMd = fs.readFileSync('CONFIG.md', 'utf8');
+          
+          // Check if all required sections are present
+          const requiredSections = [
+            'Web Server Settings',
+            'Database Settings',
+            'App Personalization',
+            'Discord Bot Settings',
+            'SquadJS Integration',
+            'Custom Permissions',
+            'Other Settings'
+          ];
+          
+          let missingSection = false;
+          
+          for (const section of requiredSections) {
+            if (!configMd.includes(section)) {
+              console.error(`Error: Required section "${section}" is missing from CONFIG.md`);
+              missingSection = true;
+            }
+          }
+          
+          if (missingSection) {
+            process.exit(1);
+          }
+          
+          console.log('Documentation validation successful!');
+          EOF
+          
+          # Run the script
+          node validate-docs.js
+      
+      - name: Generate README.md section
+        if: steps.check_changes.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          # Create a script to update the README.md with a summary from CONFIG.md
+          cat > update-readme.js << 'EOF'
+          const fs = require('fs');
+          
+          // Read the current CONFIG.md and README.md
+          const configMd = fs.readFileSync('CONFIG.md', 'utf8');
+          const readmeMd = fs.readFileSync('README.md', 'utf8');
+          
+          // Extract the first paragraph from CONFIG.md
+          const firstParagraph = configMd.split('\n\n')[0];
+          
+          // Create a summary section for README.md
+          const configSummary = `## Configuration Documentation
+
+A comprehensive configuration guide is available in [CONFIG.md](CONFIG.md).
+
+${firstParagraph}
+
+For detailed configuration options, please refer to the [CONFIG.md](CONFIG.md) file.`;
+          
+          // Update the README.md if it contains a Configuration Documentation section
+          let updatedReadme = readmeMd;
+          if (readmeMd.includes('## Configuration Documentation')) {
+            updatedReadme = readmeMd.replace(
+              /## Configuration Documentation[\s\S]*?(?=##|$)/m,
+              configSummary + '\n\n'
+            );
+          }
+          
+          // Write the updated README.md
+          fs.writeFileSync('README.md', updatedReadme);
+          
+          console.log('README.md updated successfully!');
+          EOF
+          
+          # Run the script
+          node update-readme.js
+      
+      - name: Check for changes
+        id: git_status
+        run: |
+          if [[ -n $(git status -s) ]]; then
+            echo "changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "changes=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Commit and push changes
+        if: steps.git_status.outputs.changes == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add README.md
+          git commit -m "docs: update README.md with CONFIG.md summary"
+          git push
+      
+      - name: Create Pull Request
+        if: steps.git_status.outputs.changes == 'true' && github.event_name != 'pull_request'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "docs: update README.md with CONFIG.md summary"
+          title: "Update README.md documentation"
+          body: |
+            This PR automatically updates the README.md with a summary from CONFIG.md.
+            
+            Changes were made by the GitHub Actions workflow.
+          branch: update-readme-docs
+          base: ${{ github.ref }}
