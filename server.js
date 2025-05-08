@@ -233,12 +233,12 @@ async function init() {
 
                     const httpPort = envServerPort ? parseInt(envServerPort) : (envHttpPort ? parseInt(envHttpPort) : config.web_server.http_port);
                     const httpsPort = envHttpsPort ? parseInt(envHttpsPort) : config.web_server.https_port;
+                    var host = config.web_server.bind_ip;
                     get_free_port(httpPort, (free_http_port) => {
                         get_free_port(httpsPort, (free_https_port) => {
                             if (!httpServerDisabled) {
                                 if (free_http_port) {
                                     server.http = app.listen(free_http_port, config.web_server.bind_ip, function () {
-                                        var host = server.http.address().address
                                         console.log(`HTTP server listening at http://${host}:${free_http_port}`)
                                         server.configs.http.port = free_http_port
                                         logConfPortNotFree(config.web_server.http_port, free_http_port)
@@ -571,7 +571,7 @@ async function init() {
 
             const endTime = Date.now();
             const generationDuration = endTime - startTime;
-            if ((generationDuration > 1000 && !usingCache) || forceCacheReset) {
+            if (((generationDuration > 1000 || config.other.force_lists_output_caching) && !usingCache) || forceCacheReset) {
                 // console.log(`Storing cache for ${cacheKey}`, basePath, clan_code, usernamesOnly)
                 wlOutputCache.set(cacheKey, output)
                 wlOutputCacheLastUpdates.set(cacheKey, new Date())
@@ -3431,7 +3431,8 @@ async function init() {
                 logs_max_file_count: 10,
                 lists_cache_refresh_seconds: 60,
                 prefer_eosID: true,
-                prepend_date_time_in_console: false
+                prepend_date_time_in_console: false,
+                force_lists_output_caching: false
             }
         }
 
