@@ -1,69 +1,154 @@
 # Whitelister
-## Squad | Post Scriptum | Beyond the Wire
-[**Join the official Discord server!**](https://discord.com/invite/5hfcjNYdCP)
 
-## Installation
-#### Prerequisites
-- NodeJS
-- npm
-- MongoDB
-- *PM2 (Optional)*
+<div align="center">
+  <h2>A Comprehensive Whitelist Management System for</h2>
+  <h3>Squad | Post Scriptum | Beyond the Wire</h3>
+  
+  [![Join Discord](https://img.shields.io/discord/123456789?color=7289DA&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.com/invite/5hfcjNYdCP)
+  [![Latest Release](https://img.shields.io/github/v/release/fantinodavide/Squad_Whitelister?label=Latest%20Release)](https://github.com/fantinodavide/Squad_Whitelister/releases/latest)
+</div>
 
-#### Setup
-1. Download and unpack the [Latest Release (release.zip)](https://github.com/fantinodavide/Squad_Whitelister/releases/latest "Releases")
-2. `node server` *To start the server for the first time. The application will automatically stop to create the configuration file*
-3. Configure as needed the application from **conf.js** file
-4. `pm2 start server.js` or `node server --self-pm` *To start the server forever*
+## 📋 Overview
 
-#### Using a custom SSL Certificate
-- Insert `certificate.key` in the **certificates** folder
-- Insert `certificate.crt` in the **certificates** folder
+Whitelister is a powerful web application designed to manage player whitelists for game servers. It provides a comprehensive solution for server administrators to control access, manage clans, and automate whitelist operations through a user-friendly interface.
 
-#### If you are NOT using a Process Manager *(ex. PM2)*
-Add run argument `--self-pm` to automatically restart after an update or crash
+## ✨ Features
 
-#### Linking to the *RemoteAdminListHosts.cfg*
-- Full output is found at path **/wl** (*ex. https://example.ex/wl*)
-- If you need the output for a specific clan the path is **/wl/*{clan_code}*** (ex. https://example.ex/wl/1a2b3c4d)
+- **Player Management**: Easily approve or deny whitelist requests
+- **Clan Management**: Organize players into clans with custom permissions
+- **User Access Control**: Define different access levels for administrators
+- **API Integration**: Comprehensive API for integration with other systems
+- **Discord Integration**: Connect with Discord for user verification
+- **Custom Branding**: Personalize the application with your own branding
+- **Automatic Updates**: Stay up-to-date with the latest features
+- **Secure Authentication**: Protect your whitelist with robust authentication
 
-#### Environment Variables
-- `MONGODB_CONNECTION_STRING` ex. mongodb://user:password@host:port/database.
-- `HIDDEN_CONFIG_TABS` ex. web_server;database
-- `HTTP_SERVER_DISABLED` completely disables the HTTP server
-- `HTTPS_SERVER_DISABLED` completely disables the HTTPS server, HTTP server will be used as only server
-- `HTTPS_PORT` overrides the HTTPS port set from the configuration file
+## 🖼️ Screenshots
 
-#### [**API Documentation**](/docs/api/README.md)
+Visit the [screenshots directory](/screenshots) to see the application in action:
+- [Whitelist Management](/screenshots/WhitelistTab.PNG)
+- [Approvals Interface](/screenshots/ApprovalsTab.PNG)
+- [Clan Management](/screenshots/ClansTab.PNG)
+- [User Management](/screenshots/UsersTab.PNG)
+- [Group Management](/screenshots/GroupsTab.PNG)
 
-#### [**Screenshots**](/screenshots) ####
+## 🚀 Installation
 
-#### conf.json Example
-```json
-{
-	"web_server": {
-		"bind_ip": "0.0.0.0",
-		"http_port": 80,
-		"https_port": 443,
-		"force_https": false,
-		"session_duration_hours": 168
-	},
-	"database": {
-		"mongo": {
-			"host": "127.0.0.1",
-			"port": 27017,
-			"database": "Whitelister"
-		}
-	},
-	"app_personalization": {
-		"name": "Whitelister",
-		"favicon": "",
-		"accent_color": "#ffc40b",
-		"logo_url": "https://joinsquad.com/wp-content/themes/squad/img/logo.png"
-	},
-	"other": {
-		"automatic_updates": true,
-		"update_check_interval_seconds": 3600,
-		"whitelist_developers": true
-	}
-}
+### Prerequisites
+
+- **NodeJS** (v14 or higher recommended)
+- **npm** (v6 or higher recommended)
+- **MongoDB** (v4.4 or higher recommended)
+- **PM2** (Optional, for process management)
+
+### Setup Instructions
+
+1. **Download and Extract**
+   ```bash
+   # Download the latest release
+   wget https://github.com/fantinodavide/Squad_Whitelister/releases/latest/download/release.zip
+   
+   # Extract the files
+   unzip release.zip
+   ```
+
+2. **Initial Configuration**
+   ```bash
+   # Start the server for the first time
+   node server
+   ```
+   The application will automatically stop to create the configuration file.
+
+3. **Configure the Application**
+   Edit the generated `conf.json` file according to your needs. See the [Configuration Documentation](CONFIG.md) for detailed information about all available options.
+
+4. **Start the Server**
+   ```bash
+   # Using PM2 (recommended for production)
+   pm2 start server.js
+   
+   # Without PM2, with auto-restart
+   node server --self-pm
+   ```
+
+### Docker Installation
+
+You can also run Whitelister using Docker:
+
+```bash
+# Pull and run using docker-compose
+docker-compose up -d
 ```
+
+## 🔧 Configuration
+
+For a complete reference of all configuration options, please see the [Configuration Documentation](CONFIG.md).
+
+### SSL Certificate Setup
+
+To use a custom SSL certificate:
+
+1. Place your `certificate.key` file in the **certificates** folder
+2. Place your `certificate.crt` file in the **certificates** folder
+
+### Process Management
+
+If you're not using PM2, add the `--self-pm` argument to enable automatic restarts:
+
+```bash
+node server --self-pm
+```
+
+### Game Server Integration
+
+To link Whitelister to your game server's `RemoteAdminListHosts.cfg`:
+
+- Full whitelist output: `/wl` (e.g., `https://your-domain.com/wl`)
+- Clan-specific whitelist: `/wl/{clan_code}` (e.g., `https://your-domain.com/wl/1a2b3c4d`)
+
+### Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `MONGODB_CONNECTION_STRING` | MongoDB connection string | `mongodb://user:password@host:port/database` |
+| `HIDDEN_CONFIG_TABS` | Hide specific config tabs | `web_server;database` |
+| `HTTP_SERVER_DISABLED` | Disable HTTP server | `true` |
+| `HTTPS_SERVER_DISABLED` | Disable HTTPS server | `true` |
+| `HTTPS_PORT` | Override HTTPS port | `8443` |
+
+## 📚 API Documentation
+
+Whitelister provides a comprehensive API for integration with other systems. See the [API Documentation](/docs/api/README.md) for details.
+
+## 🛠️ Troubleshooting
+
+### Common Issues
+
+- **Database Connection Errors**: Ensure MongoDB is running and accessible
+- **Port Conflicts**: Check if the configured ports are already in use
+- **SSL Certificate Issues**: Verify certificate files are correctly formatted
+
+### Logs
+
+Check the application logs for detailed error information:
+```bash
+# If using PM2
+pm2 logs server
+
+# If using standard Node
+check the console output or application log files
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+
+This project is licensed under the terms found in the [LICENSE](LICENSE) file.
+
+## 📋 Configuration Documentation
+
+For detailed information about all available configuration options, please refer to the [Configuration Documentation](CONFIG.md).
+
+The configuration file (`conf.json`) is automatically generated when you first run the application and includes all necessary settings with default values. You can customize these settings according to your needs.
