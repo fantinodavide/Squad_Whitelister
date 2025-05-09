@@ -2241,7 +2241,7 @@ async function init() {
 
             client.on('ready', async () => {
                 clearTimeout(tm);
-                discordBot = new Proxy(client, {});
+                discordClient = new Proxy(client, {});
                 // const permissionsString = "1099780151360";
                 const permissionsString = "268564544";
                 // const permissionsString = "8";
@@ -2989,7 +2989,7 @@ async function init() {
                                             await dbo.collection("players").deleteOne({ _id: oldPlayerData._id });
 
                                             if (socket)
-                                                socket.emit("rcon.warn", data.player.steamID, "Linked Discord profile: " + discordUsername, (d) => { });
+                                                socket.emit("rcon.warn", data.player.steamID, `Linked Discord profile ${discordUsername || ''}`.trim(), (d) => { });
 
                                             if (discordUser)
                                                 discordUser.send({
