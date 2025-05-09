@@ -136,7 +136,7 @@ async function init() {
     const mongodb_global_connection = true;
     var mongodb_conn;
 
-    var discordBot;
+    var discordClient;
 
     const wlOutputCache = new Map();
     const wlOutputCacheLastUpdates = new Map();
@@ -1502,7 +1502,7 @@ async function init() {
                                                             { name: 'List', value: dbResList.title },
                                                             { name: 'Approval', value: insWlPlayer.approved ? `:white_check_mark: Approved` : ":hourglass: Pending", inline: true },
                                                         )
-                                                        discordBot.channels.cache.get(config.discord_bot.whitelist_updates_channel_id)?.send({ embeds: embeds, components: components })
+                                                        discordClient.channels.cache.get(config.discord_bot.whitelist_updates_channel_id)?.send({ embeds: embeds, components: components })
 
                                                         function formatEmbed(title, value) {
                                                             return Discord.bold(title) + "\n" + Discord.inlineCode(value) + "\n"
@@ -1716,7 +1716,7 @@ async function init() {
         app.get('/api/discord/read/getRoles', (req, res, next) => {
             const parm = req.query;
             if (subcomponent_status.discord_bot) {
-                const clientServer = discordBot.guilds.cache.find((s) => s.id == config.discord_bot.server_id);
+                const clientServer = discordClient.guilds.cache.find((s) => s.id == config.discord_bot.server_id);
                 let roles = [];
                 for (let r of clientServer.roles.cache) if (r[ 1 ].name.toLowerCase() !== "@everyone") roles.push({ id: r[ 1 ].id, name: r[ 1 ].name })
                 res.send(roles)
@@ -1728,7 +1728,7 @@ async function init() {
             const parm = req.query;
             if (subcomponent_status.discord_bot) {
                 let ret = [];
-                for (let g of discordBot.guilds.cache) ret.push({ id: g[ 1 ].id, name: g[ 1 ].name })
+                for (let g of discordClient.guilds.cache) ret.push({ id: g[ 1 ].id, name: g[ 1 ].name })
                 res.send(ret)
                 // console.log(ret);
             } else {
@@ -1739,8 +1739,8 @@ async function init() {
             const parm = req.query;
             if (subcomponent_status.discord_bot) {
                 let ret = [];
-                res.send((await discordBot.guilds.fetch(config.discord_bot.server_id)).channels.cache.sort((a, b) => a.rawPosition - b.rawPosition).filter((e) => e.type != 4))
-                // for(let c of (await discordBot.guilds.fetch(config.discord_bot.server_id)).channels.cache) ret.push(discordBot.channels.fetch(c))
+                res.send((await discordClient.guilds.fetch(config.discord_bot.server_id)).channels.cache.sort((a, b) => a.rawPosition - b.rawPosition).filter((e) => e.type != 4))
+                // for(let c of (await discordClient.guilds.fetch(config.discord_bot.server_id)).channels.cache) ret.push(discordClient.channels.fetch(c))
             } else {
                 res.sendStatus(404)
             }
@@ -2864,7 +2864,7 @@ async function init() {
                             socket.on("PLAYER_CONNECTED", async (dt) => {
                                 try {
                                     if (dt && dt.player && dt.player.steamID) {
-                                        await updatePlayerData(dt);
+                                        await updatePlayerData(dt, socket);
                                         setTimeout(() => {
                                             welcomeMessage(dt);
                                         }, 10000);
@@ -2876,9 +2876,10 @@ async function init() {
                                 }
                             });
 
-                            socket.on("PLAYER_DISCONNECTED", updatePlayerData);
+                            socket.on("PLAYER_DISCONNECTED", data => updatePlayerData(data, socket));
 
                             socket.on("CHAT_MESSAGE", async (dt) => {
+                                await updatePlayerData(dt, socket);
                                 switch (dt.message.toLowerCase().replace(/^(!|\/)/, '')) {
                                     case 'test':
                                         break;
@@ -2896,7 +2897,7 @@ async function init() {
                                                     if (err) serverError(null, err);
                                                     else if (dbRes) {
                                                         if (dbRes.expiration > new Date()) {
-                                                            const discordUser = await discordBot.users.fetch(dbRes.discordUserId);
+                                                            const discordUser = await discordClient.users.fetch(dbRes.discordUserId);
                                                             const discordUsername = discordUser.username + (discordUser.discriminator ? "#" + discordUser.discriminator : '');
                                                             const oldPlayerData = await dbo.collection("players").findOne({ steamid64: dt.player.steamID }, { projection: { _id: 0, seeding_points: 1 } });
                                                             dbo.collection("players").updateOne({ discord_user_id: dbRes.discordUserId }, { $set: { steamid64: dt.player.steamID, username: dt.player.name, discord_user_id: dbRes.discordUserId, discord_username: discordUsername, ...oldPlayerData } }, { upsert: true }, (err, dbResU) => {
@@ -2933,7 +2934,7 @@ async function init() {
                             });
                         }
 
-                        async function updatePlayerData(data) {
+                        async function updatePlayerData(data, socket = null) {
                             if (!data || !data.player || !data.player.steamID) {
                                 console.error('Unable to update player data due to empty player object:', data)
                                 return;
@@ -2954,20 +2955,22 @@ async function init() {
 
                             if (!playerData?.discord_user_id) {
                                 try {
-                                    const response = await fetch(`https://mysquadstats.com/api/playerLink?steamID=${data.player.steamID}`);
-                                    const linkData = await response.json();
+                                    const response = await axios.get(`https://mysquadstats.com/api/playerLink?steamID=${data.player.steamID}`);
+                                    const linkData = response.data.data;
 
-                                    if (linkData?.data?.discordID) {
-                                        const discordUserId = linkData.data.discordID;
+                                    if (linkData?.discordID) {
+                                        const discordUserId = linkData.discordID;
 
                                         try {
-                                            const discordUser = await discordBot.users.fetch(discordUserId);
-                                            const discordUsername = discordUser.username + (discordUser.discriminator ? "#" + discordUser.discriminator : '');
+                                            const discordUser = !discordClient ? null : await discordClient.users.fetch(discordUserId);
+                                            const discordUsername = !discordUser ? null : discordUser.username + (discordUser.discriminator ? "#" + discordUser.discriminator : '');
 
                                             const oldPlayerData = await dbo.collection("players").findOne(
                                                 { steamid64: data.player.steamID },
-                                                { projection: { _id: 0, seeding_points: 1 } }
                                             );
+
+                                            const oldDataForUpdate = { ...oldPlayerData };
+                                            delete oldDataForUpdate._id;
 
                                             await dbo.collection("players").updateOne(
                                                 { discord_user_id: discordUserId },
@@ -2975,19 +2978,18 @@ async function init() {
                                                     $set: {
                                                         steamid64: data.player.steamID,
                                                         username: data.player.name,
-                                                        discord_user_id: discordUserId,
-                                                        discord_username: discordUsername,
-                                                        ...oldPlayerData
+                                                        ...(discordUserId && { discord_user_id: discordUserId }),
+                                                        ...(discordUsername && { discord_username: discordUsername }),
+                                                        ...oldDataForUpdate
                                                     }
                                                 },
                                                 { upsert: true }
                                             );
 
-                                            await dbo.collection("players").deleteOne(
-                                                { steamid64: data.player.steamID, discord_user_id: { $exists: false } }
-                                            );
+                                            await dbo.collection("players").deleteOne({ _id: oldPlayerData._id });
 
-                                            socket.emit("rcon.warn", data.player.steamID, "Linked Discord profile: " + discordUsername, (d) => { });
+                                            if (socket)
+                                                socket.emit("rcon.warn", data.player.steamID, "Linked Discord profile: " + discordUsername, (d) => { });
 
                                             discordUser.send({
                                                 embeds: [
@@ -3056,7 +3058,7 @@ async function init() {
                                                     let discordUsername = "";
                                                     if (dbResP && dbResP.discord_user_id && dbResP.discord_user_id != "") {
                                                         try {
-                                                            const discordUser = await discordBot.users.fetch(dbResP.discord_user_id);
+                                                            const discordUser = await discordClient.users.fetch(dbResP.discord_user_id);
                                                             discordUsername = discordUser.username + (discordUser.discriminator ? "#" + discordUser.discriminator : '');
                                                         } catch (e) {
                                                             console.error(`Error fetching Discord user: ${e.message}`);
@@ -3249,7 +3251,7 @@ async function init() {
                                             } ],
                                             ephemeral: false
                                         }
-                                        discordBot.channels.cache.get(stConf.discord_seeding_score_channel)?.send(messageContent)
+                                        discordClient.channels.cache.get(stConf.discord_seeding_score_channel)?.send(messageContent)
 
                                     } else if (percentageCompleted == 100) {
                                         const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
@@ -3280,7 +3282,7 @@ async function init() {
                                                     })
                                                     .setTimestamp(new Date())
                                             ]
-                                            discordBot.channels.cache.get(stConf.discord_seeding_reward_channel)?.send({ embeds: embeds })
+                                            discordClient.channels.cache.get(stConf.discord_seeding_reward_channel)?.send({ embeds: embeds })
                                         }
                                     }
                                 }
