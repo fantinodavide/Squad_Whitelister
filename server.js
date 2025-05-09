@@ -2934,6 +2934,11 @@ async function init() {
                         }
 
                         async function updatePlayerData(data) {
+                            if (!dt || !dt.player || !dt.player.steamID) {
+                                console.error('Unable to update player data due to empty player object:', data)
+                                return;
+                            }
+
                             const dbo = await mongoConn();
                             const updData = { username: data.player.name };
 
