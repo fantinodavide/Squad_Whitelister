@@ -2991,18 +2991,19 @@ async function init() {
                                             if (socket)
                                                 socket.emit("rcon.warn", data.player.steamID, "Linked Discord profile: " + discordUsername, (d) => { });
 
-                                            discordUser.send({
-                                                embeds: [
-                                                    new Discord.EmbedBuilder()
-                                                        .setColor(config.app_personalization.accent_color)
-                                                        .setTitle("Profile Linked")
-                                                        .setDescription("Your Discord profile has been linked to a Steam profile")
-                                                        .addFields(
-                                                            { name: "Steam Username", value: data.player.name, inline: true },
-                                                            { name: 'SteamID', value: Discord.hyperlink(data.player.steamID, "https://steamcommunity.com/profiles/" + data.player.steamID), inline: true }
-                                                        )
-                                                ]
-                                            });
+                                            if (discordUser)
+                                                discordUser.send({
+                                                    embeds: [
+                                                        new Discord.EmbedBuilder()
+                                                            .setColor(config.app_personalization.accent_color)
+                                                            .setTitle("Profile Linked")
+                                                            .setDescription("Your Discord profile has been linked to a Steam profile")
+                                                            .addFields(
+                                                                { name: "Steam Username", value: data.player.name, inline: true },
+                                                                { name: 'SteamID', value: Discord.hyperlink(data.player.steamID, "https://steamcommunity.com/profiles/" + data.player.steamID), inline: true }
+                                                            )
+                                                    ]
+                                                });
                                         } catch (discordErr) {
                                             console.error("Error linking Discord profile using MSS API data:", discordErr);
                                         }
