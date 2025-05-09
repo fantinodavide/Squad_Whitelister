@@ -88,6 +88,7 @@ async function init() {
 
     const enableServer = true;
     var errorCount = 0;
+    var errerCountResetTimeout = null;
 
     const configPath = args.c || "conf.json"
 
@@ -2935,54 +2936,54 @@ async function init() {
                         async function updatePlayerData(data) {
                             const dbo = await mongoConn();
                             const updData = { username: data.player.name };
-                        
+
                             if (data.player.eosID)
                                 updData.eosID = data.player.eosID;
-                        
+
                             const ret = await Promise.all([
                                 dbo.collection("players").updateOne({ steamid64: data.player.steamID }, { $set: updData }, { upsert: true }),
                                 data.player.eosID ? dbo.collection("whitelists").updateMany({ steamid64: data.player.steamID, eosID: { $exists: false } }, { $set: { eosID: data.player.eosID } }) : null
                             ].filter(e => e != null));
-                        
+
                             const playerData = await dbo.collection("players").findOne({ steamid64: data.player.steamID });
-                            
-                            if(!playerData?.discord_user_id) {
+
+                            if (!playerData?.discord_user_id) {
                                 try {
                                     const response = await fetch(`https://mysquadstats.com/api/playerLink?steamID=${data.player.steamID}`);
                                     const linkData = await response.json();
-                                    
-                                    if(linkData?.data?.discordID) {
+
+                                    if (linkData?.data?.discordID) {
                                         const discordUserId = linkData.data.discordID;
-                                        
+
                                         try {
                                             const discordUser = await discordBot.users.fetch(discordUserId);
                                             const discordUsername = discordUser.username + (discordUser.discriminator ? "#" + discordUser.discriminator : '');
-                                            
+
                                             const oldPlayerData = await dbo.collection("players").findOne(
-                                                { steamid64: data.player.steamID }, 
+                                                { steamid64: data.player.steamID },
                                                 { projection: { _id: 0, seeding_points: 1 } }
                                             );
-                                            
+
                                             await dbo.collection("players").updateOne(
-                                                { discord_user_id: discordUserId }, 
-                                                { 
-                                                    $set: { 
-                                                        steamid64: data.player.steamID, 
-                                                        username: data.player.name, 
-                                                        discord_user_id: discordUserId, 
+                                                { discord_user_id: discordUserId },
+                                                {
+                                                    $set: {
+                                                        steamid64: data.player.steamID,
+                                                        username: data.player.name,
+                                                        discord_user_id: discordUserId,
                                                         discord_username: discordUsername,
-                                                        ...oldPlayerData 
-                                                    } 
-                                                }, 
+                                                        ...oldPlayerData
+                                                    }
+                                                },
                                                 { upsert: true }
                                             );
-                                            
+
                                             await dbo.collection("players").deleteOne(
                                                 { steamid64: data.player.steamID, discord_user_id: { $exists: false } }
                                             );
-                                            
+
                                             socket.emit("rcon.warn", data.player.steamID, "Linked Discord profile: " + discordUsername, (d) => { });
-                                            
+
                                             discordUser.send({
                                                 embeds: [
                                                     new Discord.EmbedBuilder()
@@ -3003,7 +3004,7 @@ async function init() {
                                     console.error("Error fetching Discord link data from MSS API:", apiErr);
                                 }
                             }
-                        
+
                             return ret;
                         }
 
@@ -3759,8 +3760,16 @@ async function init() {
         console.error("Uncaught Exception", err.message, err.stack)
         if (++errorCount >= (args[ "self-pm" ] ? 5 : 5)) {
             console.error("Too many errors occurred during the current run. Terminating execution...");
-            restartProcess(0, 1, args);
+            return restartProcess(0, 1, args);
         }
+
+        if (errerCountResetTimeout)
+            clearTimeout(errerCountResetTimeout)
+
+        errerCountResetTimeout = setTimeout(() => {
+            errorCount = 0;
+            clearTimeout(errerCountResetTimeout)
+        }, 5 * 60_000)
     })
     function randomString(size = 64) {
         const rndStr = crypto.randomBytes(size).toString('base64').slice(0, size);
