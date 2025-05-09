@@ -2863,7 +2863,7 @@ async function init() {
                             socket.on("PLAYER_CONNECTED", async (dt) => {
                                 try {
                                     if (dt && dt.player && dt.player.steamID) {
-                                        updatePlayerData(dt);
+                                        await updatePlayerData(dt);
                                         setTimeout(() => {
                                             welcomeMessage(dt);
                                         }, 10000);
