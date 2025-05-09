@@ -2934,7 +2934,7 @@ async function init() {
                         }
 
                         async function updatePlayerData(data) {
-                            if (!dt || !dt.player || !dt.player.steamID) {
+                            if (!data || !data.player || !data.player.steamID) {
                                 console.error('Unable to update player data due to empty player object:', data)
                                 return;
                             }
