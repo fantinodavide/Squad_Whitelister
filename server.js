@@ -1667,17 +1667,25 @@ async function init() {
                 })
             })
         })
-        app.post('/api/gameGroups/write/remove', (req, res, next) => {
 
+        app.post('/api/gameGroups/write/remove', (req, res, next) => {
             mongoConn((dbo) => {
-                dbo.collection("groups").deleteOne({ _id: ObjectID(req.body._id) }, (err, dbRes) => {
-                    if (err) serverError(res, err);
-                    else {
-                        res.send({ status: "removing_ok", ...dbRes })
-                    }
-                })
-            })
-        })
+                dbo.collection("groups").deleteOne({ _id: ObjectID(req.body._id) }, (err, groupDbRes) => {
+                    if (err) return serverError(res, err);
+
+                    dbo.collection("whitelists").deleteMany({ id_group: ObjectID(req.body._id) }, (err, whitelistDbRes) => {
+                        if (err) return serverError(res, err);
+
+                        res.send({
+                            status: "removing_ok",
+                            groupResult: groupDbRes,
+                            whitelistResult: whitelistDbRes
+                        });
+                    });
+                });
+            });
+        });
+
         //app.use('/api/gameGroups/read/*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next() })
         app.get('/api/gameGroups/read/getAllGroups', (req, res, next) => {
             mongoConn((dbo) => {
@@ -3319,6 +3327,13 @@ async function init() {
         // GROUP FORMAT: { name: "groupName", expiration: new Date() }
         playerGroups.push(...(await dbo.collection('whitelists').find({ steamid64: steamid64 }).toArray()).map(_e => {
             const g = allGroups.find(_g => _g._id.toString() == _e.id_group.toString());
+
+            if (!g) {
+                dbo.collection('whitelists').deleteOne({ _id: _e._id })
+                return;
+            }
+
+
             let e = {}
             e.id = _e.id_group.toString()
             e.name = g.group_name
@@ -3326,7 +3341,7 @@ async function init() {
             e.approved = _e.approved
             e.source = 'Whitelists'
             return e;
-        }))
+        }).filter(g => g != null))
 
         const pipeline = [
             {
