@@ -28,7 +28,7 @@ jobs:
         
     - name: Create release zip
       run: |
-        7z a -tzip release.zip ./release/*
+        7z a -tzip release.zip ./release
         
     - name: Test zip compatibility
       id: zip-test
