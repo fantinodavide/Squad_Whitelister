@@ -21,7 +21,9 @@ jobs:
       run: npm ci
         
     - name: Build project
-      run: npm run build
+      run: |
+        rm -r release
+        npm run build
         
     - name: Create release zip
       run: |
