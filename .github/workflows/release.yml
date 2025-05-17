@@ -25,8 +25,7 @@ jobs:
         
     - name: Create release zip
       run: |
-        cd release
-        zip -r ../release.zip .
+        zip -r release.zip release/
         
     - name: Test zip compatibility
       id: zip-test
