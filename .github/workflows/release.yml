@@ -39,6 +39,8 @@ jobs:
       with:
         name: release-package
         path: release.zip
+        retention-days: 30
+        if-no-files-found: error
         
     - name: Create Release
       if: success() && github.ref == 'refs/heads/main'
