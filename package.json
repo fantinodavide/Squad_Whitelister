@@ -12,7 +12,7 @@
     "release": "npm run clean && npm run copy-dist && npm run minify-server && npm run copy-docker && npm run copy-certs && npm run filter-package && npm run generate-docs && npm run copy-docs",
     "releasedocker": "npm run release && docker build . && docker save squadwhitelister > docker-image.tar",
     "clean": "rimraf release",
-    "copy-dist": "copyfiles -u 0 dist/**/* release",
+    "copy-dist": "copyfiles -u 1 \"dist/**/*\" \"dist/**/.*\" release/dist",
     "minify-server": "terser --compress --mangle -o release/server.js -- server.js",
     "copy-docker": "copyfiles -f docker-compose.yml release",
     "copy-certs": "copyfiles -u 0 certificates/**/* release",
