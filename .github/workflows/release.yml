@@ -34,6 +34,13 @@ jobs:
       id: zip-test
       run: |
         node test-release-zip.js ./release.zip
+    
+    - name: Get version from package.json
+      id: package-version
+      run: |
+        VERSION=$(node -p "require('./release/package.json').version")
+        echo "VERSION=V$VERSION" >> $GITHUB_ENV
+        echo "Version found: V$VERSION"
         
     - name: Create Release
       if: success() && github.ref == 'refs/heads/main'
@@ -42,10 +49,10 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: release-${{ github.run_number }}
-        release_name: Release ${{ github.run_number }}
+        tag_name: ${{ env.VERSION }}
+        release_name: ${{ env.VERSION }}
         draft: true
-        prerelease: false
+        prerelease: true
         
     - name: Upload Release Asset
       if: success() && github.ref == 'refs/heads/main'
