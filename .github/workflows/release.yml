@@ -33,21 +33,6 @@ jobs:
       run: |
         node test-release-zip.js ./release.zip
         
-    - name: Upload release.zip artifact
-      if: success()
-      uses: actions/upload-artifact@v3
-      with:
-        name: release-package
-        path: release.zip
-        if-no-files-found: error
-        retention-days: 90
-        download-info: |
-          {
-            "fileName": "release.zip",
-            "displayName": "Release Package",
-            "description": "Complete release zip package for deployment"
-          }
-        
     - name: Create Release
       if: success() && github.ref == 'refs/heads/main'
       id: create_release
