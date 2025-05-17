@@ -39,8 +39,14 @@ jobs:
       with:
         name: release-package
         path: release.zip
-        retention-days: 30
         if-no-files-found: error
+        retention-days: 90
+        download-info: |
+          {
+            "fileName": "release.zip",
+            "displayName": "Release Package",
+            "description": "Complete release zip package for deployment"
+          }
         
     - name: Create Release
       if: success() && github.ref == 'refs/heads/main'
