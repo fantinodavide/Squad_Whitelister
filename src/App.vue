@@ -322,7 +322,8 @@ export default {
 
 		const path = window.location.pathname.slice(1);
 		if (path) {
-			const matchingTab: any = this.tabs.find((tab: any) => tab.name.toLowerCase().replace(/ /g, '-') === path);
+			console.log('tabs', this.tabs)
+			const matchingTab: any = this.tabs.filter((tab: any) => tab != null && Object.keys(tab).length > 0).find((tab: any) => tab.name.toLowerCase().replace(/ /g, '-') === path);
 			console.log(matchingTab)
 			if (matchingTab)
 				this.currentTab = matchingTab.name;
@@ -334,7 +335,8 @@ export default {
 		window.addEventListener('popstate', (event) => {
 			const path = window.location.pathname.slice(1);
 			if (path) {
-				const matchingTab: any = this.tabs.find((tab: any) => tab.name.toLowerCase().replace(/ /g, '-') === path);
+				console.log('tabs', this.tabs)
+				const matchingTab: any = this.tabs.filter((tab: any) => tab != null && Object.keys(tab).length > 0).find((tab: any) => tab.name.toLowerCase().replace(/ /g, '-') === path);
 				console.log(matchingTab)
 				if (matchingTab)
 					this.currentTab = matchingTab.name;
