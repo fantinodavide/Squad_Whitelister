@@ -91,6 +91,16 @@ async function testZipCompatibility(zipPath) {
             return false;
         }
         
+        // Check for dist/index.html
+        const indexHtmlPath = path.join(extractDir, 'dist', 'index.html');
+        if (!fs.existsSync(indexHtmlPath)) {
+            console.error('Error: dist/index.html is missing!');
+            zip.close();
+            return false;
+        } else {
+            console.log('✓ dist/index.html exists');
+        }
+        
         // Clean up
         zip.close();
         fs.rmSync(extractDir, { recursive: true, force: true });
