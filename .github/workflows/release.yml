@@ -19,14 +19,16 @@ jobs:
         
     - name: Install dependencies
       run: npm ci
+      
+    - name: Install 7zip
+      run: sudo apt-get update && sudo apt-get install -y p7zip-full
         
     - name: Build project
       run: npm run build
         
     - name: Create release zip
       run: |
-        cd release
-        zip -r ../release.zip .
+        7z a -tzip release.zip ./release/*
         
     - name: Test zip compatibility
       id: zip-test
