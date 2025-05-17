@@ -1426,12 +1426,11 @@ async function init() {
                         }
                     }
                 ]
-                //dbo.collection("clans").findOne(findFilter, (err, dbResC) => {
                 dbo.collection("clans").aggregate(pipeline).toArray((err, aDbResC) => {
                     console.log("====>", aDbResC)
                     let dbResC = aDbResC[ 0 ];
 
-                    if (err) console.log("error", err)//serverError(res, err);
+                    if (err) console.log("error", err)
                     else if (dbResC != null) {
                         if (dbResC.player_limit == '' || dbResC.player_count < parseInt(dbResC.player_limit) || req.userSession.access_level <= 5) {
                             let insWlPlayer = {
@@ -1448,75 +1447,78 @@ async function init() {
                                 approved: false,
                                 id_list: ObjectID(parm.sel_list_id),
                             }
-                            dbo.collection("lists").findOne({ _id: insWlPlayer.id_list }, (err, dbResList) => {
-                                if (err) serverError(res, err);
-                                else if (req.userSession.access_level < 100 || !dbResList.hidden_managers) {
-                                    dbo.collection("groups").findOne(insWlPlayer.id_group, (err, dbResG) => {
-                                        if (err) console.log("error", err)
-                                        else if (dbResG != null) {
 
-                                            insWlPlayer.approved = !(dbResG.require_appr || dbResC.confirmation_ovrd || dbResList.require_appr) || req.userSession.access_level <= 30;
-                                            //console.log("\n\n\n\nNew Whitelist", insWlPlayer, dbRes);
+                            dbo.collection("players").findOne({ steamid64: parm.steamid64 }, (err, playerData) => {
+                                if (playerData && playerData.eosID) {
+                                    insWlPlayer.eosID = playerData.eosID;
+                                }
+
+                                dbo.collection("lists").findOne({ _id: insWlPlayer.id_list }, (err, dbResList) => {
+                                    if (err) serverError(res, err);
+                                    else if (req.userSession.access_level < 100 || !dbResList.hidden_managers) {
+                                        dbo.collection("groups").findOne(insWlPlayer.id_group, (err, dbResG) => {
+                                            if (err) console.log("error", err)
+                                            else if (dbResG != null) {
+
+                                                insWlPlayer.approved = !(dbResG.require_appr || dbResC.confirmation_ovrd || dbResList.require_appr) || req.userSession.access_level <= 30;
+
+                                                dbo.collection("whitelists").insertOne(insWlPlayer, (err, dbRes) => {
+                                                    if (err) console.log("ERR", err);
+                                                    else {
+                                                        res.send({ status: "inserted_new_player", player: { ...insWlPlayer, inserted_by: [ { username: req.userSession.username } ] }, ...dbRes })
+                                                        if (subcomponent_status.discord_bot) {
+                                                            let row, components = [];
+                                                            if (!insWlPlayer.approved) {
+                                                                row = new Discord.ActionRowBuilder()
+                                                                    .addComponents(
+                                                                        new Discord.ButtonBuilder()
+                                                                            .setCustomId('approval:approve:' + insWlPlayer._id)
+                                                                            .setLabel('Approve')
+                                                                            .setStyle(Discord.ButtonStyle.Success),
+                                                                        new Discord.ButtonBuilder()
+                                                                            .setCustomId('approval:reject:' + insWlPlayer._id)
+                                                                            .setLabel('Reject')
+                                                                            .setStyle(Discord.ButtonStyle.Danger),
+                                                                    )
+                                                                components.push(row);
+                                                            } else row = {};
 
 
-                                            dbo.collection("whitelists").insertOne(insWlPlayer, (err, dbRes) => {
-                                                if (err) console.log("ERR", err);//serverError(res, err);
-                                                else {
-                                                    res.send({ status: "inserted_new_player", player: { ...insWlPlayer, inserted_by: [ { username: req.userSession.username } ] }, ...dbRes })
-                                                    // 982449246999547995
-                                                    if (subcomponent_status.discord_bot) {
-                                                        let row, components = [];
-                                                        if (!insWlPlayer.approved) {
-                                                            row = new Discord.ActionRowBuilder()
-                                                                .addComponents(
-                                                                    new Discord.ButtonBuilder()
-                                                                        .setCustomId('approval:approve:' + insWlPlayer._id)
-                                                                        .setLabel('Approve')
-                                                                        .setStyle(Discord.ButtonStyle.Success),
-                                                                    new Discord.ButtonBuilder()
-                                                                        .setCustomId('approval:reject:' + insWlPlayer._id)
-                                                                        .setLabel('Reject')
-                                                                        .setStyle(Discord.ButtonStyle.Danger),
-                                                                )
-                                                            components.push(row);
-                                                        } else row = {};
+                                                            const embeds = [
+                                                                new Discord.EmbedBuilder()
+                                                                    .setColor(config.app_personalization.accent_color)
+                                                                    .setTitle('Whitelist Update')
+                                                                    .addFields(
+                                                                        { name: 'Username', value: insWlPlayer.username, inline: true },
+                                                                        { name: 'SteamID', value: Discord.hyperlink(insWlPlayer.steamid64, "https://steamcommunity.com/profiles/" + insWlPlayer.steamid64), inline: true },
+                                                                        { name: 'Clan', value: aDbResC[ 0 ].full_name },
+                                                                        { name: 'Group', value: dbResG.group_name, inline: true },
+                                                                    )
+                                                            ]
+                                                            if (insWlPlayer.expiration) {
+                                                                embeds[ 0 ].addFields({ name: 'Expiration', value: Discord.time(insWlPlayer.expiration, 'R'), inline: true })
+                                                            }
+                                                            embeds[ 0 ].addFields(
+                                                                { name: 'Manager', value: req.userSession.username },
+                                                                { name: 'List', value: dbResList.title },
+                                                                { name: 'Approval', value: insWlPlayer.approved ? `:white_check_mark: Approved` : ":hourglass: Pending", inline: true },
+                                                            )
+                                                            discordClient.channels.cache.get(config.discord_bot.whitelist_updates_channel_id)?.send({ embeds: embeds, components: components })
 
-
-                                                        const embeds = [
-                                                            new Discord.EmbedBuilder()
-                                                                .setColor(config.app_personalization.accent_color)
-                                                                .setTitle('Whitelist Update')
-                                                                // .setDescription(formatEmbed("Manager", ) + formatEmbed("List", dbResList.title)),
-                                                                .addFields(
-                                                                    { name: 'Username', value: insWlPlayer.username, inline: true },
-                                                                    { name: 'SteamID', value: Discord.hyperlink(insWlPlayer.steamid64, "https://steamcommunity.com/profiles/" + insWlPlayer.steamid64), inline: true },
-                                                                    { name: 'Clan', value: aDbResC[ 0 ].full_name },
-                                                                    { name: 'Group', value: dbResG.group_name, inline: true },
-                                                                )
-                                                        ]
-                                                        if (insWlPlayer.expiration) {
-                                                            embeds[ 0 ].addFields({ name: 'Expiration', value: Discord.time(insWlPlayer.expiration, 'R'), inline: true })
-                                                        }
-                                                        embeds[ 0 ].addFields(
-                                                            { name: 'Manager', value: req.userSession.username },
-                                                            { name: 'List', value: dbResList.title },
-                                                            { name: 'Approval', value: insWlPlayer.approved ? `:white_check_mark: Approved` : ":hourglass: Pending", inline: true },
-                                                        )
-                                                        discordClient.channels.cache.get(config.discord_bot.whitelist_updates_channel_id)?.send({ embeds: embeds, components: components })
-
-                                                        function formatEmbed(title, value) {
-                                                            return Discord.bold(title) + "\n" + Discord.inlineCode(value) + "\n"
+                                                            function formatEmbed(title, value) {
+                                                                return Discord.bold(title) + "\n" + Discord.inlineCode(value) + "\n"
+                                                            }
                                                         }
                                                     }
-                                                }
-                                            })
-                                        } else {
-                                            res.send({ status: "not_inserted", reason: "could find corresponding id" });
-                                        }
-                                    })
-                                } else {
-                                    res.sendStatus(402);
-                                }
+                                                })
+                                            } else {
+                                                res.send({ status: "not_inserted", reason: "could find corresponding id" });
+                                            }
+                                        })
+                                    } else {
+                                        res.sendStatus(402);
+                                    }
+                                })
                             })
                         } else {
                             res.send({ status: "not_inserted", reason: "Player limit reached" });
@@ -1527,6 +1529,7 @@ async function init() {
                 })
             })
         })
+        
         app.post('/api/whitelist/write/removePlayer', (req, res, next) => {
             const parm = req.body;
             mongoConn((dbo) => {
