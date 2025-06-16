@@ -2966,7 +2966,7 @@ async function init() {
 
                             if (!playerData?.discord_user_id) {
                                 try {
-                                    const response = await axios.get(`https://mysquadstats.com/api/playerLink?steamID=${data.player.steamID}`);
+                                    const response = await axios.get(`https://api.mysquadstats.com/playerLink?steamID=${data.player.steamID}`);
                                     const linkData = response.data.data;
 
                                     if (linkData?.discordID) {
