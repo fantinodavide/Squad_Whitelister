@@ -1052,43 +1052,300 @@ async function init() {
             res.send(subcomponent_status[ req.params.subComp ])
         })
         app.use('/api/config*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
+        const CONFIG_RULES = {
+            // Fields that cannot be modified via API
+            ignoreFields: [
+                'database',
+                'web_server.bind_ip',
+                'web_server.http_port',
+                'web_server.https_port',
+                'web_server.http_server_disabled',
+                'web_server.https_server_disabled',
+                /web_server\.[^\.]*(http)[^\.]*/  // Matches any http-related webserver fields
+            ],
+
+            // Fields that require validation before saving
+            validationRules: {
+                'web_server.session_duration_hours': {
+                    validate: (value) => {
+                        return typeof value === 'number' && value > 0 && value <= 168;
+                    },
+                    errorMessage: 'Invalid session duration hours value. (0 < value <= 168)'
+                },
+                'discord_bot.token': {
+                    validate: (value) => {
+                        // Discord token format validation
+                        return typeof value === 'string' && value.length > 50 && value != '******';
+                    },
+                    errorMessage: 'Invalid Discord bot token format'
+                },
+                'squadjs.*.websocket.token': {  // Wildcard for array elements
+                    validate: (value) => {
+                        return typeof value === 'string' && value.length > 4 && value != '******';
+                    },
+                    errorMessage: 'Invalid SquadJS token format'
+                }
+            }
+        };
+
+        function getNestedValue(obj, path) {
+            return path.split('.').reduce((current, key) => current?.[ key ], obj);
+        }
+
+        function setNestedValue(obj, path, value) {
+            const keys = path.split('.');
+            const lastKey = keys.pop();
+            const target = keys.reduce((current, key) => {
+                if (!current[ key ]) current[ key ] = {};
+                return current[ key ];
+            }, obj);
+            target[ lastKey ] = value;
+        }
+
+        function deleteNestedValue(obj, path) {
+            const keys = path.split('.');
+            const lastKey = keys.pop();
+            const target = keys.reduce((current, key) => current?.[ key ], obj);
+            if (target) delete target[ lastKey ];
+        }
+
+        function matchesIgnorePattern(path, ignoreFields) {
+            return ignoreFields.some(pattern => {
+                if (pattern instanceof RegExp) {
+                    return pattern.test(path);
+                }
+                return pattern === path;
+            });
+        }
+
+        function getAllPaths(obj, prefix = '') {
+            let paths = [];
+            for (let key in obj) {
+                const newPath = prefix ? `${prefix}.${key}` : key;
+                if (obj[ key ] && typeof obj[ key ] === 'object' && !Array.isArray(obj[ key ])) {
+                    paths.push(newPath);
+                    paths = paths.concat(getAllPaths(obj[ key ], newPath));
+                } else if (Array.isArray(obj[ key ])) {
+                    paths.push(newPath);
+                    obj[ key ].forEach((item, index) => {
+                        if (item && typeof item === 'object') {
+                            paths = paths.concat(getAllPaths(item, `${newPath}.${index}`));
+                        }
+                    });
+                } else {
+                    paths.push(newPath);
+                }
+            }
+            return paths;
+        }
+
+        function validateField(path, value, validationRules) {
+            for (let [ pattern, rule ] of Object.entries(validationRules)) {
+                // Handle wildcard patterns like 'squadjs.*.token'
+                const regex = new RegExp('^' + pattern.replace(/\*/g, '[^.]+') + '$');
+                if (regex.test(path)) {
+                    if (!rule.validate(value)) {
+                        return { valid: false, error: rule.errorMessage };
+                    }
+                }
+            }
+            return { valid: true };
+        }
+
         app.get('/api/config/read/getFull', async (req, res, next) => {
-            return res.send({});
-            let cpyConf = { ...config };
-            if (args.demo && req.userSession.access_level > 0) cpyConf.discord_bot.token = "hidden";
-            config.app_personalization.favicon = config.app_personalization.favicon || config.app_personalization.logo_url;
-            if (process.env.HIDDEN_CONFIG_TABS)
+            let cpyConf = JSON.parse(JSON.stringify(config)); // Deep copy
+            const placeholder = '******';
+
+            // Remove ignored fields
+            const allPaths = getAllPaths(cpyConf);
+            for (let path of allPaths) {
+                if (matchesIgnorePattern(path, CONFIG_RULES.ignoreFields)) {
+                    deleteNestedValue(cpyConf, path);
+                }
+            }
+
+            // Mask sensitive fields
+            cpyConf.discord_bot.token = placeholder;
+            cpyConf.squadjs?.forEach((e, i) => {
+                if (cpyConf.squadjs[ i ].websocket.token) {
+                    cpyConf.squadjs[ i ].websocket.token = placeholder;
+                }
+            });
+
+            // Handle hidden tabs from environment
+            if (process.env.HIDDEN_CONFIG_TABS) {
                 for (let t of process.env.HIDDEN_CONFIG_TABS.split(';')) {
                     try {
-                        delete cpyConf[ t ]
+                        delete cpyConf[ t ];
                     } catch (error) { }
                 }
+            }
+
+            // Set favicon fallback
+            if (!cpyConf.app_personalization?.favicon && cpyConf.app_personalization?.logo_url) {
+                cpyConf.app_personalization.favicon = cpyConf.app_personalization.logo_url;
+            }
+
             res.send(cpyConf);
-        })
+        });
+
         app.use('/api/config/write', (req, res, next) => { if (!args.demo || req.userSession.access_level == 0) next(); else res.sendStatus(403) })
         app.post('/api/config/write/update', async (req, res, next) => {
             const parm = req.body;
             let resData = {};
-            if (!process.env.HIDDEN_CONFIG_TABS || !process.env.HIDDEN_CONFIG_TABS.split(';').includes(parm.category)) {
-                config[ parm.category ] = parm.config;
+
+            if (process.env.HIDDEN_CONFIG_TABS?.split(';').includes(parm.category)) {
+                resData.status = "config_rejected";
+                resData.error = "Category is hidden";
+                return res.send(resData);
+            }
+
+            const incomingPaths = getAllPaths(parm.config, parm.category);
+            console.log(incomingPaths);
+
+            const blockedPaths = [];
+            const invalidPaths = [];
+
+            for (let path of incomingPaths) {
+                if (matchesIgnorePattern(path, CONFIG_RULES.ignoreFields)) {
+                    blockedPaths.push(path);
+                    continue;
+                }
+
+                const value = getNestedValue({ [ parm.category ]: parm.config }, path);
+                const validation = validateField(path, value, CONFIG_RULES.validationRules);
+
+                if (!validation.valid) {
+                    invalidPaths.push({ path, error: validation.error });
+                }
+            }
+
+            const sanitizedConfig = copyAllowedPaths(
+                parm.config,
+                parm.category,
+                [ ...blockedPaths, ...invalidPaths.map(i => i.path) ]
+            );
+
+            const ignoredFields = [];
+            const validationWarnings = [];
+
+            for (let path of blockedPaths) {
+                ignoredFields.push(path);
+            }
+
+            for (let invalid of invalidPaths) {
+                ignoredFields.push(invalid.path);
+                validationWarnings.push(`${invalid.path}: ${invalid.error} (field ignored)`);
+            }
+
+            const hasChanges = JSON.stringify(sanitizedConfig) !== '{}' && JSON.stringify(sanitizedConfig) !== '[]';
+            if (!hasChanges) {
+                resData.status = "config_rejected";
+                resData.error = "All fields were invalid or blocked";
+                resData.ignoredFields = ignoredFields;
+                resData.warnings = validationWarnings;
+                return res.send(resData);
+            }
+
+            try {
+                config[ parm.category ] = deepMerge(config[ parm.category ] || {}, sanitizedConfig);
+
                 fs.writeFileSync(configPath + ".bak", fs.readFileSync(configPath));
                 fs.writeFileSync(configPath, JSON.stringify(config, null, "\t"));
+
                 resData.status = "config_updated";
-                // resData.action = 'reload';
-            } else {
-                resData.status = "config_rejected";
+                resData.action = 'reload';
+
+                if (ignoredFields.length > 0) {
+                    resData.ignoredFields = ignoredFields;
+                    resData.warnings = validationWarnings.length > 0 ? validationWarnings :
+                        ignoredFields.map(f => `${f}: Protected field (ignored)`);
+                }
+
+                res.send(resData);
+
+                if (![ 'custom_permissions', 'app_personalization' ].includes(parm.category)) {
+                    restartProcess(0, 0, args);
+                }
+            } catch (error) {
+                resData.status = "error";
+                resData.error = error.message;
+                res.send(resData);
             }
-            resData.action = 'reload';
-            // if ([ 'app_personalization', 'discord_bot' ].includes(parm.category)) resData.action = 'reload';
+        });
 
-            res.send(resData);
+        function copyAllowedPaths(obj, prefix, blockedPaths) {
+            if (Array.isArray(obj)) {
+                return obj.map((item, index) => {
+                    if (item && typeof item === 'object') {
+                        return copyAllowedPaths(item, `${prefix}.${index}`, blockedPaths);
+                    }
+                    return item;
+                });
+            }
 
-            // if (true || [ 'web_server', 'database', 'discord_bot', 'squadjs' ].includes(parm.category)) restartProcess(0, 0);
-            if ([ 'custom_permissions', 'app_personalization' ].includes(parm.category))
-                return;
+            if (obj && typeof obj === 'object') {
+                const result = {};
+                for (let key in obj) {
+                    const newPath = prefix ? `${prefix}.${key}` : key;
 
-            restartProcess(0, 0, args);
-        })
+                    const isBlocked = blockedPaths.includes(newPath);
+
+                    if (isBlocked) {
+                        continue;
+                    }
+
+                    if (obj[ key ] && typeof obj[ key ] === 'object') {
+                        result[ key ] = copyAllowedPaths(obj[ key ], newPath, blockedPaths);
+                    } else {
+                        result[ key ] = obj[ key ];
+                    }
+                }
+                return result;
+            }
+
+            return obj;
+        }
+
+        function deepMerge(target, source) {
+            if (Array.isArray(source) && Array.isArray(target)) {
+                return source.map((sourceItem, index) => {
+                    const targetItem = target[ index ];
+
+                    if (sourceItem && typeof sourceItem === 'object' && !Array.isArray(sourceItem) &&
+                        targetItem && typeof targetItem === 'object' && !Array.isArray(targetItem)) {
+                        return deepMerge(targetItem, sourceItem);
+                    }
+
+                    return sourceItem;
+                });
+            }
+
+            if (Array.isArray(source)) {
+                return source;
+            }
+
+            if (!source || typeof source !== 'object') {
+                return source;
+            }
+
+            if (!target || typeof target !== 'object' || Array.isArray(target)) {
+                return source;
+            }
+
+            const result = { ...target };
+
+            for (let key in source) {
+                if (source[ key ] && typeof source[ key ] === 'object' && !Array.isArray(source[ key ])) {
+                    result[ key ] = deepMerge(result[ key ] || {}, source[ key ]);
+                } else {
+                    result[ key ] = source[ key ];
+                }
+            }
+
+            return result;
+        }
+
         app.use('/api/dbconfig/read/getFull*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
         app.get('/api/dbconfig/read/getFull', async (req, res, next) => {
             const parm = req.body;
@@ -1538,7 +1795,7 @@ async function init() {
                 })
             })
         })
-        
+
         app.post('/api/whitelist/write/removePlayer', (req, res, next) => {
             const parm = req.body;
             mongoConn((dbo) => {
@@ -1759,8 +2016,28 @@ async function init() {
             const parm = req.query;
             if (subcomponent_status.discord_bot) {
                 let ret = [];
-                res.send((await discordClient.guilds.fetch(config.discord_bot.server_id)).channels.cache.sort((a, b) => a.rawPosition - b.rawPosition).filter((e) => e.type != 4))
-                // for(let c of (await discordClient.guilds.fetch(config.discord_bot.server_id)).channels.cache) ret.push(discordClient.channels.fetch(c))
+                res.send(
+                    (await discordClient.guilds.fetch(config.discord_bot.server_id))
+                        .channels.cache
+                        .filter((e) => e.type != 4) // Filter out category channels
+                        .sort((a, b) => {
+                            const aParent = a.parent;
+                            const bParent = b.parent;
+
+                            if (!aParent && bParent) return -1;
+                            if (aParent && !bParent) return 1;
+
+                            if (!aParent && !bParent) {
+                                return a.rawPosition - b.rawPosition;
+                            }
+
+                            if (aParent.id !== bParent.id) {
+                                return aParent.rawPosition - bParent.rawPosition;
+                            }
+
+                            return a.rawPosition - b.rawPosition;
+                        })
+                );
             } else {
                 res.sendStatus(404)
             }
