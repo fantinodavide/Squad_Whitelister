@@ -1,8 +1,0 @@
-#!/bin/sh
-if git diff --cached --name-only | grep -q "package.json"; then
-  npm run build
-  npm run release
-  git add release
-else
-  echo "Skipping pre-commit because package.json is not staged."
-fi
