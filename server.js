@@ -919,7 +919,10 @@ async function init() {
         })
 
         app.get('/api/checkSession', (req, res, next) => {
-            if (req.userSession) res.send({ status: "session_valid", userSession: req.userSession })
+            const sessionReturn = { ...req.userSession };
+            delete sessionReturn.password;
+            delete sessionReturn.token;
+            if (req.userSession) res.send({ status: "session_valid", userSession: sessionReturn })
             else res.send({ status: "login_required" }).status(401);
         })
 
@@ -962,6 +965,11 @@ async function init() {
                     {
                         $sort: {
                             username: 1
+                        }
+                    },
+                    {
+                        $project: {
+                            password: 0
                         }
                     }
                 ]
@@ -1913,7 +1921,7 @@ async function init() {
                 inserted_by: req.userSession.id_user
             }
 
-            if(data.access_level < req.userSession.access_level)
+            if (data.access_level < req.userSession.access_level)
                 res.status(403).send({ message: "You are not authorized to create an API key with access_level lower than yours." })
 
             const nameCheck = await dbo.collection("keys").findOne({ name: data.name });
