@@ -6,28 +6,20 @@ const irequire = async module => {
     try {
         require.resolve(module)
     } catch (e) {
-        if (!installingDependencies) {
-            installingDependencies = true
-            console.log(`INSTALLING DEPENDENCIES...\nTHIS PROCESS MAY TAKE SOME TIME. PLEASE WAIT`)
-        }
-        // cp.execSync(`npm install ${module}`)
-        cp.execSync(`npm install`)
-        await setImmediate(() => { })
-        // console.log(`"${module}" has been installed`)
-        console.log(`DEPENDECIES INSTALLED`)
+        console.error(`Required module "${module}" is missing. Please run 'npm install' and restart the application.`)
+        throw e;
     }
     try {
         return require(module)
     } catch (e) {
-        console.log(`Could not include "${module}". Restart the script`)
+        console.error(`Could not include "${module}". Restart the script`)
         restartProcess(0, 1)
-        //process.exit(1)
     }
 }
 
 installUpdateDependencies = async () => {
-    console.log(`INSTALLING/UPDATING DEPENDENCIES...\nTHIS PROCESS MAY TAKE SOME TIME. PLEASE WAIT`)
-    cp.execSync(`npm install`)
+    console.log(`INSTALLING/UPDATING DEPENDENCIES... this action is disabled in runtime for safety.`)
+    console.log(`Please run 'npm install' manually on the host or use your deployment pipeline.`)
 }
 
 var subcomponent_status = {
@@ -147,7 +139,6 @@ async function init() {
         initConfigFile(() => {
             extendLogging()
             console.log("ARGS:", args)
-            console.log("ENV:", process.env)
 
             fs.watchFile(configPath, (curr, prev) => {
                 console.log("Reloading configuration");
@@ -1867,7 +1858,10 @@ async function init() {
             } while (error);
         })
 
-        app.use('/api/keys/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
+        app.use('/api/keys/*', (req, res, next) => {
+            if (req.userSession && typeof req.userSession.access_level === 'number' && req.userSession.access_level <= 5) return next();
+            res.sendStatus(401);
+        })
         app.use('/api/keys/checkPerm', (req, res, next) => { res.send(true) })
         app.get('/api/keys/:id?', async (req, res, next) => {
             const pipeline = [
@@ -1905,22 +1899,39 @@ async function init() {
         })
         app.post('/api/keys/', async (req, res, next) => {
             const dbo = await mongoConn();
+            const allowedLevels = [0, 5, 30, 100];
+            const requestedLevel = Number(req.body.access_level) || 100;
+
+            // Validate requester
+            if (!req.userSession || typeof req.userSession.access_level !== 'number') return res.sendStatus(401);
+
+            // Prevent creating keys with higher privileges than the requester
+            if (requestedLevel < req.userSession.access_level) {
+                return res.status(403).send({ message: 'Cannot create API key with higher privileges than your own.' });
+            }
+
+            // Normalize access level to one of allowed values
+            const access_level = allowedLevels.includes(requestedLevel) ? requestedLevel : 100;
+
             const data = {
-                name: req.body.name,
+                name: String(req.body.name || '').trim(),
                 token: randomString(128),
-                access_level: +req.body.access_level,
+                access_level: access_level,
                 inserted_by: req.userSession.id_user
             }
+
+            if (!data.name) return res.status(400).send({ message: 'API key name is required', field: 'name' });
+
             const nameCheck = await dbo.collection("keys").findOne({ name: data.name });
             if (nameCheck) {
-                res.status(401).send({ message: "An API key with the same name already exists!", field: "name" })
-                return;
+                return res.status(409).send({ message: 'An API key with the same name already exists!', field: 'name' });
             }
-            const tokenCheck = await dbo.collection("keys").findOne({ name: data.name });
+
+            const tokenCheck = await dbo.collection("keys").findOne({ token: data.token });
             if (tokenCheck) {
-                res.status(401).send({ message: "An API key with the same name token already exists, please try again!" })
-                return;
+                data.token = randomString(128);
             }
+
             dbo.collection("keys").insertOne(data, async (err, dbRes) => {
                 if (err) {
                     res.sendStatus(500);
@@ -1933,12 +1944,16 @@ async function init() {
         })
         app.delete('/api/keys/:id', async (req, res, next) => {
             const dbo = await mongoConn();
+            // Only allow deletion by admins or the user who created the key
+            const key = await dbo.collection('keys').findOne({ _id: ObjectID(req.params.id) });
+            if (!key) return res.sendStatus(404);
+            if (!(req.userSession && (req.userSession.access_level <= 5 || key.inserted_by && key.inserted_by.toString() === req.userSession.id_user.toString()))) {
+                return res.sendStatus(403);
+            }
             const r = await dbo.collection("keys").deleteOne({ _id: ObjectID(req.params.id) });
             res.send(r);
             return;
         })
-
-        app.use('/api/keys/*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
         app.get('/api/docs', async (req, res, next) => {
             res.send(apiDocsJson)
         })
