@@ -19,7 +19,8 @@
 				"ChakrounAnas.turbo-console-log",
 				"Vue.volar",
 				"ms-azuretools.vscode-docker",
-				"Wscats.vue"
+				"Wscats.vue",
+				"Anthropic.claude-code"
 			],
 			"settings": {
 				"mongodb.connections": [
