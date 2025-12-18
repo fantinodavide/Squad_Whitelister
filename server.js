@@ -194,11 +194,56 @@ async function init() {
             }, true)
         }
     }
+
+    async function clearAllApiKeys() {
+        try {
+            const dbo = await mongoConn();
+            const result = await dbo.collection('keys').deleteMany({});
+            console.log(`   > Cleared ${result.deletedCount} API key(s)`);
+        } catch (error) {
+            console.error('   > Error clearing API keys:', error);
+        }
+    }
+
+    async function checkAndRunFirstStartScripts() {
+        try {
+            const dbo = await mongoConn();
+            const metadata = await dbo.collection('app_metadata').findOne({ key: 'app_version' });
+            const storedVersion = metadata ? metadata.value : null;
+
+            if (storedVersion !== versionN) {
+                console.log(" > First start after update detected");
+                console.log(`   Previous version: ${storedVersion || 'none (first install)'}`);
+                console.log(`   Current version: ${versionN}`);
+
+                switch(versionN){
+                    case '1.6.7':
+                        await clearAllApiKeys(dbo);
+                        break;
+                }
+
+                await dbo.collection('app_metadata').updateOne(
+                    { key: 'app_version' },
+                    { $set: { value: versionN, updated_at: new Date() } },
+                    { upsert: true }
+                );
+
+                console.log(' > First-start scripts completed');
+            } else {
+                console.log(` > Normal start (version ${versionN})`);
+            }
+        } catch (error) {
+            console.error(' > Error checking first start status:', error);
+        }
+    }
+
     function main() {
         checkUpdates(config.other.automatic_updates, async () => {
             console.log(" > Starting up");
 
             setInterval(() => { checkUpdates(config.other.automatic_updates) }, config.other.update_check_interval_seconds * 1000);
+
+            await checkAndRunFirstStartScripts();
 
             await generateApiDocs();
 
