@@ -135,6 +135,11 @@ pm2 logs server
 check the console output or application log files
 ```
 
+## Vulnerability Hunters
+- @CrazeTheDragon
+- @vohk
+-
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
