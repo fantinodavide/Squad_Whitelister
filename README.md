@@ -138,7 +138,9 @@ check the console output or application log files
 ## Vulnerability Hunters
 - @CrazeTheDragon
 - @vohk
--
+- @lbzepoqo
+- Moonlight
+- Meckle
 
 ## 🤝 Contributing
 
