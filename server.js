@@ -77,6 +77,7 @@ async function init() {
     const Discord = await irequire("discord.js");
     const { io } = await irequire("socket.io-client");
     const dns = await irequire('dns')
+    const { rateLimit } = await irequire('express-rate-limit')
     const util = require('util');
     const lookup = util.promisify(dns.lookup);
 
@@ -141,6 +142,42 @@ async function init() {
     const wlOutputCache = new Map();
     const wlOutputCacheLastUpdates = new Map();
 
+    const globalLimiter = rateLimit({
+        windowMs: 60_000,
+        limit: 1000,
+        standardHeaders: 'draft-8',
+        legacyHeaders: false,
+        ipv6Subnet: 56,
+    })
+    const anonymousLimiter = rateLimit({
+        windowMs: 60_000,
+        limit: 50,
+        standardHeaders: 'draft-8',
+        legacyHeaders: false,
+        ipv6Subnet: 56,
+    })
+    const authenticatedLimiter = rateLimit({
+        windowMs: 60_000,
+        limit: 500,
+        standardHeaders: 'draft-8',
+        legacyHeaders: false,
+        ipv6Subnet: 56,
+    })
+    const signupLimiter = rateLimit({
+        windowMs: 60 * 60_000,
+        limit: 3,
+        standardHeaders: 'draft-8',
+        legacyHeaders: false,
+        ipv6Subnet: 56,
+    })
+    const loginLimiter = rateLimit({
+        windowMs: 30_000,
+        limit: 6,
+        standardHeaders: 'draft-8',
+        legacyHeaders: false,
+        ipv6Subnet: 56,
+    })
+
     start();
 
     function start() {
@@ -204,6 +241,15 @@ async function init() {
             console.error('   > Error clearing API keys:', error);
         }
     }
+    async function invalidateAllSessions() {
+        try {
+            const dbo = await mongoConn();
+            const result = await dbo.collection('sessions').deleteMany({});
+            console.log(`   > Cleared ${result.deletedCount} Session(s)`);
+        } catch (error) {
+            console.error('   > Error clearing Sessions:', error);
+        }
+    }
 
     async function checkAndRunFirstStartScripts() {
         try {
@@ -216,9 +262,10 @@ async function init() {
                 console.log(`   Previous version: ${storedVersion || 'none (first install)'}`);
                 console.log(`   Current version: ${versionN}`);
 
-                switch(versionN){
-                    case '1.6.7':
+                switch (versionN) {
+                    case '1.6.8':
                         await clearAllApiKeys(dbo);
+                        await invalidateAllSessions(dbo);
                         break;
                 }
 
@@ -353,7 +400,7 @@ async function init() {
             }
         }
 
-
+        app.use(globalLimiter)
         app.use(nocache());
         app.set('etag', false)
         app.use("/", bodyParser.json());
@@ -361,9 +408,16 @@ async function init() {
         app.use(cookieParser());
         app.use(forceHTTPS);
         app.use('/', getSession);
+        app.use('/', (req, res, next) => {
+            if (req.userSession)
+                return authenticatedLimiter(req, res, next);
+            else
+                return anonymousLimiter(req, res, next);
+        })
         app.use(detectRequestUrl);
         app.use(express.static(__dirname + '/dist'));
 
+        app.use('/api/changepassword', loginLimiter);
         app.post('/api/changepassword', (req, res, next) => {
             const parm = req.body;
 
@@ -379,6 +433,8 @@ async function init() {
                 })
             })
         })
+
+        app.use('/api/login', loginLimiter);
         app.post('/api/login', (req, res, next) => {
             const parm = req.body;
 
@@ -431,6 +487,7 @@ async function init() {
                 })
             })
         })
+        app.use('/api/signup', signupLimiter);
         app.post('/api/signup', (req, res, next) => {
             const parm = req.body;
 

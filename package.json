@@ -1,6 +1,6 @@
 {
   "name": "squad-whitelister",
-  "version": "1.6.7",
+  "version": "1.6.8",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -30,6 +30,7 @@
     "dotenv": "^16.0.3",
     "express": "^4.17.3",
     "express-force-ssl": "^0.3.2",
+    "express-rate-limit": "^8.2.1",
     "find-free-port": "^2.0.0",
     "fs": "^0.0.1-security",
     "fs-extra": "^10.1.0",
