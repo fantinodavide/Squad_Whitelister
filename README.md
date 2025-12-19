@@ -136,9 +136,9 @@ check the console output or application log files
 ```
 
 ## Vulnerability Hunters
-- @CrazeTheDragon
-- @vohk
-- @lbzepoqo
+- [CrazeTheDragon](https://github.com/CrazeTheDragon)
+- [vohk](https://github.com/vohk)
+- [lbzepoqo](https://github.com/lbzepoqo)
 - Moonlight
 - Meckle
 
