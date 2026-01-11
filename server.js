@@ -1868,7 +1868,7 @@ async function init() {
                                                                 { name: 'List', value: dbResList.title },
                                                                 { name: 'Approval', value: insWlPlayer.approved ? `:white_check_mark: Approved` : ":hourglass: Pending", inline: true },
                                                             )
-                                                            discordClient.channels.cache.get(config.discord_bot.whitelist_updates_channel_id)?.send({ embeds: embeds, components: components })
+                                                            sendDiscordMessage(discordClient.channels.cache.get(config.discord_bot.whitelist_updates_channel_id), { embeds: embeds, components: components }, 'whitelist updates channel')
 
                                                             function formatEmbed(title, value) {
                                                                 return Discord.bold(title) + "\n" + Discord.inlineCode(value) + "\n"
@@ -2593,6 +2593,30 @@ async function init() {
         }
     }
 
+    async function sendDiscordMessage(target, message, context = 'channel') {
+        try {
+            if (!target) {
+                console.error(`[Discord] Cannot send message: ${context} not found`);
+                return null;
+            }
+            return await target.send(message);
+        } catch (error) {
+            const errorMessages = {
+                50001: `Missing access to ${context}`,
+                50013: `Missing permissions to send message in ${context}`,
+                50007: `Cannot send message to this user (DMs disabled or bot blocked)`,
+                10003: `Unknown ${context}`,
+                10004: `Unknown guild`,
+                10008: `Unknown message`,
+                50035: `Invalid message format`,
+                40005: `Request entity too large`,
+            };
+            const friendlyMessage = errorMessages[error.code] || `Failed to send message (${error.message})`;
+            console.error(`[Discord] ${friendlyMessage}`);
+            return null;
+        }
+    }
+
     function discordBot(discCallback = null) {
         console.log("Discord BOT")
         if (config.discord_bot && config.discord_bot.token != "") {
@@ -2770,7 +2794,7 @@ async function init() {
                                                     reply = false;
                                                     interaction.reply({ content: Discord.userMention(sender_id), embeds: embeds });
                                                 } else {
-                                                    client.channels.cache.get(interaction.channelId).send({ embeds: embeds });
+                                                    sendDiscordMessage(client.channels.cache.get(interaction.channelId), { embeds: embeds }, 'interaction channel');
                                                 }
                                                 embeds = [];
                                             }
@@ -3311,7 +3335,7 @@ async function init() {
                                                                     if (err) serverError(null, err);
                                                                     else {
                                                                         socket.emit("rcon.warn", dt.steamID, "Linked Discord profile: " + discordUsername, (d) => { });
-                                                                        discordUser.send({
+                                                                        sendDiscordMessage(discordUser, {
                                                                             embeds: [
                                                                                 new Discord.EmbedBuilder()
                                                                                     .setColor(config.app_personalization.accent_color)
@@ -3321,7 +3345,7 @@ async function init() {
                                                                                         { name: "Steam Username", value: dt.name, inline: true },
                                                                                         { name: 'SteamID', value: Discord.hyperlink(dt.steamID, "https://steamcommunity.com/profiles/" + dt.steamID), inline: true })
                                                                             ]
-                                                                        });
+                                                                        }, 'user DM');
                                                                     }
                                                                 });
                                                             });
@@ -3395,7 +3419,7 @@ async function init() {
                                                 socket.emit("rcon.warn", data.player.steamID, `Linked Discord profile ${discordUsername || ''}`.trim(), (d) => { });
 
                                             if (discordUser)
-                                                discordUser.send({
+                                                sendDiscordMessage(discordUser, {
                                                     embeds: [
                                                         new Discord.EmbedBuilder()
                                                             .setColor(config.app_personalization.accent_color)
@@ -3406,7 +3430,7 @@ async function init() {
                                                                 { name: 'SteamID', value: Discord.hyperlink(data.player.steamID, "https://steamcommunity.com/profiles/" + data.player.steamID), inline: true }
                                                             )
                                                     ]
-                                                });
+                                                }, 'user DM');
                                         } catch (discordErr) {
                                             console.error("Error linking Discord profile using MSS API data:", discordErr);
                                         }
@@ -3655,7 +3679,7 @@ async function init() {
                                             } ],
                                             ephemeral: false
                                         }
-                                        discordClient.channels.cache.get(stConf.discord_seeding_score_channel)?.send(messageContent)
+                                        sendDiscordMessage(discordClient.channels.cache.get(stConf.discord_seeding_score_channel), messageContent, 'seeding score channel')
 
                                     } else if (percentageCompleted == 100) {
                                         const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
@@ -3686,7 +3710,7 @@ async function init() {
                                                     })
                                                     .setTimestamp(new Date())
                                             ]
-                                            discordClient.channels.cache.get(stConf.discord_seeding_reward_channel)?.send({ embeds: embeds })
+                                            sendDiscordMessage(discordClient.channels.cache.get(stConf.discord_seeding_reward_channel), { embeds: embeds }, 'seeding reward channel')
                                         }
                                     }
                                 }
