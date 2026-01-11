@@ -318,52 +318,49 @@ async function init() {
                     const envHttpsPort = process.env[ 'HTTPS_PORT' ];
 
                     const httpServerDisabled = process.env.HTTP_SERVER_DISABLED === 'true' || process.env.HTTP_SERVER_DISABLED === '1' || config.web_server.http_server_disabled
-                    if (httpServerDisabled)
-                        console.log('HTTP server disabled')
                     const httpsServerDisabled = process.env.HTTPS_SERVER_DISABLED === 'true' || process.env.HTTPS_SERVER_DISABLED === '1' || config.web_server.https_server_disabled
-                    if (httpsServerDisabled)
+
+                    var host = config.web_server.bind_ip;
+
+                    if (!httpServerDisabled) {
+                        const httpPort = envServerPort ? parseInt(envServerPort) : (envHttpPort ? parseInt(envHttpPort) : config.web_server.http_port);
+                        const free_http_port = await new Promise(res => get_free_port(httpPort, res));
+                        if (free_http_port) {
+                            server.http = app.listen(free_http_port, config.web_server.bind_ip, function () {
+                                console.log(`HTTP server listening at http://${host}:${free_http_port}`)
+                                server.configs.http.port = free_http_port
+                                logConfPortNotFree(config.web_server.http_port, free_http_port)
+                            })
+                        } else {
+                            console.error("Couldn't start HTTP server");
+                        }
+                    } else
+                        console.log('HTTP server disabled')
+
+                    if (foundKey && foundCert && !httpsServerDisabled) {
+                        const httpsPort = envHttpsPort ? parseInt(envHttpsPort) : config.web_server.https_port;
+                        const free_https_port = await new Promise(res => get_free_port(httpsPort, res));
+                        console.log("Using Certificate:", foundCert, foundKey)
+                        const httpsOptions = {
+                            key: fs.readFileSync(foundKey),
+                            cert: fs.readFileSync(foundCert)
+                        }
+                        server.https = https.createServer(httpsOptions, app);
+                        if (free_https_port) {
+                            app.set('forceSSLOptions', {
+                                httpsPort: free_https_port
+                            });
+                            server.configs.https.port = free_https_port
+                            server.https.listen(free_https_port);
+                            console.log(`HTTPS server listening at https://${host}:${free_https_port}`)
+                            logConfPortNotFree(config.web_server.https_port, free_https_port)
+                        } else {
+                            console.error("Couldn't start HTTPS server");
+                        }
+                    } else
                         console.log('HTTPS server disabled')
 
-                    const httpPort = envServerPort ? parseInt(envServerPort) : (envHttpPort ? parseInt(envHttpPort) : config.web_server.http_port);
-                    const httpsPort = envHttpsPort ? parseInt(envHttpsPort) : config.web_server.https_port;
-                    var host = config.web_server.bind_ip;
-                    get_free_port(httpPort, (free_http_port) => {
-                        get_free_port(httpsPort, (free_https_port) => {
-                            if (!httpServerDisabled) {
-                                if (free_http_port) {
-                                    server.http = app.listen(free_http_port, config.web_server.bind_ip, function () {
-                                        console.log(`HTTP server listening at http://${host}:${free_http_port}`)
-                                        server.configs.http.port = free_http_port
-                                        logConfPortNotFree(config.web_server.http_port, free_http_port)
-                                    })
-                                } else {
-                                    console.error("Couldn't start HTTP server");
-                                }
-                            }
-
-                            if (foundKey && foundCert && !httpsServerDisabled) {
-                                console.log("Using Certificate:", foundCert, foundKey)
-                                const httpsOptions = {
-                                    key: fs.readFileSync(foundKey),
-                                    cert: fs.readFileSync(foundCert)
-                                }
-                                server.https = https.createServer(httpsOptions, app);
-                                if (free_https_port) {
-                                    app.set('forceSSLOptions', {
-                                        httpsPort: free_https_port
-                                    });
-                                    server.configs.https.port = free_https_port
-                                    server.https.listen(free_https_port);
-                                    console.log(`HTTPS server listening at http://${host}:${free_https_port}`)
-                                    logConfPortNotFree(config.web_server.https_port, free_https_port)
-                                } else {
-                                    console.error("Couldn't start HTTPS server");
-                                }
-                            }
-
-                            startupDone();
-                        })
-                    })
+                    startupDone();
 
                     function logConfPortNotFree(confPort, freePort) {
                         if (confPort != freePort) {
