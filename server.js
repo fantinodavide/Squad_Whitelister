@@ -2297,8 +2297,10 @@ async function init() {
                 inserted_by: req.userSession.id_user
             }
 
-            if (data.access_level < req.userSession.access_level)
+            if (data.access_level < req.userSession.access_level){
                 res.status(403).send({ message: "You are not authorized to create an API key with access_level lower than yours." })
+                return;
+            }
 
             const nameCheck = await dbo.collection("keys").findOne({ name: data.name });
             if (nameCheck) {
