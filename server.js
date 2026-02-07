@@ -67,7 +67,6 @@ async function init() {
     const bodyParser = await irequire('body-parser');
     const cookieParser = await irequire('cookie-parser');
     const nocache = await irequire('nocache');
-    const log4js = await irequire('log4js');
     const axios = await irequire('axios');
     const args = (await irequire('minimist'))(process.argv.slice(2));
     const nrc = await irequire('node-run-cmd');
@@ -101,12 +100,72 @@ async function init() {
     if (!fs.existsSync('logs')) fs.mkdirSync('logs');
     if (!fs.existsSync(logFile)) fs.writeFileSync(logFile, "");
 
+    const logBuffer = {
+        buffer: [],
+        bufferSize: 0,
+        debounceMs: 3000,
+        timeout: null,
+        disabled: false,
 
-    log4js.configure({
-        appenders: { App: { type: "file", filename: logFile } },
-        categories: { default: { appenders: [ "App" ], level: "all" } }
-    });
-    const logger = log4js.getLogger("App");
+        get maxFileSizeMB() { return config?.other?.logs_max_file_size_mb ?? 250; },
+        get maxBufferSizeMB() { return config?.other?.logs_max_buffer_size_mb ?? 10; },
+
+        add(message) {
+            if (this.disabled) return;
+            const msgSize = Buffer.byteLength(message, 'utf8');
+            const maxBufferBytes = this.maxBufferSizeMB * 1024 * 1024;
+
+            if (this.bufferSize + msgSize > maxBufferBytes) {
+                this.flush();
+            }
+
+            this.buffer.push(message);
+            this.bufferSize += msgSize;
+            this.scheduleFlush();
+        },
+
+        scheduleFlush() {
+            if (this.timeout) return;
+            this.timeout = setTimeout(() => this.flush(), this.debounceMs);
+        },
+
+        flush() {
+            if (this.timeout) {
+                clearTimeout(this.timeout);
+                this.timeout = null;
+            }
+            if (this.buffer.length === 0 || this.disabled) return;
+
+            try {
+                const stats = fs.statSync(logFile);
+                const fileSizeMB = stats.size / (1024 * 1024);
+                if (fileSizeMB >= this.maxFileSizeMB) {
+                    this.disabled = true;
+                    consoleErrorBackup(`Log file exceeded ${this.maxFileSizeMB}MB limit. Logging to file disabled.`);
+                    this.buffer = [];
+                    this.bufferSize = 0;
+                    return;
+                }
+            } catch (e) {}
+
+            const content = this.buffer.join('\n') + '\n';
+            this.buffer = [];
+            this.bufferSize = 0;
+            fs.appendFile(logFile, content, (err) => {
+                if (err) consoleErrorBackup('Error writing to log file:', err);
+            });
+        }
+    };
+
+    const logger = {
+        trace: (...params) => logBuffer.add(`[TRACE] ${params.join(' ')}`),
+        error: (...params) => logBuffer.add(`[ERROR] ${params.join(' ')}`)
+    };
+
+    process.on('exit', () => logBuffer.flush());
+    process.on('SIGINT', () => { logBuffer.flush(); process.exit(); });
+    process.on('SIGTERM', () => { logBuffer.flush(); process.exit(); });
+
     console.log("Log-file:", logFile);
 
     var server = {
@@ -121,7 +180,7 @@ async function init() {
             }
         },
         logging: {
-            requests: false
+            requests: true
         }
     };
     var squadjs = {
@@ -250,6 +309,39 @@ async function init() {
             console.error('   > Error clearing Sessions:', error);
         }
     }
+    async function deleteUsersWithInvalidClanCode() {
+        try {
+            const dbo = await mongoConn();
+            const cutoffDate = new Date('2025-12-01T00:00:00.000Z');
+            const validClans = await dbo.collection('clans').distinct('clan_code');
+            const result = await dbo.collection('users').deleteMany({
+                clan_code: { $nin: validClans },
+                access_level: { $ne: 0 },
+                registration_date: { $gte: cutoffDate }
+            });
+            console.log(`   > Deleted ${result.deletedCount} user(s) with invalid clan code`);
+        } catch (error) {
+            console.error('   > Error deleting users with invalid clan code:', error);
+        }
+    }
+    function clearSquadJSHosts() {
+        try {
+            if (!config.squadjs || !Array.isArray(config.squadjs)) return;
+            let cleared = 0;
+            config.squadjs.forEach((entry) => {
+                if (entry?.websocket?.host) {
+                    entry.websocket.host = '';
+                    entry.websocket.token = '';
+                    cleared++;
+                }
+            });
+            fs.writeFileSync(configPath + ".bak", fs.readFileSync(configPath));
+            fs.writeFileSync(configPath, JSON.stringify(config, null, "\t"));
+            console.log(`   > Cleared ${cleared} SquadJS host(s)`);
+        } catch (error) {
+            console.error('   > Error clearing SquadJS hosts:', error);
+        }
+    }
 
     async function checkAndRunFirstStartScripts() {
         try {
@@ -264,8 +356,11 @@ async function init() {
 
                 switch (versionN) {
                     case '1.6.10':
-                        await clearAllApiKeys(dbo);
-                        await invalidateAllSessions(dbo);
+                        await clearAllApiKeys();
+                        break;
+                    case '1.6.11':
+                        await deleteUsersWithInvalidClanCode();
+                        clearSquadJSHosts();
                         break;
                 }
 
@@ -397,6 +492,7 @@ async function init() {
             }
         }
 
+        app.set('trust proxy', 1)
         app.use(globalLimiter)
         app.use(nocache());
         app.set('etag', false)
@@ -485,14 +581,24 @@ async function init() {
             })
         })
         app.use('/api/signup', signupLimiter);
-        app.post('/api/signup', (req, res, next) => {
+        app.post('/api/signup', async (req, res, next) => {
             const parm = req.body;
+            const isRootUser = !subcomponent_data.database.root_user_registered;
+
+            const dbo = await mongoConn();
+
+            if (!isRootUser && parm.clan_code) {
+                const clanExists = await dbo.collection("clans").findOne({ clan_code: parm.clan_code });
+                if (!clanExists) {
+                    return res.status(400).send({ message: "Invalid clan code", field: "clan_code" });
+                }
+            }
 
             let insertAccount = {
                 username: parm.username,
                 username_lower: parm.username.toLowerCase(),
                 password: crypto.createHash('sha512').update(parm.password).digest('hex'),
-                access_level: subcomponent_data.database.root_user_registered ? 100 : 0,
+                access_level: isRootUser ? 0 : 100,
                 clan_code: parm.clan_code,
                 registration_date: new Date(),
                 discord_username: parm.discord_username
@@ -506,30 +612,28 @@ async function init() {
             userDt.login_date = new Date();
             userDt.session_expiration = new Date(Date.now() + sessDurationMS);
 
-            mongoConn((dbo) => {
-                dbo.collection("users").findOne({ username_lower: parm.username.toLowerCase() }, (err, dbRes) => {
-                    if (err) {
-                        res.sendStatus(500);
-                        console.error(err)
-                    } else if (dbRes == null) {
-                        dbo.collection("users").insertOne(insertAccount, (err, dbRes) => {
-                            if (err) {
-                                res.sendStatus(500);
-                                console.error(err)
-                            }
-                            else {
-                                do {
-                                    console.log("\n\n\n\n\ninserted id=>", dbRes.insertedId, "=>", insertAccount, "\n\n\n\n\n\n")
-                                    error = false;
-                                    userDt.token = randomString(128);
-                                    res.redirect(307, "/api/login");
-                                } while (error);
-                            }
-                        })
-                    } else {
-                        res.status(401).send({ message: "Username already exists", field: "username" });
-                    }
-                })
+            dbo.collection("users").findOne({ username_lower: parm.username.toLowerCase() }, (err, dbRes) => {
+                if (err) {
+                    res.sendStatus(500);
+                    console.error(err)
+                } else if (dbRes == null) {
+                    dbo.collection("users").insertOne(insertAccount, (err, dbRes) => {
+                        if (err) {
+                            res.sendStatus(500);
+                            console.error(err)
+                        }
+                        else {
+                            do {
+                                console.log("\n\n\n\n\ninserted id=>", dbRes.insertedId, "=>", insertAccount, "\n\n\n\n\n\n")
+                                error = false;
+                                userDt.token = randomString(128);
+                                res.redirect(307, "/api/login");
+                            } while (error);
+                        }
+                    })
+                } else {
+                    res.status(401).send({ message: "Username already exists", field: "username" });
+                }
             })
         })
         app.use('/', logRequests);
@@ -1028,6 +1132,8 @@ async function init() {
         app.use('/', requireLogin);
 
         app.use('/api/restart', (req, res, next) => {
+            if (req.userSession && req.userSession.access_level > 5)
+                return res.sendStatus(403);
             res.send({ status: "restarting" });
             restartProcess(0, 0, args);
         })
@@ -1310,7 +1416,7 @@ async function init() {
                     continue;
                 }
 
-                const fullConfig = { [parm.category]: parm.config };
+                const fullConfig = { [ parm.category ]: parm.config };
                 const value = getNestedValue(fullConfig, path);
                 const validation = validateField(path, value, CONFIG_RULES.validationRules, fullConfig);
 
@@ -1349,7 +1455,7 @@ async function init() {
             try {
                 if (parm.category === 'squadjs' && Array.isArray(sanitizedConfig)) {
                     sanitizedConfig.forEach((entry, index) => {
-                        const currentEntry = config.squadjs?.[index]?.websocket;
+                        const currentEntry = config.squadjs?.[ index ]?.websocket;
                         const newEntry = entry?.websocket;
                         if (currentEntry && newEntry) {
                             const hostChanged = newEntry.host !== undefined && newEntry.host !== currentEntry.host;
@@ -2312,7 +2418,7 @@ async function init() {
                 inserted_by: req.userSession.id_user
             }
 
-            if (data.access_level < req.userSession.access_level){
+            if (data.access_level < req.userSession.access_level) {
                 res.status(403).send({ message: "You are not authorized to create an API key with access_level lower than yours." })
                 return;
             }
@@ -2483,10 +2589,20 @@ async function init() {
         function logRequests(req, res, next) {
             if (!server.logging.requests) return next();
 
-            const usingQuery = Object.keys(req.query).length > 0;
-            const parm = usingQuery ? req.query : req.body;
             const reqPath = getReqPath(req);
-            console.log("\nREQ: " + reqPath + "\nSESSION: ", req.userSession, "\nPARM " + (usingQuery ? "GET" : "POST") + ": ", parm);
+            if (!reqPath.startsWith('/api')) return next();
+
+            const startTime = Date.now();
+            const method = req.method;
+            const ip = req.ip || req.connection.remoteAddress;
+            const user = req.userSession?.username || 'anonymous';
+
+            res.on('finish', () => {
+                const duration = Date.now() - startTime;
+                const status = res.statusCode;
+                console.log(`[API] ${method} ${reqPath} | ${status} | ${duration}ms | ${user} | ${ip}`);
+            });
+
             next();
         }
         function detectRequestUrl(req, res, next) {
@@ -2629,7 +2745,7 @@ async function init() {
                 50035: `Invalid message format`,
                 40005: `Request entity too large`,
             };
-            const friendlyMessage = errorMessages[error.code] || `Failed to send message (${error.message})`;
+            const friendlyMessage = errorMessages[ error.code ] || `Failed to send message (${error.message})`;
             console.error(`[Discord] ${friendlyMessage}`);
             return null;
         }
@@ -3952,7 +4068,9 @@ async function init() {
                 lists_cache_refresh_seconds: 60,
                 prefer_eosID: true,
                 prepend_date_time_in_console: false,
-                force_lists_output_caching: false
+                force_lists_output_caching: false,
+                logs_max_file_size_mb: 250,
+                logs_max_buffer_size_mb: 0.5
             }
         }
 
