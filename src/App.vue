@@ -31,7 +31,7 @@ import addEditApiKey from './components/addEditApiKey.vue';
 
 import bia_logo from './assets/bia_logo.png';
 import jd_logo from './assets/jd_logo.png';
-// import oasis_logo from './assets/oasishostinglogo.svg';
+import whitelister_logo from './assets/logo-256x256.png';
 </script>
 
 <script lang="ts">
@@ -107,10 +107,19 @@ export default {
 				.then((dt) => {
 					this.app_title = dt.name;
 					this.accent_color = dt.accent_color;
-					this.logo_url = dt.logo_url;
+					this.logo_url = dt.logo_url != null && dt.logo_url != '' ? dt.logo_url : whitelister_logo;
 					this.header_title_hidden = dt.title_hidden_in_header;
 					this.logo_border_radius = dt.logo_border_radius;
-					this.favicon = dt.favicon;
+					this.favicon = dt.favicon != null && dt.favicon != '' ? dt.favicon : whitelister_logo;
+
+					// Apply favicon to document
+					let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+					if (!link) {
+						link = document.createElement('link');
+						link.rel = 'icon';
+						document.head.appendChild(link);
+					}
+					link.href = this.favicon;
 				});
 		},
 		checkSession: async function () {
@@ -453,7 +462,7 @@ export default {
 					tabData.Groups.editor = dt ? true : false;
 				});
 			}
-				">
+			">
 			<button v-if="tabData.Groups.editor" class="addNewGameGroup" @click="popups.addingNewGameGroup = true"></button>
 			<gameGroupCard
 				@confirm="removeGroup"
@@ -506,7 +515,7 @@ export default {
 				getUsers();
 				getRoles();
 			}
-				">
+			">
 			<input type="search" placeholder="Search User" name="usrSearch" id="" v-model="tabData.UsersAndRoles.userSearch" />
 			<userCard
 				v-for="u in tabData.UsersAndRoles.users"
@@ -544,7 +553,7 @@ export default {
 			<thanksCard
 				title="Offworld Industries"
 				website="https://www.offworldindustries.com/"
-				src="https://www.offworldindustries.com/wp-content/themes/owitheme/img/logo_white.svg"
+				src="https://cdn.prod.website-files.com/651dd1cea3817995c17fa3c1/65dff4a31f600ca29ccfcf5f_OWG_LOGO_PRIMARY_RGB_NEG_blue%20(2).png"
 				discord="https://discord.com/invite/kRkqJgXW" />
 			<!-- <thanksCard title="GameDash" website="https://gamedash.io/" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDI0LjEuMiwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDYuMDAgQnVpbGQgMCkgIC0tPgo8c3ZnIHZlcnNpb249IjEuMSIgaWQ9IkxheWVyXzEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHg9IjBweCIgeT0iMHB4IgoJIHZpZXdCb3g9IjAgMCA5NDggOTQ4IiBzdHlsZT0iZW5hYmxlLWJhY2tncm91bmQ6bmV3IDAgMCA5NDggOTQ4OyIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+CjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+Cgkuc3Qwe2ZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO2ZpbGw6I0ZGRkZGRjt9Cjwvc3R5bGU+CjxwYXRoIGlkPSJDb21wb3VuZF9TaGFwZSIgY2xhc3M9InN0MCIgZD0iTTQxNy45LDc5OS43TDM4Myw4MzQuNmwzNC45LDM0LjlsMCwwbDM0LjktMzQuOUw0MTcuOSw3OTkuN0w0MTcuOSw3OTkuN3ogTTg1NC4zLDI4My4xCglsLTQuMy0xNmwtMjAuNS03Ni41bC01LjctMjEuMWwtMTMuMy00OS42TDcxMyw5My44TDU4OS44LDIxN2wtMTkuNSwxOS41TDQ0Ny4xLDM1OS43bDE1LDU2LjFsNS40LDIwLjNsOTEuOCwyNC42bDU2LTU2bDkwLjktOTAuOQoJbDIuMiw4LjNsMjYuOCwxMDAuMmwtMzcuMSwzNy4xbC0xNC45LDE0LjlsLTk0LjYsOTQuN2wtNzMuNC0xOS43bC0xOC44LTVsLTgtMi4xbC03MC42LTE4LjlsLTI5LjYtNy45bC0yNi44LTEwMC4yTDMzNC43LDMxNQoJbDc5LjItNzkuMmw0LjEtNC4xTDYwNC41LDQ1LjFsLTkyLjEtMjQuN0w0MzYuMiwwbC0xOC4zLDE4LjNsLTQ5LjIsNDkuMmwtNzkuMiw3OS4ybC00Mi44LDQyLjhsLTEuMiwxLjJsLTEsMWwtMjguOCwyOC44CglsLTQ5LjUsNDkuNUwxODQsMzM2bC02NS44LDY1LjhsLTAuOCwwLjhsMC44LDAuOGwzNCwzNGw0Ni41LTQ2LjVsMy40LTMuNGwxMy42LTEzLjZsOS45LTkuOWwtNi4xLDYuMWwtMy45LDMuOWwtMTMuNSwxMy41CgljOS42LTkuNSwyNS05LjYsMzQuNy0wLjJsMC4zLDAuM2M5LjQsOS43LDkuNCwyNS4xLTAuMSwzNC43bDE3LjQtMTcuNGwtMTcuNSwxNy41bC0yMS4zLDIxLjNsLTIuMywyLjNsLTg3LjMsODcuM2wzNC45LDM0LjlsMzUtMzUKCWwxOS43LTE5LjdsMi42LTIuNmw5LjUtOS41bDAuMS0wLjFsMC4xLTAuMWwwLjEtMC4xbDAuMS0wLjFsOS4yLTkuMmM5LjYtOS42LDI1LjItOS42LDM0LjksMHM5LjYsMjUuMiwwLDM0LjlsLTAuMSwwLjFsLTAuMSwwLjEKCWwtMC4xLDAuMWwtOS4xLDlsLTAuMSwwLjFsLTAuMSwwLjFsLTAuMSwwLjFsLTAuMSwwLjFsLTAuMSwwLjFsLTAuMSwwLjFsLTkuMSw5LjFsLTAuMSwwLjFsLTAuMSwwLjFsLTAuMSwwLjFMMjQzLDU1Ni4xbC0xMiwxMgoJbC0xNS4yLDE1LjJsLTg0LjEsODQuMWwzNC45LDM0LjlsNDkuMi00OS4ybDQxLjktNDEuOWwyNi43LTI2LjdsMCwwbDItMmwwLjEtMC4xbDAuMS0wLjFsMC4xLTAuMWM5LjYtOS42LDI1LjItOS42LDM0LjksMAoJYzguOCw4LjgsOS43LDIyLjksMS45LDMyLjdsMS44LTEuOGwwLjEsMGwwLjEtMC4xbDAuMS0wLjFsMC4xLTAuMWwwLjEtMC4xbDkuMS05LjFsMC4xLTAuMWwwLjEtMC4xbDAuMS0wLjFsMC4xLTAuMWwwLjEtMC4xCglsMC4xLTAuMWwzLjgtMy44bDAuMSwwLjFsLTcuMSw3LjFsLTkuOCw5LjhsLTAuNSwwLjVsLTAuMSwwLjFsLTAuMSwwLjFsLTAuMSwwLjFsLTksOS4xbC0wLjEsMC4xbC0wLjEsMC4xbC0wLjEsMC4xbC0wLjEsMC4xCglsLTAuMSwwLjFsLTAuMSwwLjFsLTkuMSw5LjFsLTAuMSwwLjFsLTAuMSwwLjFsLTAuMSwwLjFsLTAuMSwwLjFsLTAuMSwwLjFsLTYuMSw2LjFsMCwwbC0zLjgsMy44bC0zNC45LDM0LjlsMzQuOSwzNC45bDIxLjItMjEuMnYwCglsMTAuMi0xMC4ybDAuMS0wLjFsMC4xLTAuMWwwLjEtMC4xbDktOS4xbDAuMS0wLjFsMC4xLTAuMWwwLjEtMC4xbDAuMS0wLjFsMC4xLTAuMWwwLjEtMC4xbDUuMy01LjNsMy0zbDAuMS0wLjFsMCwwbDAuMS0wLjFsMC0wLjEKCWwwLjEtMC4xbDAuMS0wLjFsOS4xLTlsMC4xLTAuMWwwLjEtMC4xbDAuMS0wLjFsMC4xLTAuMWwwLjEtMC4xbDAuMS0wLjFsOS4xLTkuMWwwLjEtMC4xbDAuMS0wLjFsMC4xLTAuMQoJYzkuNi05LjcsMjUuMi05LjgsMzQuOS0wLjJjOS43LDkuNiw5LjgsMjUuMiwwLjIsMzQuOWMtMC4xLDAuMS0wLjEsMC4xLTAuMiwwLjJsLTAuMSwwLjFsLTAuMSwwLjFsLTAuMSwwLjFsLTkuMSw5LjFsLTAuMSwwLjEKCWwtMC4xLDAuMWwtMC4xLDAuMWwtMC4xLDAuMWwtMC4xLDAuMWwtMC4xLDAuMWwtOCw4bC0wLjQsMC40bC0wLjEsMC4xbC0wLjEsMC4xbDAsMGwtMC41LDAuNWwtMC4xLDAuMWwtMC4xLDAuMWwtMC4xLDAuMWwtMC4xLDAuMQoJbC0wLjEsMGwtNi4xLDYuMWwtMi4yLDIuMmwtMC4xLDAuMWwtMC4xLDAuMWwtMC4xLDAuMWwtMC4xLDAuMWwtMC4xLDAuMWwtMC4xLDAuMWwtOS4xLDkuMWwtMC4xLDAuMWwtMC4xLDAuMWwtMC4xLDAuMWwtMTAuMiwxMC4yCglMMjQxLjksODM2LjJsMzQuOSwzNC45bDE0MS4xLTE0MS4xbDMxLjUtMzEuNWw4LjItOC4ybDEwLjQtMTAuNGwwLjEtMC4xbDAuMS0wLjFsMC4xLTAuMWw5LjEtOWwwLjEtMC4xbDAuMS0wLjFsMC4xLTAuMWwwLjEtMC4xCglsMC4xLTAuMWwwLjEtMC4xbDkuMS05bDAuMS0wLjFsMC4xLTAuMWwwLjEtMC4xYzkuNy05LjYsMjUuMy05LjUsMzQuOSwwLjJjOS41LDkuNiw5LjUsMjUuMSwwLDM0LjdsLTAuMSwwLjFsLTAuMSwwLjFsLTAuMSwwLjEKCWwtOSw5LjFsLTAuMSwwLjFsLTAuMSwwLjFsLTAuMSwwLjFsLTAuMSwwLjFsLTAuMSwwLjFsLTAuMSwwLjFsLTksOS4xbC0wLjEsMC4xbC0wLjEsMC4xbC0wLjEsMC4xbC0xOC42LDE4LjZMNDQ4LDc2OS42bDM0LjksMzQuOQoJbDg0LjgtODQuOGw2Ni4zLDE3LjhsNjQtNjRsMCwwYzkuNC05LjIsMTkuMS0xOS4zLDI5LjYtMjkuOGwyOS40LTI5LjRsOTQuNy05NC43bDUyLTUyTDg1NC4zLDI4My4xeiBNMTk5LjksODc4LjJMMTY1LjEsOTEzCglsMzQuOSwzNC45bDE1LjgtMTUuOGwxOS0xOWwtMTktMTlMMTk5LjksODc4LjJ6IE0yMTUuOCw3OTIuNmwzNC45LTM0LjlsLTM0LjktMzQuOWwwLDBsLTM0LjksMzQuOUwyMTUuOCw3OTIuNkwyMTUuOCw3OTIuNnoKCSBNMTE1LjksNDczLjlMODEsNDM5bC0zNC45LDM0LjlMODEsNTA4LjhMMTE1LjksNDczLjl6IE00Myw3NTYuMUw3Ny45LDc5MWwzNC45LTM0LjlsLTM0LjktMzQuOUw0Myw3NTYuMXogTTg0LjIsNTc1LjRsLTM0LjksMzQuOQoJbDM0LjksMzQuOWwzNC0zNGwwLjgtMC44bC0wLjgtMC44TDg0LjIsNTc1LjR6Ii8+Cjwvc3ZnPgo=" /> -->
 			<!-- <thanksCard title="Oasis Hosting" website="https://oasis-hosting.net/" :src="oasis_logo" /> -->
