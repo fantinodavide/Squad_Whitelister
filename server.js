@@ -146,7 +146,7 @@ async function init() {
                     this.bufferSize = 0;
                     return;
                 }
-            } catch (e) {}
+            } catch (e) { }
 
             const content = this.buffer.join('\n') + '\n';
             this.buffer = [];
@@ -355,10 +355,8 @@ async function init() {
                 console.log(`   Current version: ${versionN}`);
 
                 switch (versionN) {
-                    case '1.6.10':
-                        await clearAllApiKeys();
-                        break;
                     case '1.6.11':
+                        await clearAllApiKeys();
                         await deleteUsersWithInvalidClanCode();
                         clearSquadJSHosts();
                         break;
