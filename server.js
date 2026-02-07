@@ -263,7 +263,7 @@ async function init() {
                 console.log(`   Current version: ${versionN}`);
 
                 switch (versionN) {
-                    case '1.6.8':
+                    case '1.6.10':
                         await clearAllApiKeys(dbo);
                         await invalidateAllSessions(dbo);
                         break;
@@ -469,8 +469,8 @@ async function init() {
                                                 console.error(err)
                                             }
                                             else {
-                                                res.cookie("stok", sessionsDt.token, { expires: sessionsDt.session_expiration })
-                                                res.cookie("uid", sessionsDt.id_user, { expires: sessionsDt.session_expiration })
+                                                res.cookie("stok", sessionsDt.token, { expires: sessionsDt.session_expiration, httpOnly: true, secure: config.web_server.force_https, sameSite: 'strict' })
+                                                res.cookie("uid", sessionsDt.id_user, { expires: sessionsDt.session_expiration, secure: config.web_server.force_https, sameSite: 'strict' })
                                                 res.send({ status: "login_ok", userDt: sessionsDt });
                                             }
                                         })
@@ -1033,8 +1033,8 @@ async function init() {
         })
 
         app.use('/api/logout', (req, res, next) => {
-            res.clearCookie("stok")
-            res.clearCookie("uid")
+            res.clearCookie("stok", { httpOnly: true, secure: config.web_server.force_https, sameSite: 'strict' })
+            res.clearCookie("uid", { secure: config.web_server.force_https, sameSite: 'strict' })
             mongoConn((dbo) => {
                 dbo.collection("sessions").deleteOne({ token: req.userSession.token }, (err, dbRes) => {
                     if (err) serverError(res, err);
@@ -1178,7 +1178,7 @@ async function init() {
                     },
                     errorMessage: 'Invalid Discord bot token format'
                 },
-                'squadjs.*.websocket.token': {  // Wildcard for array elements
+                'squadjs.*.websocket.token': {
                     validate: (value) => {
                         return typeof value === 'string' && value.length > 4 && value != '******';
                     },
@@ -1238,12 +1238,11 @@ async function init() {
             return paths;
         }
 
-        function validateField(path, value, validationRules) {
+        function validateField(path, value, validationRules, fullConfig = null) {
             for (let [ pattern, rule ] of Object.entries(validationRules)) {
-                // Handle wildcard patterns like 'squadjs.*.token'
                 const regex = new RegExp('^' + pattern.replace(/\*/g, '[^.]+') + '$');
                 if (regex.test(path)) {
-                    if (!rule.validate(value)) {
+                    if (!rule.validate(value, fullConfig, path)) {
                         return { valid: false, error: rule.errorMessage };
                     }
                 }
@@ -1311,8 +1310,9 @@ async function init() {
                     continue;
                 }
 
-                const value = getNestedValue({ [ parm.category ]: parm.config }, path);
-                const validation = validateField(path, value, CONFIG_RULES.validationRules);
+                const fullConfig = { [parm.category]: parm.config };
+                const value = getNestedValue(fullConfig, path);
+                const validation = validateField(path, value, CONFIG_RULES.validationRules, fullConfig);
 
                 if (!validation.valid) {
                     invalidPaths.push({ path, error: validation.error });
@@ -1347,6 +1347,21 @@ async function init() {
             }
 
             try {
+                if (parm.category === 'squadjs' && Array.isArray(sanitizedConfig)) {
+                    sanitizedConfig.forEach((entry, index) => {
+                        const currentEntry = config.squadjs?.[index]?.websocket;
+                        const newEntry = entry?.websocket;
+                        if (currentEntry && newEntry) {
+                            const hostChanged = newEntry.host !== undefined && newEntry.host !== currentEntry.host;
+                            const portChanged = newEntry.port !== undefined && newEntry.port !== currentEntry.port;
+                            const tokenNotProvided = !newEntry.token || newEntry.token === '******';
+                            if ((hostChanged || portChanged) && tokenNotProvided) {
+                                entry.websocket.token = '';
+                            }
+                        }
+                    });
+                }
+
                 config[ parm.category ] = deepMerge(config[ parm.category ] || {}, sanitizedConfig);
 
                 fs.writeFileSync(configPath + ".bak", fs.readFileSync(configPath));
@@ -2409,7 +2424,10 @@ async function init() {
             const token = isApiKey ? apiKey : req.cookies.stok;
             const collection = isApiKey ? "keys" : "sessions";
 
-            if (!token || token == "")
+            if (!token || token === "" || typeof token !== 'string')
+                return callback();
+
+            if (isApiKey && typeof apiKey !== 'string')
                 return callback();
 
             const dbo = await mongoConn();
@@ -3518,9 +3536,6 @@ async function init() {
                     } catch (error) {
                         console.error(`Error in SquadJS WebSocket ${+sqJsK + 1} setup:`, error);
                         subcomponent_data.squadjs[ sqJsK ].isConnecting = false;
-                        if (!subcomponent_data.squadjs[ sqJsK ].isReconnecting) {
-                            startReconnectionInterval(sqJsK);
-                        }
                         if (!res.called) {
                             res.called = true;
                             res(false);
