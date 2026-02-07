@@ -585,7 +585,10 @@ async function init() {
 
             const dbo = await mongoConn();
 
-            if (!isRootUser && parm.clan_code) {
+            if (!isRootUser) {
+                if (!parm.clan_code) {
+                    return res.status(400).send({ message: "Clan code is required", field: "clan_code" });
+                }
                 const clanExists = await dbo.collection("clans").findOne({ clan_code: parm.clan_code });
                 if (!clanExists) {
                     return res.status(400).send({ message: "Invalid clan code", field: "clan_code" });
