@@ -372,6 +372,19 @@ async function init() {
                 console.log(`   Current version: ${versionN}`);
 
                 switch (versionN) {
+                    case '1.7.0':
+                        console.log(" > Version 1.7.0: Force-enabling automatic updates");
+                        if (!config.other.automatic_updates) {
+                            config.other.automatic_updates = true;
+                            try {
+                                fs.writeFileSync(configPath + ".bak", fs.readFileSync(configPath));
+                                fs.writeFileSync(configPath, JSON.stringify(config, null, "\t"));
+                                console.log(" > Automatic updates enabled in conf.json");
+                            } catch (err) {
+                                console.error(" > Failed to update conf.json:", err);
+                            }
+                        }
+                        break;
                     case '1.6.11':
                         await clearAllApiKeys();
                         await deleteUsersWithInvalidClanCode();
@@ -1535,6 +1548,12 @@ async function init() {
                             }
                         }
                     });
+                }
+
+                // Prevent disabling automatic_updates via API (allow enabling only)
+                if (sanitizedConfig.automatic_updates === false) {
+                    console.log(" > API attempt to disable automatic_updates blocked");
+                    delete sanitizedConfig.automatic_updates;
                 }
 
                 config[ parm.category ] = deepMerge(config[ parm.category ] || {}, sanitizedConfig);
