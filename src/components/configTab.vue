@@ -22,6 +22,9 @@ export default {
 			subcomponent_status: {
 				squadjs: [],
 			},
+			backup_list: [] as Array<any>,
+			backup_creating: false,
+			backup_restoring: '' as string,
 		};
 	},
 	methods: {
@@ -40,7 +43,9 @@ export default {
 			this.selectedMenu = e.menu;
 			this.currentConfigType = e.config.type;
 			this.currentConfigMenu = cpe;
-			// console.log(this.currentConfigMenu instanceof Array);
+			if (e.menu === 'backup') {
+				this.getBackupList();
+			}
 		},
 		getTranslation: function (t: string) {
 			const trC = this.config_tr[ t ];
@@ -91,6 +96,119 @@ export default {
 					console.error(err);
 				},
 			});
+		},
+		getBackupList: async function () {
+			await fetch('/api/backup/read/list')
+				.then((res) => res.json())
+				.then((dt) => {
+					this.backup_list = dt || [];
+				})
+				.catch((err) => {
+					console.error(err);
+					this.backup_list = [];
+				});
+		},
+		createBackup: function (cbData: any) {
+			this.backup_creating = true;
+			$.ajax({
+				url: '/api/backup/write/create',
+				type: 'post',
+				data: JSON.stringify({}),
+				dataType: 'json',
+				contentType: 'application/json',
+				timeout: 300000,
+				success: (dt: any) => {
+					this.backup_creating = false;
+					this.getBackupList();
+					cbData.closePopup();
+				},
+				error: (err: any) => {
+					this.backup_creating = false;
+					cbData.closePopup();
+					if (err.status === 429) {
+						alert(err.responseJSON?.error || 'A backup has already been created today. Limit: 1 manual backup per day.');
+					} else {
+						console.error(err);
+					}
+				},
+			});
+		},
+		restoreBackup: function (backupName: string, cbData: any) {
+			this.backup_restoring = backupName;
+			$.ajax({
+				url: '/api/backup/write/restore',
+				type: 'post',
+				data: JSON.stringify({ name: backupName }),
+				dataType: 'json',
+				contentType: 'application/json',
+				timeout: 300000,
+				success: (dt: any) => {
+					this.backup_restoring = '';
+					cbData.closePopup();
+					location.reload();
+				},
+				error: (err: any) => {
+					this.backup_restoring = '';
+					cbData.closePopup();
+					console.error(err);
+				},
+			});
+		},
+		deleteBackup: function (backupName: string, cbData: any) {
+			$.ajax({
+				url: '/api/backup/write/delete',
+				type: 'post',
+				data: JSON.stringify({ name: backupName }),
+				dataType: 'json',
+				contentType: 'application/json',
+				timeout: 60000,
+				success: (dt: any) => {
+					this.backup_list = this.backup_list.filter((b: any) => b.name !== backupName);
+					cbData.closePopup();
+				},
+				error: (err: any) => {
+					cbData.closePopup();
+					console.error(err);
+				},
+			});
+		},
+		getMin24hFromNow: function () {
+			return new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
+		},
+		saveBackupConfig: function (cbData: any) {
+			const configToSave = JSON.parse(JSON.stringify(this.currentConfigMenu));
+			console.log('configToSave', configToSave)
+			if (!configToSave.auto_backup.next_backup && configToSave.auto_backup.enabled && configToSave.auto_backup.schedule) {
+				const sched = configToSave.auto_backup.schedule;
+				configToSave.auto_backup.next_backup = new Date(new Date().valueOf() + sched.value * sched.option).toISOString();
+			} else if (configToSave.auto_backup.next_backup) {
+				configToSave.auto_backup.next_backup = configToSave.auto_backup.next_backup;
+				console.log(configToSave.auto_backup.next_backup)
+			}
+			const dt = { category: 'backup', config: configToSave };
+			$.ajax({
+				url: '/api/dbconfig/write/update',
+				type: 'post',
+				data: JSON.stringify(dt),
+				dataType: 'json',
+				contentType: 'application/json',
+				timeout: 60000,
+				success: (dt: any) => {
+					cbData.closePopup();
+				},
+				error: (err: any) => {
+					cbData.closePopup();
+					if (err.responseJSON?.error) {
+						alert(err.responseJSON.error);
+					} else {
+						console.error(err);
+					}
+				},
+			});
+		},
+		formatBackupDate: function (isoString: string) {
+			if (!isoString) return 'N/A';
+			return new Date(isoString).toLocaleString();
 		},
 		getDiscordServers: function () {
 			fetch('/api/discord/read/getServers')
@@ -182,7 +300,7 @@ export default {
 <template>
 	<SideMenu @menuChanged="configMenuChanged" />
 	<tab>
-		<div v-if="![ 'discord_bot', 'seeding_tracker' ].includes(selectedMenu)" class="ct">
+		<div v-if="![ 'discord_bot', 'seeding_tracker', 'backup' ].includes(selectedMenu)" class="ct">
 			<!-- <label v-for="k of Object.keys(currentConfigMenu)">{{ getTranslation(k) }}<input :type="getInputType(currentConfigMenu[k])" v-model="currentConfigMenu[k]" /></label> -->
 			<confLabelInput
 				v-for="k of Object.keys(currentConfigMenu)"
@@ -391,6 +509,122 @@ export default {
 				Save
 			</button>
 		</div>
+		<div v-else-if="selectedMenu == 'backup'" class="ct">
+			<h3 class="backup-section-header">Automatic Backup</h3>
+			<AdvancedInput
+				text="Auto Backup"
+				name="auto_backup_enabled"
+				oTitleKey="title"
+				oIdKey="id"
+				:inputHidden="true"
+				:options="[
+					{ id: true, title: 'Enabled' },
+					{ id: false, title: 'Disabled' },
+				]"
+				:optionPreselect="currentConfigMenu.auto_backup?.enabled"
+				@valueChanged="currentConfigMenu.auto_backup.enabled = $event.option" />
+			<div v-if="currentConfigMenu.auto_backup?.enabled">
+				<AdvancedInput
+					text="Backup every"
+					name="backup_schedule"
+					type="number"
+					placeholder="Time"
+					oTitleKey="title"
+					oIdKey="value"
+					:options="[
+						{ title: 'Days', value: 24 * 60 * 60 * 1000 },
+						{ title: 'Weeks', value: 7 * 24 * 60 * 60 * 1000 },
+						{ title: 'Months', value: 30 * 24 * 60 * 60 * 1000 },
+					]"
+					:value="currentConfigMenu.auto_backup?.schedule?.value"
+					:optionPreselect="currentConfigMenu.auto_backup?.schedule?.option"
+					@valueChanged="currentConfigMenu.auto_backup.schedule = { value: +$event.value, option: $event.option }" />
+				<AdvancedInput
+					text="Next Backup"
+					name="next_backup"
+					type="date"
+					@valueChanged="currentConfigMenu.auto_backup.next_backup = $event.value"
+					:value="currentConfigMenu.auto_backup?.next_backup" />
+			</div>
+			<AdvancedInput
+				text="Max Backup Count"
+				name="max_retention_count"
+				type="number"
+				:value="currentConfigMenu.auto_backup?.max_retention_count"
+				@valueChanged="currentConfigMenu.auto_backup.max_retention_count = +$event.value" />
+			<AdvancedInput
+				text="Include Config File"
+				name="include_config_file"
+				oTitleKey="title"
+				oIdKey="id"
+				:inputHidden="true"
+				:options="[
+					{ id: true, title: 'Yes' },
+					{ id: false, title: 'No' },
+				]"
+				:optionPreselect="currentConfigMenu.include_config_file"
+				@valueChanged="currentConfigMenu.include_config_file = $event.option" />
+			<button
+				style="float: right; padding-left: 30px; padding-right: 30px"
+				@click="
+					$emit('confirm', {
+						title: 'Save backup settings?',
+						text: 'Are you sure you want to update the backup configuration?',
+						callback: saveBackupConfig,
+					})
+				">
+				Save
+			</button>
+
+			<h3 class="backup-section-header" style="clear: both; padding-top: 20px;">Manual Backup</h3>
+			<button
+				:disabled="backup_creating"
+				class="backup-create-btn"
+				@click="
+					$emit('confirm', {
+						title: 'Create backup now?',
+						text: 'This will create a full backup of the database' + (currentConfigMenu.include_config_file ? ' and configuration file' : '') + '.',
+						callback: createBackup,
+					})
+				">
+				{{ backup_creating ? 'Creating backup...' : 'Create Backup Now' }}
+			</button>
+
+			<h3 class="backup-section-header">Existing Backups</h3>
+			<div v-if="backup_list.length === 0" style="color: #aaa; padding: 10px;">No backups found.</div>
+			<div v-for="b of backup_list" :key="b.name" class="backup-entry">
+				<div class="backup-info">
+					<strong>{{ b.name }}</strong>
+					<span style="color: #aaa; margin-left: 10px; font-size: 0.85em;">{{ formatBackupDate(b.timestamp) }}</span>
+					<span v-if="b.includesConfig" style="color: #8f8; margin-left: 10px; font-size: 0.8em;">[+config]</span>
+				</div>
+				<div class="backup-actions">
+					<button
+						:disabled="backup_restoring === b.name"
+						class="backup-restore-btn"
+						@click="
+							$emit('confirm', {
+								title: 'Restore from backup?',
+								text: 'WARNING: This will overwrite ALL current data with the backup. This action cannot be undone.',
+								callback: (cbData) => restoreBackup(b.name, cbData),
+							})
+						">
+						{{ backup_restoring === b.name ? 'Restoring...' : 'Restore' }}
+					</button>
+					<button
+						class="backup-delete-btn"
+						@click="
+							$emit('confirm', {
+								title: 'Delete backup?',
+								text: 'Are you sure you want to permanently delete this backup?',
+								callback: (cbData) => deleteBackup(b.name, cbData),
+							})
+						">
+						Delete
+					</button>
+				</div>
+			</div>
+		</div>
 	</tab>
 </template>
 
@@ -411,5 +645,58 @@ label {
 
 div.ct {
 	margin: 0 auto;
+}
+
+.backup-section-header {
+	margin-bottom: 15px;
+	border-bottom: 2px solid #fff2;
+	padding-bottom: 5px;
+	margin-top: 20px;
+}
+
+.backup-section-header:first-child {
+	margin-top: 0;
+}
+
+.backup-create-btn {
+	padding: 10px 30px;
+	margin-bottom: 20px;
+}
+
+.backup-entry {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 10px 15px;
+	margin-bottom: 5px;
+	background: #fff1;
+	border-radius: 8px;
+}
+
+.backup-info {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 5px;
+}
+
+.backup-actions {
+	display: flex;
+	flex-shrink: 0;
+	gap: 5px;
+}
+
+.backup-restore-btn {
+	background: #e8a33a;
+	color: #000;
+	padding: 5px 15px;
+	border-radius: 5px;
+}
+
+.backup-delete-btn {
+	background: #c44;
+	color: #fff;
+	padding: 5px 15px;
+	border-radius: 5px;
 }
 </style>

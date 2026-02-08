@@ -58,11 +58,11 @@
 			},
 			min: {
 				required: false,
-				type: Number,
+				type: [Number, String],
 			},
 			max: {
 				required: false,
-				type: Number,
+				type: [Number, String],
 			},
 			regex: {
 				required: false,

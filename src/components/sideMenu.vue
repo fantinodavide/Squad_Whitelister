@@ -12,6 +12,7 @@
 					web_server: 'Web Server',
 					app_personalization: 'Personalization',
 					squadjs: 'SquadJS',
+					backup: 'Backup & Restore',
 				} as any,
 				keys: [] as Array<string>,
 			};

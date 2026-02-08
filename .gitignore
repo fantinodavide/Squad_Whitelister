@@ -39,3 +39,7 @@ ALTERNATIVE PORTS.txt
 docker-image.tar
 
 .env
+
+backups/
+
+**.local.**

@@ -77,6 +77,12 @@ async function init() {
     const { io } = await irequire("socket.io-client");
     const dns = await irequire('dns')
     const { rateLimit } = await irequire('express-rate-limit')
+    const { EJSON } = await irequire('bson');
+    const tar = await irequire('tar');
+    const { createGzip, createGunzip } = require('zlib');
+    const { pipeline } = require('stream/promises');
+    const { Transform } = require('stream');
+    const readline = require('readline');
     const util = require('util');
     const lookup = util.promisify(dns.lookup);
 
@@ -91,6 +97,7 @@ async function init() {
     var errerCountResetTimeout = null;
 
     const configPath = args.c || "conf.json"
+    const BACKUP_DIR = path.join(__dirname, 'backups');
 
     const consoleLogBackup = console.log;
     const consoleErrorBackup = console.error;
@@ -388,6 +395,7 @@ async function init() {
             await generateApiDocs();
 
             resetSeedingTime();
+            scheduledBackup();
 
             await initWlCaches();
             setInterval(refreshWlCaches, config.other.lists_cache_refresh_seconds * 1000)
@@ -487,6 +495,34 @@ async function init() {
                         dbo.collection('configs').updateOne({ category: 'seeding_tracker' }, { $set: { "config.next_reset": new Date(new Date().valueOf() + (stConf.reset_seeding_time.value * stConf.reset_seeding_time.option)).toISOString().split('T')[ 0 ] } })
                     }
                 })
+            }
+        }
+
+        function scheduledBackup() {
+            _checkBackup();
+            setInterval(_checkBackup, 60 * 1000);
+
+            function _checkBackup() {
+                mongoConn(async dbo => {
+                    try {
+                        const bt = await dbo.collection('configs').findOne({ category: 'backup' });
+                        if (!bt) return;
+                        const btConf = bt.config;
+                        if (btConf.auto_backup && btConf.auto_backup.enabled && btConf.auto_backup.next_backup && new Date() > new Date(btConf.auto_backup.next_backup)) {
+                            if (backupInProgress) return;
+                            console.log('Running scheduled backup...');
+                            await performBackup(dbo, btConf);
+                            const next = new Date(Date.now() + (btConf.auto_backup.schedule.value * btConf.auto_backup.schedule.option)).toISOString().split(/T/)[0];
+                            await dbo.collection('configs').updateOne(
+                                { category: 'backup' },
+                                { $set: { "config.auto_backup.next_backup": next } }
+                            );
+                            console.log('Scheduled backup complete. Next:', next);
+                        }
+                    } catch (err) {
+                        console.error('Scheduled backup failed:', err);
+                    }
+                });
             }
         }
 
@@ -1596,6 +1632,21 @@ async function init() {
         app.use('/api/dbconfig/write*', (req, res, next) => { if (!args.demo || req.userSession.access_level == 0) next(); else res.sendStatus(403) })
         app.post('/api/dbconfig/write/update', async (req, res, next) => {
             const parm = req.body;
+
+            if (parm.category === 'backup' && parm.config?.auto_backup?.next_backup) {
+                const nextBackup = new Date(parm.config.auto_backup.next_backup);
+                if (isNaN(nextBackup.getTime())) return res.status(400).send({ error: 'Invalid next backup date.' });
+                const minAllowed = Date.now() + 24 * 60 * 60 * 1000;
+                if (nextBackup.getTime() < minAllowed) {
+                    const current = await mongoConn().then(dbo => dbo.collection('configs').findOne({ category: 'backup' }));
+                    const currentNext = new Date(current?.config?.auto_backup?.next_backup);
+                    const truncMin = t => Math.floor(new Date(t).getTime() / 60000);
+                    if (!currentNext || truncMin(parm.config.auto_backup.next_backup) < truncMin(currentNext)) {
+                        return res.status(400).send({ error: 'Next backup must be at least 24 hours from now.' });
+                    }
+                }
+            }
+
             mongoConn(dbo => {
                 dbo.collection('configs').updateOne({ category: parm.category }, { $set: { config: parm.config } }, { upsert: true }, (err, dbRes) => {
                     if (err) serverError(res, err);
@@ -1607,6 +1658,126 @@ async function init() {
                     }
                 })
             })
+        })
+
+        app.use('/api/backup*', (...p) => { accessLevelAuthorization(5, ...p) })
+
+        app.get('/api/backup/read/list', async (req, res, next) => {
+            try {
+                if (!fs.existsSync(BACKUP_DIR)) return res.send([]);
+                const infoFiles = fs.readdirSync(BACKUP_DIR)
+                    .filter(f => f.startsWith('backup_') && f.endsWith('.info.json'))
+                    .map(f => {
+                        try {
+                            return JSON.parse(fs.readFileSync(path.join(BACKUP_DIR, f), 'utf-8'));
+                        } catch (e) {
+                            return null;
+                        }
+                    })
+                    .filter(Boolean)
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                res.send(infoFiles);
+            } catch (err) {
+                serverError(res, err);
+            }
+        })
+
+        app.post('/api/backup/write/create', async (req, res, next) => {
+            try {
+                if (backupInProgress) return res.status(409).send({ error: 'Backup or restore already in progress' });
+
+                if (fs.existsSync(BACKUP_DIR)) {
+                    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+                    const hasRecentBackup = fs.readdirSync(BACKUP_DIR)
+                        .filter(f => f.startsWith('backup_') && f.endsWith('.info.json'))
+                        .some(f => {
+                            try {
+                                const info = JSON.parse(fs.readFileSync(path.join(BACKUP_DIR, f), 'utf-8'));
+                                return info.manual && new Date(info.timestamp) > oneDayAgo;
+                            } catch (e) { return false; }
+                        });
+                    if (hasRecentBackup) return res.status(429).send({ error: 'A manual backup was created in the last 24 hours. Limit: 1 manual backup per 24 hours.' });
+                }
+
+                const dbo = await mongoConn();
+                const bt = await dbo.collection('configs').findOne({ category: 'backup' });
+                const backupConfig = bt?.config || {};
+                const info = await performBackup(dbo, backupConfig, true);
+                res.send({ status: 'backup_created', data: info });
+            } catch (err) {
+                serverError(res, err);
+            }
+        })
+
+        app.post('/api/backup/write/restore', async (req, res, next) => {
+            try {
+                if (backupInProgress) return res.status(409).send({ error: 'Backup or restore already in progress' });
+                const parm = req.body;
+                if (!parm.name) return res.status(400).send({ error: 'Missing backup name' });
+
+                if (parm.name.includes('/') || parm.name.includes('\\') || parm.name.includes('..')) {
+                    return res.status(400).send({ error: 'Invalid backup name' });
+                }
+
+                const archivePath = path.join(BACKUP_DIR, `${parm.name}.tar.gz`);
+                if (!fs.existsSync(archivePath)) return res.status(404).send({ error: 'Backup not found' });
+                const resolvedArchive = path.resolve(archivePath);
+                const resolvedBase = path.resolve(BACKUP_DIR);
+                if (!resolvedArchive.startsWith(resolvedBase)) return res.status(400).send({ error: 'Invalid backup name' });
+
+                backupInProgress = true;
+                const tempDir = path.join(BACKUP_DIR, `.tmp_restore_${Date.now()}`);
+                try {
+                    fs.ensureDirSync(tempDir);
+                    await tar.extract({ file: archivePath, cwd: tempDir });
+
+                    const dbo = await mongoConn();
+                    const mb = new MongoBackup(dbo);
+                    const result = await mb.restore(tempDir, { drop: true });
+
+                    if (parm.restore_config !== false) {
+                        const confBackupPath = path.join(tempDir, 'conf.json');
+                        if (fs.existsSync(confBackupPath)) {
+                            fs.writeFileSync(configPath + ".bak", fs.readFileSync(configPath));
+                            fs.copyFileSync(confBackupPath, configPath);
+                        }
+                    }
+
+                    res.send({ status: 'restore_complete', data: result });
+                } finally {
+                    fs.removeSync(tempDir);
+                    backupInProgress = false;
+                }
+            } catch (err) {
+                backupInProgress = false;
+                serverError(res, err);
+            }
+        })
+
+        app.post('/api/backup/write/delete', async (req, res, next) => {
+            try {
+                const parm = req.body;
+                if (!parm.name) return res.status(400).send({ error: 'Missing backup name' });
+
+                if (parm.name.includes('/') || parm.name.includes('\\') || parm.name.includes('..')) {
+                    return res.status(400).send({ error: 'Invalid backup name' });
+                }
+
+                const archivePath = path.join(BACKUP_DIR, `${parm.name}.tar.gz`);
+                const infoPath = path.join(BACKUP_DIR, `${parm.name}.info.json`);
+                const resolvedArchive = path.resolve(archivePath);
+                const resolvedBase = path.resolve(BACKUP_DIR);
+                if (!resolvedArchive.startsWith(resolvedBase)) return res.status(400).send({ error: 'Invalid backup name' });
+
+                if (!fs.existsSync(archivePath)) return res.status(404).send({ error: 'Backup not found' });
+
+                fs.removeSync(archivePath);
+                if (fs.existsSync(infoPath)) fs.removeSync(infoPath);
+
+                res.send({ status: 'backup_deleted' });
+            } catch (err) {
+                serverError(res, err);
+            }
         })
 
         app.use('/api/custom_permissions/read*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 30) next(); else res.sendStatus(403) })
@@ -3997,6 +4168,245 @@ async function init() {
         return d;
     }
 
+    class MongoBackup {
+        constructor(dbo, options = {}) {
+            this.dbo = dbo;
+            this.batchSize = options.batchSize || 1000;
+            this.cursorBatchSize = options.cursorBatchSize || 500;
+        }
+
+        async backup(outputDir, collections = null) {
+            let collectionNames;
+            if (collections === null) {
+                const colList = await this.dbo.listCollections().toArray();
+                collectionNames = colList.map(c => c.name);
+            } else {
+                collectionNames = collections;
+            }
+
+            const metaCollections = [];
+
+            for (const name of collectionNames) {
+                const col = this.dbo.collection(name);
+                const estimatedCount = await col.estimatedDocumentCount();
+                console.log(`Backing up collection: ${name} (~${estimatedCount} docs)`);
+
+                const allIndexes = await col.indexes();
+                const indexes = allIndexes.filter(idx => idx.name !== '_id_');
+
+                const filePath = path.join(outputDir, `${name}.ndjson.gz`);
+                const fileStream = fs.createWriteStream(filePath);
+
+                const transform = new Transform({
+                    objectMode: true,
+                    transform(doc, encoding, callback) {
+                        try {
+                            const line = EJSON.stringify(doc, { relaxed: false }) + '\n';
+                            callback(null, line);
+                        } catch (err) {
+                            callback(err);
+                        }
+                    }
+                });
+
+                const gzipStream = createGzip();
+                const pipelinePromise = pipeline(transform, gzipStream, fileStream);
+
+                const cursor = col.find({}, { batchSize: this.cursorBatchSize });
+                let docCount = 0;
+
+                for await (const doc of cursor) {
+                    const canWrite = transform.write(doc);
+                    docCount++;
+
+                    if (docCount % 50000 === 0) {
+                        console.log(`  ${name}: ${docCount} docs processed...`);
+                    }
+
+                    if (!canWrite) {
+                        await new Promise(resolve => transform.once('drain', resolve));
+                    }
+                }
+
+                transform.end();
+                await pipelinePromise;
+
+                console.log(`  ${name}: ${docCount} docs backed up`);
+                metaCollections.push({ name, indexes, documentCount: docCount });
+            }
+
+            const meta = {
+                dbName: this.dbo.databaseName,
+                date: new Date().toISOString(),
+                collections: metaCollections
+            };
+
+            fs.writeFileSync(path.join(outputDir, '_meta.json'), JSON.stringify(meta, null, 2));
+
+            return meta;
+        }
+
+        async restore(inputDir, { drop = false } = {}) {
+            const metaRaw = fs.readFileSync(path.join(inputDir, '_meta.json'), 'utf-8');
+            const meta = JSON.parse(metaRaw);
+
+            const results = {};
+
+            for (const colMeta of meta.collections) {
+                const { name, indexes, documentCount } = colMeta;
+                console.log(`Restoring collection: ${name} (${documentCount} docs)`);
+
+                const collection = this.dbo.collection(name);
+
+                if (drop) {
+                    try {
+                        await collection.drop();
+                    } catch (err) {
+                        // Silently ignore drop errors (e.g. collection doesn't exist)
+                    }
+                }
+
+                const filePath = path.join(inputDir, `${name}.ndjson.gz`);
+                const fileStream = fs.createReadStream(filePath);
+                const gunzipStream = createGunzip();
+                const rl = readline.createInterface({
+                    input: fileStream.pipe(gunzipStream),
+                    crlfDelay: Infinity
+                });
+
+                let batch = [];
+                let inserted = 0;
+                let errors = 0;
+
+                for await (const line of rl) {
+                    if (!line.trim()) continue;
+                    const doc = EJSON.parse(line);
+                    batch.push(doc);
+
+                    if (batch.length >= this.batchSize) {
+                        try {
+                            const result = await collection.insertMany(batch, { ordered: false });
+                            inserted += result.insertedCount;
+                        } catch (err) {
+                            if (err.code === 11000) {
+                                inserted += (err.result?.nInserted || err.insertedCount || 0);
+                                errors += batch.length - (err.result?.nInserted || err.insertedCount || 0);
+                            } else {
+                                throw err;
+                            }
+                        }
+                        batch = [];
+                    }
+                }
+
+                // Insert remaining docs
+                if (batch.length > 0) {
+                    try {
+                        const result = await collection.insertMany(batch, { ordered: false });
+                        inserted += result.insertedCount;
+                    } catch (err) {
+                        if (err.code === 11000) {
+                            inserted += (err.result?.nInserted || err.insertedCount || 0);
+                            errors += batch.length - (err.result?.nInserted || err.insertedCount || 0);
+                        } else {
+                            throw err;
+                        }
+                    }
+                }
+
+                // Recreate indexes
+                for (const idx of indexes) {
+                    if (idx.name === '_id_') continue;
+                    const { key, ...options } = idx;
+                    delete options.v;
+                    try {
+                        await collection.createIndex(key, options);
+                    } catch (err) {
+                        console.error(`  Warning: failed to create index ${idx.name} on ${name}:`, err.message);
+                    }
+                }
+
+                console.log(`  ${name}: ${inserted} inserted, ${errors} errors`);
+                results[name] = { inserted, errors };
+            }
+
+            return { collections: meta.collections, results };
+        }
+    }
+
+    var backupInProgress = false;
+
+    async function performBackup(dbo, backupConfig, manual = false) {
+        if (backupInProgress) throw new Error('Backup already in progress');
+        backupInProgress = true;
+        try {
+            fs.ensureDirSync(BACKUP_DIR);
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const archiveName = `backup_${timestamp}`;
+            const tempDir = path.join(BACKUP_DIR, `.tmp_${timestamp}`);
+            fs.ensureDirSync(tempDir);
+
+            try {
+                const mb = new MongoBackup(dbo, { batchSize: 1000, cursorBatchSize: 500 });
+                const meta = await mb.backup(tempDir);
+
+                if (backupConfig.include_config_file !== false && fs.existsSync(configPath)) {
+                    fs.copyFileSync(configPath, path.join(tempDir, 'conf.json'));
+                }
+
+                const info = {
+                    name: archiveName,
+                    timestamp: new Date().toISOString(),
+                    manual,
+                    collections: meta.collections.map(c => ({ name: c.name, documentCount: c.documentCount })),
+                    includesConfig: backupConfig.include_config_file !== false && fs.existsSync(configPath),
+                };
+                fs.writeFileSync(path.join(tempDir, '_backup_info.json'), JSON.stringify(info, null, 2));
+
+                const archivePath = path.join(BACKUP_DIR, `${archiveName}.tar.gz`);
+                await tar.create({
+                    gzip: true,
+                    file: archivePath,
+                    cwd: tempDir,
+                }, fs.readdirSync(tempDir));
+
+                fs.writeFileSync(path.join(BACKUP_DIR, `${archiveName}.info.json`), JSON.stringify(info, null, 2));
+
+                const maxRetention = backupConfig.auto_backup?.max_retention_count || 10;
+                enforceRetention(BACKUP_DIR, maxRetention);
+
+                console.log(`Backup complete: ${archivePath}`);
+                return info;
+            } finally {
+                fs.removeSync(tempDir);
+            }
+        } finally {
+            backupInProgress = false;
+        }
+    }
+
+    function enforceRetention(backupDir, maxCount) {
+        if (!fs.existsSync(backupDir)) return;
+        const archives = fs.readdirSync(backupDir)
+            .filter(f => f.startsWith('backup_') && f.endsWith('.tar.gz'))
+            .map(f => ({
+                name: f,
+                path: path.join(backupDir, f),
+                time: fs.statSync(path.join(backupDir, f)).mtime.getTime()
+            }))
+            .sort((a, b) => b.time - a.time);
+
+        if (archives.length > maxCount) {
+            const toDelete = archives.slice(maxCount);
+            for (const entry of toDelete) {
+                console.log(`Retention: deleting old backup ${entry.name}`);
+                fs.removeSync(entry.path);
+                const infoPath = entry.path.replace('.tar.gz', '.info.json');
+                if (fs.existsSync(infoPath)) fs.removeSync(infoPath);
+            }
+        }
+    }
+
     function serverError(res, err) {
         if (res) res.sendStatus(500);
         console.error(err);
@@ -4145,6 +4555,9 @@ async function init() {
 
             if (!(await dbo.collection("configs").findOne({ category: "seeding_tracker", config: { $exists: true } })))
                 dbo.collection("configs").updateOne({ category: "seeding_tracker" }, { $set: { config: { tracking_mode: 'incremental' } } }, { upsert: true })
+
+            if (!(await dbo.collection("configs").findOne({ category: "backup", config: { $exists: true } })))
+                dbo.collection("configs").updateOne({ category: "backup" }, { $set: { config: { auto_backup: { enabled: true, schedule: { value: 1, option: 86400000 }, next_backup: (new Date()).toISOString().split(/T/)[0], max_retention_count: 10 }, include_config_file: true } } }, { upsert: true })
 
             await repairSeedingTrackerConfigFormat();
 
