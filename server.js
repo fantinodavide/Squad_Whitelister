@@ -63,6 +63,16 @@ async function init() {
     const mongo = await irequire('mongodb');
     const MongoClient = mongo.MongoClient;
     const ObjectID = mongo.ObjectID;
+
+    function safeObjectID(id) {
+        try {
+            if (!id || typeof id !== 'string') return null;
+            return ObjectID(id);
+        } catch(e) {
+            return null;
+        }
+    }
+
     const crypto = await irequire("crypto");
     const bodyParser = await irequire('body-parser');
     const cookieParser = await irequire('cookie-parser');
@@ -565,6 +575,14 @@ async function init() {
         app.post('/api/login', (req, res, next) => {
             const parm = req.body;
 
+            if (typeof parm.username !== 'string' || typeof parm.password !== 'string') {
+                return res.status(400).send({ error: 'Invalid credentials format' });
+            }
+
+            if (parm.username.length > 100 || parm.password.length > 1000) {
+                return res.status(400).send({ error: 'Input too long' });
+            }
+
             mongoConn((dbo) => {
                 let cryptPwd = crypto.createHash('sha512').update(parm.password).digest('hex');
                 dbo.collection("users").findOne({ $or: [ { username_lower: parm.username.toLowerCase() }, { username: parm.username } ], password: cryptPwd }, (err, usrRes) => {
@@ -617,6 +635,15 @@ async function init() {
         app.use('/api/signup', signupLimiter);
         app.post('/api/signup', async (req, res, next) => {
             const parm = req.body;
+
+            if (typeof parm.username !== 'string' || typeof parm.password !== 'string') {
+                return res.status(400).send({ error: 'Invalid credentials format' });
+            }
+
+            if (parm.username.length > 100 || parm.password.length > 1000) {
+                return res.status(400).send({ error: 'Input too long' });
+            }
+
             const isRootUser = !subcomponent_data.database.root_user_registered;
 
             const dbo = await mongoConn();
@@ -652,7 +679,8 @@ async function init() {
             dbo.collection("users").findOne({ username_lower: parm.username.toLowerCase() }, (err, dbRes) => {
                 if (err) {
                     res.sendStatus(500);
-                    console.error(err)
+                    console.error(err);
+                    return;
                 } else if (dbRes == null) {
                     dbo.collection("users").insertOne(insertAccount, (err, dbRes) => {
                         if (err) {
@@ -1163,7 +1191,7 @@ async function init() {
             delete sessionReturn.password;
             delete sessionReturn.token;
             if (req.userSession) res.send({ status: "session_valid", userSession: sessionReturn })
-            else res.send({ status: "login_required" }).status(401);
+            else res.status(401).send({ status: "login_required" });
         })
 
         app.use('/', requireLogin);
@@ -1172,7 +1200,7 @@ async function init() {
             if (req.userSession && req.userSession.access_level > 5)
                 return res.sendStatus(403);
             res.send({ status: "restarting" });
-            restartProcess(0, 0, args);
+            return restartProcess(0, 0, args);
         })
 
         app.use('/api/logout', (req, res, next) => {
@@ -1228,9 +1256,11 @@ async function init() {
         })
         app.post('/api/users/write/remove', (req, res, next) => {
             const parm = req.body;
+            const userId = safeObjectID(parm._id);
+            if (!userId) return res.status(400).send({ error: 'Invalid user ID' });
             const demoFilter = args.demo ? { username: { $ne: "demoadmin" } } : {};
             mongoConn((dbo) => {
-                dbo.collection("users").deleteOne({ _id: ObjectID(parm._id), ...demoFilter, access_level: { $gt: 1 } }, (err, dbRes) => {
+                dbo.collection("users").deleteOne({ _id: userId, ...demoFilter, access_level: { $gt: 1 } }, (err, dbRes) => {
                     if (err) {
                         res.sendStatus(500);
                         console.error(err)
@@ -1242,12 +1272,14 @@ async function init() {
         })
         app.post('/api/users/write/updateAccessLevel', (req, res, next) => {
             const parm = req.body;
+            const userId = safeObjectID(parm._id);
+            if (!userId) return res.status(400).send({ error: 'Invalid user ID' });
             const demoFilter = args.demo ? { username: { $ne: "demoadmin" } } : {};
             console.log("\nFilter\n", demoFilter)
 
             if (req.userSession.access_level <= parseInt(parm.upd)) {
                 mongoConn((dbo) => {
-                    dbo.collection("users").updateOne({ _id: ObjectID(parm._id), ...demoFilter, access_level: { $gt: 1 } }, { $set: { access_level: parseInt(parm.upd) } }, (err, dbRes) => {
+                    dbo.collection("users").updateOne({ _id: userId, ...demoFilter, access_level: { $gt: 1 } }, { $set: { access_level: parseInt(parm.upd) } }, (err, dbRes) => {
                         if (err) {
                             res.sendStatus(500);
                             console.error(err)
@@ -1522,7 +1554,7 @@ async function init() {
                 res.send(resData);
 
                 if (![ 'custom_permissions', 'app_personalization' ].includes(parm.category)) {
-                    restartProcess(0, 0, args);
+                    return restartProcess(0, 0, args);
                 }
             } catch (error) {
                 resData.status = "error";
@@ -1619,6 +1651,15 @@ async function init() {
         app.use('/api/dbconfig/read/:category', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 30) next() })
         app.get('/api/dbconfig/read/:category', async (req, res, next) => {
             const parm = req.body;
+
+            if (typeof req.params.category !== 'string') {
+                return res.status(400).send({ error: 'Invalid parameter' });
+            }
+
+            if (req.params.category.includes('$') || req.params.category.includes('{')) {
+                return res.status(400).send({ error: 'Invalid parameter' });
+            }
+
             mongoConn(dbo => {
                 dbo.collection('configs').findOne({ category: req.params.category }, (err, dbRes) => {
                     if (err) serverError(res, err);
@@ -1632,6 +1673,34 @@ async function init() {
         app.use('/api/dbconfig/write*', (req, res, next) => { if (!args.demo || req.userSession.access_level == 0) next(); else res.sendStatus(403) })
         app.post('/api/dbconfig/write/update', async (req, res, next) => {
             const parm = req.body;
+
+            const validCategories = ['backup', 'seeding_tracker', 'discord', 'game', 'server'];
+            if (!parm.category || typeof parm.category !== 'string' || !validCategories.includes(parm.category)) {
+                return res.status(400).send({ error: 'Invalid category' });
+            }
+
+            if (parm.category.includes('$')) {
+                return res.status(400).send({ error: 'Invalid category' });
+            }
+
+            if (parm.config && typeof parm.config === 'object') {
+                const checkForOperators = (obj, path = '') => {
+                    for (const key in obj) {
+                        if (key.startsWith('$')) {
+                            return { error: true, path: path + key };
+                        }
+                        if (obj[key] && typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
+                            const result = checkForOperators(obj[key], path + key + '.');
+                            if (result.error) return result;
+                        }
+                    }
+                    return { error: false };
+                };
+                const validation = checkForOperators(parm.config);
+                if (validation.error) {
+                    return res.status(400).send({ error: 'Invalid config structure at ' + validation.path });
+                }
+            }
 
             if (parm.category === 'backup' && parm.config?.auto_backup?.next_backup) {
                 const nextBackup = new Date(parm.config.auto_backup.next_backup);
@@ -1771,6 +1840,29 @@ async function init() {
 
                 if (!fs.existsSync(archivePath)) return res.status(404).send({ error: 'Backup not found' });
 
+                const dbo = await mongoConn();
+                const backupConfig = await dbo.collection('configs').findOne({ category: 'backup' });
+
+                if (backupConfig?.config?.auto_backup?.enabled && backupConfig.config.auto_backup.schedule) {
+                    const schedule = backupConfig.config.auto_backup.schedule;
+                    const frequencyMs = schedule.value * schedule.option;
+                    const protectionPeriodMs = frequencyMs * 3;
+
+                    if (fs.existsSync(infoPath)) {
+                        const backupInfo = JSON.parse(fs.readFileSync(infoPath, 'utf8'));
+                        const backupTimestamp = new Date(backupInfo.timestamp).valueOf();
+                        const now = Date.now();
+                        const backupAge = now - backupTimestamp;
+
+                        if (backupAge < protectionPeriodMs) {
+                            const daysRemaining = Math.ceil((protectionPeriodMs - backupAge) / (24 * 60 * 60 * 1000));
+                            return res.status(403).send({
+                                error: `Cannot delete backup created less than 3x the backup frequency. Wait ${daysRemaining} more day(s).`
+                            });
+                        }
+                    }
+                }
+
                 fs.removeSync(archivePath);
                 if (fs.existsSync(infoPath)) fs.removeSync(infoPath);
 
@@ -1799,7 +1891,7 @@ async function init() {
         })
         app.use('/api/lists/write*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 10) next(); else res.sendStatus(401); })
         app.use('/api/lists/write/checkPerm', async (req, res, next) => {
-            res.send({ status: "permission_granted" });
+            return res.send({ status: "permission_granted" });
         })
         app.post('/api/lists/write/addNewList', (req, res, next) => {
             const parm = req.body;
@@ -2053,10 +2145,22 @@ async function init() {
             }
         })
         app.use('/api/whitelist/write/checkPerm', async (req, res, next) => {
-            res.send({ status: "permission_granted" });
+            return res.send({ status: "permission_granted" });
         })
         app.post('/api/whitelist/write/addPlayer', (req, res, next) => {
             const parm = req.body;
+
+            if (typeof parm.username !== 'string' || parm.username.length === 0 || parm.username.length > 100) {
+                return res.status(400).send({ error: 'Invalid username' });
+            }
+
+            if (typeof parm.steamid64 !== 'string' || !/^\d{17}$/.test(parm.steamid64)) {
+                return res.status(400).send({ error: 'Invalid steamid64' });
+            }
+
+            if (parm.eosID !== undefined && parm.eosID !== null && parm.eosID !== '' && typeof parm.eosID !== 'string') {
+                return res.status(400).send({ error: 'Invalid eosID' });
+            }
 
             if (!parm.discordUsername)
                 parm.discordUsername = ""
@@ -2123,7 +2227,7 @@ async function init() {
                                                 dbo.collection("whitelists").insertOne(insWlPlayer, (err, dbRes) => {
                                                     if (err) console.log("ERR", err);
                                                     else {
-                                                        res.send({ status: "inserted_new_player", player: { ...insWlPlayer, inserted_by: [ { username: req.userSession.username } ] }, ...dbRes })
+                                                        res.send({ status: "inserted_new_player", player: { ...insWlPlayer, inserted_by: [ { username: req.userSession.username } ] }, ...dbRes });
                                                         if (subcomponent_status.discord_bot) {
                                                             let row, components = [];
                                                             if (!insWlPlayer.approved) {
@@ -2190,8 +2294,10 @@ async function init() {
 
         app.post('/api/whitelist/write/removePlayer', (req, res, next) => {
             const parm = req.body;
+            const whitelistId = safeObjectID(parm._id);
+            if (!whitelistId) return res.status(400).send({ error: 'Invalid whitelist ID' });
             mongoConn((dbo) => {
-                dbo.collection("whitelists").deleteOne({ _id: ObjectID(parm._id) }, (err, dbRes) => {
+                dbo.collection("whitelists").deleteOne({ _id: whitelistId }, (err, dbRes) => {
                     if (err) serverError(res, err);
                     else {
                         res.send({ status: "removing_ok", ...dbRes })
@@ -2230,6 +2336,10 @@ async function init() {
             else res.sendStatus(401)
         })
         app.get('/api/players/read/from/steamId/:id', (req, res, next) => {
+            if (typeof req.params.id !== 'string' || !/^\d{17}$/.test(req.params.id)) {
+                return res.status(400).send({ error: 'Invalid Steam ID format' });
+            }
+
             mongoConn((dbo) => {
                 dbo.collection("players").findOne({ steamid64: req.params.id }, (err, dbRes) => {
                     if (err) serverError(res, err);
@@ -2240,6 +2350,10 @@ async function init() {
             })
         })
         app.get('/api/players/read/from/eosId/:id', (req, res, next) => {
+            if (typeof req.params.id !== 'string' || !/^[a-f0-9]{32}$/i.test(req.params.id)) {
+                return res.status(400).send({ error: 'Invalid EOS ID format' });
+            }
+
             mongoConn((dbo) => {
                 dbo.collection("players").findOne({ eosID: req.params.id }, (err, dbRes) => {
                     if (err) serverError(res, err);
@@ -2250,6 +2364,10 @@ async function init() {
             })
         })
         app.get('/api/players/read/from/discordUserId/:id', (req, res, next) => {
+            if (typeof req.params.id !== 'string' || !/^\d{17,20}$/.test(req.params.id)) {
+                return res.status(400).send({ error: 'Invalid Discord User ID format' });
+            }
+
             mongoConn((dbo) => {
                 dbo.collection("players").findOne({ discord_user_id: req.params.id }, (err, dbRes) => {
                     if (err) serverError(res, err);
@@ -2279,6 +2397,9 @@ async function init() {
                 if (!Array.isArray(req.body.steamIDs) || typeof req.body.incremental !== 'boolean') {
                     return res.status(400).send('Invalid input');
                 }
+                if (typeof req.body.points !== 'number' || req.body.points < 0 || req.body.points > 1000) {
+                    return res.status(400).send({ error: 'Invalid points' });
+                }
                 const steamIDs = req.body.steamIDs
                 const mode = req.body.incremental ? '$inc' : '$set'
                 const points = req.body.points
@@ -2301,7 +2422,7 @@ async function init() {
 
         app.use('/api/gameGroups/write*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next(); else res.sendStatus(401); })
         app.use('/api/gameGroups/write/checkPerm', async (req, res, next) => {
-            res.send({ status: "permission_granted" })
+            return res.send({ status: "permission_granted" })
         })
         app.post('/api/gameGroups/write/newGroup', (req, res, next) => {
             const parm = req.body;
@@ -2315,13 +2436,18 @@ async function init() {
             })
         })
         app.post('/api/gameGroups/write/editGroup', (req, res, next) => {
-            let parm = { ...req.body };
-            delete parm._id;
+            const allowedFields = ['group_name', 'group_permissions', 'require_appr', 'discord_roles'];
+            const parm = {};
+            allowedFields.forEach(field => {
+                if (req.body[field] !== undefined) parm[field] = req.body[field];
+            });
+            const groupId = safeObjectID(req.body._id);
+            if (!groupId) return res.status(400).send({ error: 'Invalid group ID' });
             mongoConn((dbo) => {
-                dbo.collection("groups").updateOne({ _id: ObjectID(req.body._id) }, { $set: parm }, (err, dbRes) => {
+                dbo.collection("groups").updateOne({ _id: groupId }, { $set: parm }, (err, dbRes) => {
                     if (err) serverError(res, err);
                     else {
-                        dbo.collection("groups").findOne({ _id: ObjectID(req.body._id) }, (err, dbRes) => {
+                        dbo.collection("groups").findOne({ _id: groupId }, (err, dbRes) => {
                             res.send({ status: "edit_ok", ...dbRes })
                         })
                     }
@@ -2330,11 +2456,13 @@ async function init() {
         })
 
         app.post('/api/gameGroups/write/remove', (req, res, next) => {
+            const groupId = safeObjectID(req.body._id);
+            if (!groupId) return res.status(400).send({ error: 'Invalid group ID' });
             mongoConn((dbo) => {
-                dbo.collection("groups").deleteOne({ _id: ObjectID(req.body._id) }, (err, groupDbRes) => {
+                dbo.collection("groups").deleteOne({ _id: groupId }, (err, groupDbRes) => {
                     if (err) return serverError(res, err);
 
-                    dbo.collection("whitelists").deleteMany({ id_group: ObjectID(req.body._id) }, (err, whitelistDbRes) => {
+                    dbo.collection("whitelists").deleteMany({ id_group: groupId }, (err, whitelistDbRes) => {
                         if (err) return serverError(res, err);
 
                         res.send({
@@ -2447,9 +2575,10 @@ async function init() {
             })
         })
         app.post('/api/clans/removeClan', (req, res, next) => {
-
+            const clanId = safeObjectID(req.body._id);
+            if (!clanId) return res.status(400).send({ error: 'Invalid clan ID' });
             mongoConn((dbo) => {
-                dbo.collection("clans").deleteOne({ _id: ObjectID(req.body._id) }, (err, dbRes) => {
+                dbo.collection("clans").deleteOne({ _id: clanId }, (err, dbRes) => {
                     if (err) serverError(res, err);
                     else {
                         res.send({ status: "removing_ok", ...dbRes })
@@ -2458,13 +2587,18 @@ async function init() {
             })
         })
         app.post('/api/clans/editClan', (req, res, next) => {
-            let parm = { ...req.body };
-            delete parm._id;
+            const allowedFields = ['full_name', 'tag', 'clan_code', 'description', 'discord_server_id'];
+            const parm = {};
+            allowedFields.forEach(field => {
+                if (req.body[field] !== undefined) parm[field] = req.body[field];
+            });
+            const clanId = safeObjectID(req.body._id);
+            if (!clanId) return res.status(400).send({ error: 'Invalid clan ID' });
             mongoConn((dbo) => {
-                dbo.collection("clans").updateOne({ _id: ObjectID(req.body._id) }, { $set: parm }, (err, dbRes) => {
+                dbo.collection("clans").updateOne({ _id: clanId }, { $set: parm }, (err, dbRes) => {
                     if (err) serverError(res, err);
                     else {
-                        dbo.collection("clans").findOne({ _id: ObjectID(req.body._id) }, (err, dbRes) => {
+                        dbo.collection("clans").findOne({ _id: clanId }, (err, dbRes) => {
                             res.send({ status: "edit_ok", ...dbRes })
                         })
                     }
@@ -2473,6 +2607,15 @@ async function init() {
         })
         app.get('/api/clans/getClanUsers', (req, res, next) => {
             const parm = req.query;
+
+            if (!parm.clan_code || typeof parm.clan_code !== 'string') {
+                return res.status(400).send({ error: 'Invalid clan_code parameter' });
+            }
+
+            if (parm.clan_code.includes('$') || parm.clan_code.includes('{')) {
+                return res.status(400).send({ error: 'Invalid clan_code parameter' });
+            }
+
             mongoConn((dbo) => {
                 dbo.collection("users").find({ clan_code: parm.clan_code }).toArray((err, dbRes) => {
                     res.send(dbRes)
@@ -2481,8 +2624,10 @@ async function init() {
         })
         app.get('/api/clans/getClanAdmins', (req, res, next) => {
             const parm = req.query;
+            const clanId = safeObjectID(parm._id);
+            if (!clanId) return res.status(400).send({ error: 'Invalid clan ID' });
             mongoConn((dbo) => {
-                dbo.collection("clans").findOne({ _id: ObjectID(parm._id) }, { projection: { admins: 1 } }, (err, dbRes) => {
+                dbo.collection("clans").findOne({ _id: clanId }, { projection: { admins: 1 } }, (err, dbRes) => {
                     if (err) serverError(res, err);
                     else {
                         let toSend = dbRes.admins ? dbRes.admins : []
@@ -2493,8 +2638,10 @@ async function init() {
         })
         app.post('/api/clans/editClanAdmins', (req, res, next) => {
             const parm = req.body;
+            const clanId = safeObjectID(req.body._id);
+            if (!clanId) return res.status(400).send({ error: 'Invalid clan ID' });
             mongoConn((dbo) => {
-                dbo.collection("clans").updateOne({ _id: ObjectID(req.body._id) }, { $set: { admins: parm.clan_admins } }, (err, dbRes) => {
+                dbo.collection("clans").updateOne({ _id: clanId }, { $set: { admins: parm.clan_admins } }, (err, dbRes) => {
                     res.send({ status: "edit_ok", ...dbRes })
                 })
             })
@@ -2537,7 +2684,7 @@ async function init() {
                             })
                         }
                         else {
-                            res.send({ status: "clan_already_registered" }).status(409)
+                            res.status(409).send({ status: "clan_already_registered" });
                             console.log("Trying to register an already registered clan:", clanDbIns)
                         }
                     })
@@ -2545,8 +2692,8 @@ async function init() {
             } while (error);
         })
 
-        app.use('/api/keys*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
-        app.use('/api/keys/checkPerm', (req, res, next) => { res.send(true) })
+        app.use('/api/keys*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next(); else res.sendStatus(403) })
+        app.use('/api/keys/checkPerm', (req, res, next) => { return res.send(true) })
         app.get('/api/keys/:id?', async (req, res, next) => {
             const pipeline = [
                 {
@@ -2572,7 +2719,9 @@ async function init() {
 
             const dbo = await mongoConn();
             if (req.params.id) {
-                pipeline.unshift({ $match: { _id: ObjectID(req.params.id) } })
+                const keyId = safeObjectID(req.params.id);
+                if (!keyId) return res.status(400).send({ error: 'Invalid key ID' });
+                pipeline.unshift({ $match: { _id: keyId } })
                 const key = (await dbo.collection("keys").aggregate(pipeline).toArray())[ 0 ];
                 res.send(key);
                 return;
@@ -2583,8 +2732,19 @@ async function init() {
         })
         app.post('/api/keys/', async (req, res, next) => {
             const dbo = await mongoConn();
+
+            if (!req.body.name || typeof req.body.name !== 'string' || req.body.name.trim().length === 0) {
+                return res.status(400).send({ message: "API key name is required and must be a non-empty string", field: "name" });
+            }
+            if (req.body.name.length > 100) {
+                return res.status(400).send({ message: "API key name must not exceed 100 characters", field: "name" });
+            }
+            if (req.body.name.includes('$') || req.body.name.includes('{')) {
+                return res.status(400).send({ message: "API key name contains invalid characters", field: "name" });
+            }
+
             const data = {
-                name: req.body.name,
+                name: req.body.name.trim(),
                 token: randomString(128),
                 access_level: +req.body.access_level,
                 inserted_by: req.userSession.id_user
@@ -2617,7 +2777,9 @@ async function init() {
         })
         app.delete('/api/keys/:id', async (req, res, next) => {
             const dbo = await mongoConn();
-            const r = await dbo.collection("keys").deleteOne({ _id: ObjectID(req.params.id) });
+            const keyId = safeObjectID(req.params.id);
+            if (!keyId) return res.status(400).send({ error: 'Invalid key ID' });
+            const r = await dbo.collection("keys").deleteOne({ _id: keyId });
             res.send(r);
             return;
         })
@@ -2643,11 +2805,11 @@ async function init() {
         })
         app.get("/api/admin/checkInstallUpdate", (req, res, next) => {
             res.send({ status: "Ok" });
-            checkUpdates(true);
+            return checkUpdates(true);
         })
         app.get("/api/admin/restartApplication", (req, res, next) => {
             res.send({ status: "Ok" });
-            restartProcess(req.query.delay ? req.query.delay : 0, 0, args);
+            return restartProcess(req.query.delay ? req.query.delay : 0, 0, args);
         })
 
         app.get('*', (req, res) => {
@@ -2724,16 +2886,14 @@ async function init() {
             if (isApiKey) {
                 session.id_user = session.inserted_by
                 delete session.inserted_by;
+                // For API keys, use the key's access_level, not the user's
+            } else {
+                const user = await dbo.collection("users").findOne({ _id: session.id_user }, { projection: { _id: 0 } })
+                if (!user)
+                    return callback()
+
+                session = { ...session, ...user };
             }
-
-            const user = await dbo.collection("users").findOne({ _id: session.id_user }, { projection: { _id: 0 } })
-            if (!user)
-                return callback()
-
-            if (isApiKey)
-                delete user.access_level
-
-            session = { ...session, ...user };
 
             if (session.session_expiration <= new Date())
                 return callback();
@@ -2755,7 +2915,7 @@ async function init() {
                     break;
                 }*/
             //if (!req.userSession) res.redirect(301, "/api/login");
-            if (!req.userSession) res.send({ status: "login_required" }).status(401);
+            if (!req.userSession) res.status(401).send({ status: "login_required" });
             else callback();//authorizeDCSUsers(req, res, callback)
         }
         function logRequests(req, res, next) {
@@ -4727,16 +4887,21 @@ async function init() {
     }
 
     function setApprovedStatus(parm, res = null) {
+        const whitelistId = safeObjectID(parm._id);
+        if (!whitelistId) {
+            if (res) return res.status(400).send({ error: 'Invalid whitelist ID' });
+            return;
+        }
         mongoConn((dbo) => {
             if (parm.approve_update && (parm.approve_update == true || parm.approve_update == 'true')) {
-                dbo.collection("whitelists").updateOne({ _id: ObjectID(parm._id) }, { $set: { approved: true } }, (err, dbRes) => {
+                dbo.collection("whitelists").updateOne({ _id: whitelistId }, { $set: { approved: true } }, (err, dbRes) => {
                     if (err) serverError(res, err);
                     else {
                         if (res) res.send({ status: "approved", ...dbRes })
                     }
                 })
             } else {
-                dbo.collection("whitelists").deleteOne({ _id: ObjectID(parm._id) }, (err, dbRes) => {
+                dbo.collection("whitelists").deleteOne({ _id: whitelistId }, (err, dbRes) => {
                     if (err) serverError(res, err);
                     else {
                         if (res) res.send({ status: "rejected", ...dbRes })
