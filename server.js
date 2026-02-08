@@ -1462,7 +1462,7 @@ async function init() {
             res.send(cpyConf);
         });
 
-        app.use('/api/config/write', (req, res, next) => { if (!args.demo || req.userSession.access_level == 0) next(); else res.sendStatus(403) })
+        app.use('/api/config/write', (...p) => { accessLevelAuthorization(5, ...p) })
         app.post('/api/config/write/update', async (req, res, next) => {
             const parm = req.body;
             let resData = {};
@@ -1670,7 +1670,7 @@ async function init() {
                 })
             })
         })
-        app.use('/api/dbconfig/write*', (req, res, next) => { if (!args.demo || req.userSession.access_level == 0) next(); else res.sendStatus(403) })
+        app.use('/api/dbconfig/write*', (...p) => { accessLevelAuthorization(5, ...p) })
         app.post('/api/dbconfig/write/update', async (req, res, next) => {
             const parm = req.body;
 
