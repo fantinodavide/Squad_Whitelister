@@ -365,6 +365,114 @@ async function init() {
         }
     }
 
+    async function resetSeedingTrackerConfig() {
+        try {
+            const dbo = await mongoConn();
+            const currentConfig = await dbo.collection('configs').findOne({ category: 'seeding_tracker' });
+
+            if (!currentConfig?.config) {
+                return;
+            }
+
+            const rewardNeededTime = currentConfig.config.reward_needed_time?.value || 0;
+            const seedingPlayerThreshold = currentConfig.config.seeding_player_threshold || 0;
+            const seedingStartPlayerCount = currentConfig.config.seeding_start_player_count || 0;
+
+            if (rewardNeededTime === 0 && seedingPlayerThreshold > 100 && seedingStartPlayerCount === 0) {
+                const defaultConfig = {
+                    reset_seeding_time: { value: 1, option: 86400000 },
+                    reward_needed_time: { value: 1, option: 3600000 },
+                    reward_group_id: "",
+                    next_reset: "",
+                    seeding_player_threshold: 50,
+                    seeding_start_player_count: 2,
+                    reward_enabled: "false",
+                    discord_seeding_reward_channel: "",
+                    discord_seeding_score_channel: "",
+                    tracking_mode: "incremental",
+                    time_deduction: { value: 1, option: "perc_minute" },
+                    minimum_reward_duration: { value: 1, option: 3600000 }
+                };
+                await dbo.collection('configs').updateOne(
+                    { category: 'seeding_tracker' },
+                    { $set: { config: defaultConfig } }
+                );
+                console.log('Reset seeding tracker config');
+            }
+        } catch (error) {
+            console.error('Error resetting seeding tracker config:', error);
+        }
+    }
+
+    async function fixSeedingTrackerRewardGroup() {
+        try {
+            const dbo = await mongoConn();
+            const seedingConfig = await dbo.collection('configs').findOne({ category: 'seeding_tracker' });
+
+            const rewardGroupId = seedingConfig?.config?.reward_group_id;
+
+            let rewardGroup = null;
+            let needsReplacement = false;
+            let reason = '';
+
+            if (rewardGroupId === null || rewardGroupId === undefined) {
+                return;
+            }
+
+            if(rewardGroupId === ''){
+                needsReplacement = true;
+                reason = 'Empty reward_group_id';
+            }
+
+            if(!needsReplacement){
+                try {
+                    rewardGroup = await dbo.collection('groups').findOne({ _id: safeObjectID(rewardGroupId) });
+                } catch (err) {
+                    needsReplacement = true;
+                    reason = 'Invalid reward_group_id format';
+                }
+            }
+
+            if (!needsReplacement && !rewardGroup) {
+                needsReplacement = true;
+                reason = reason || 'Reward group deleted';
+            }
+            
+            if(!needsReplacement){
+                const permissions = rewardGroup?.group_permissions || [];
+                const dangerousPerms = ['ban', 'immune', 'kick', 'changemap', 'canseeadminchat', 'config', 'camera'];
+                const hasDangerousPerms = permissions.some(p => dangerousPerms.includes(p.toLowerCase()));
+
+                if (hasDangerousPerms) {
+                    needsReplacement = true;
+                    reason = `Dangerous permissions (${permissions.join(', ')})`;
+                }
+            }
+
+            if (needsReplacement) {
+                const safeGroup = await dbo.collection('groups').findOne({
+                    group_permissions: { $size: 1, $all: ['reserve'] }
+                });
+
+                if (safeGroup) {
+                    await dbo.collection('configs').updateOne(
+                        { category: 'seeding_tracker' },
+                        { $set: { 'config.reward_group_id': safeGroup._id.toString() } }
+                    );
+                    console.log(`Seeding tracker reward group: ${reason}, switched to safe group: ${safeGroup.group_name}`);
+                } else {
+                    await dbo.collection('configs').updateOne(
+                        { category: 'seeding_tracker' },
+                        { $set: { 'config.reward_group_id': '' } }
+                    );
+                    console.log(`Seeding tracker reward group: ${reason}, no safe group found, cleared reference`);
+                }
+            }
+        } catch (error) {
+            console.error('Error fixing seeding tracker reward group:', error);
+        }
+    }
+
     async function checkAndRunFirstStartScripts() {
         try {
             const dbo = await mongoConn();
@@ -1075,10 +1183,15 @@ async function init() {
 
 
                                             function formatDocument() {
+                                                const deletedGroups = new Set();
                                                 for (let w of output) {
+                                                    if(deletedGroups.has(w.groupId))
+                                                        continue;
                                                     if (!groups[ w.groupId ]) {
-                                                        console.log("Could not find group with id", w.groupId, groups[ w.groupId ])
+                                                        if(w.groupId != '' && w.groupId != null)
+                                                            console.log("Could not find group with id", w.groupId, groups[ w.groupId ])
                                                         dbo.collection("whitelists").deleteMany({ id_group: w.groupId })
+                                                        deletedGroups.add(w.groupId);
                                                         continue;
                                                     }
                                                     w.groupId = `${w.groupId}`;
@@ -4756,6 +4869,8 @@ async function init() {
                 dbo.collection("configs").updateOne({ category: "backup" }, { $set: { config: { auto_backup: { enabled: true, schedule: { value: 1, option: 86400000 }, next_backup: (new Date()).toISOString().split(/T/)[0], max_retention_count: 10 }, include_config_file: true } } }, { upsert: true })
 
             await repairSeedingTrackerConfigFormat();
+            await resetSeedingTrackerConfig();
+            await fixSeedingTrackerRewardGroup();
 
             listCollection(() => { repairListFormat(callback) });
             // dbo.collection("configs").deleteMany({ category: "seeding_tracker", tracking_mode: { $exists: false } })
