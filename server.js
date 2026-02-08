@@ -258,6 +258,11 @@ async function init() {
 
     function start() {
         initConfigFile(() => {
+            const repairResult = repairConfigFile();
+            if (repairResult.success && repairResult.repaired) {
+                console.log(`Config file repaired (backup: ${repairResult.backupPath})`);
+            }
+
             extendLogging()
             console.log("ARGS:", args)
             console.log("ENV:", process.env)
@@ -418,7 +423,7 @@ async function init() {
             await generateApiDocs();
 
             resetSeedingTime();
-            scheduledBackup();
+            await scheduledBackup();
 
             await initWlCaches();
             setInterval(refreshWlCaches, config.other.lists_cache_refresh_seconds * 1000)
@@ -521,31 +526,30 @@ async function init() {
             }
         }
 
-        function scheduledBackup() {
-            _checkBackup();
+        async function scheduledBackup() {
+            await _checkBackup();
             setInterval(_checkBackup, 60 * 1000);
 
-            function _checkBackup() {
-                mongoConn(async dbo => {
-                    try {
-                        const bt = await dbo.collection('configs').findOne({ category: 'backup' });
-                        if (!bt) return;
-                        const btConf = bt.config;
-                        if (btConf.auto_backup && btConf.auto_backup.enabled && btConf.auto_backup.next_backup && new Date() > new Date(btConf.auto_backup.next_backup)) {
-                            if (backupInProgress) return;
-                            console.log('Running scheduled backup...');
-                            await performBackup(dbo, btConf);
-                            const next = new Date(Date.now() + (btConf.auto_backup.schedule.value * btConf.auto_backup.schedule.option)).toISOString().split(/T/)[0];
-                            await dbo.collection('configs').updateOne(
-                                { category: 'backup' },
-                                { $set: { "config.auto_backup.next_backup": next } }
-                            );
-                            console.log('Scheduled backup complete. Next:', next);
-                        }
-                    } catch (err) {
-                        console.error('Scheduled backup failed:', err);
+            async function _checkBackup() {
+                try {
+                    const dbo = await mongoConn();
+                    const bt = await dbo.collection('configs').findOne({ category: 'backup' });
+                    if (!bt) return;
+                    const btConf = bt.config;
+                    if (btConf.auto_backup && btConf.auto_backup.enabled && btConf.auto_backup.next_backup && new Date() > new Date(btConf.auto_backup.next_backup)) {
+                        if (backupInProgress) return;
+                        console.log('Running scheduled backup...');
+                        await performBackup(dbo, btConf);
+                        const next = new Date(Date.now() + (btConf.auto_backup.schedule.value * btConf.auto_backup.schedule.option)).toISOString().split(/T/)[0];
+                        await dbo.collection('configs').updateOne(
+                            { category: 'backup' },
+                            { $set: { "config.auto_backup.next_backup": next } }
+                        );
+                        console.log('Scheduled backup complete. Next:', next);
                     }
-                });
+                } catch (err) {
+                    console.error('Scheduled backup failed:', err);
+                }
             }
         }
 
@@ -1050,15 +1054,16 @@ async function init() {
                                                             const minPoints = sdConf.reward_needed_time.value * sdConf.reward_needed_time.option / 1000 / 60;
                                                             dbo.collection("players").find({ steamid64: { $ne: null }, seeding_points: { $gte: minPoints } }).toArray((err, dbRes) => {
                                                                 if (err) serverError(res, err);
-                                                                const mapData = dbRes.map((w) => ({
-                                                                    username: w.username,
-                                                                    steamid64: w.steamid64,
-                                                                    eosID: w.eosID,
-                                                                    groupId: sdConf.reward_group_id,
-                                                                    clanTag: "Seeder",
-                                                                    discordUsername: (w.discord_username != null ? w.discord_username : "")
-                                                                }))
-                                                                output.push(...mapData);
+                                                                for (const w of dbRes) {
+                                                                    output.push({
+                                                                        username: w.username,
+                                                                        steamid64: w.steamid64,
+                                                                        eosID: w.eosID,
+                                                                        groupId: sdConf.reward_group_id,
+                                                                        clanTag: "Seeder",
+                                                                        discordUsername: (w.discord_username != null ? w.discord_username : "")
+                                                                    });
+                                                                }
                                                                 endFile()
                                                             })
                                                         } else
@@ -1479,6 +1484,15 @@ async function init() {
         app.post('/api/config/write/update', async (req, res, next) => {
             const parm = req.body;
             let resData = {};
+
+            const validation = validateConfigChange(parm.category, parm.config);
+            if (!validation.valid) {
+                resData.status = "config_rejected";
+                resData.error = "Invalid config structure";
+                resData.errors = validation.errors;
+                resData.warnings = validation.warnings;
+                return res.status(400).send(resData);
+            }
 
             if (process.env.HIDDEN_CONFIG_TABS?.split(';').includes(parm.category)) {
                 resData.status = "config_rejected";
@@ -4597,11 +4611,9 @@ async function init() {
     async function generateApiDocs() {
         apiDocsJson = fs.readFileSync(path.join(__dirname, 'docs/api/docs.json')).toString()
     }
-    function initConfigFile(callback) {
 
-        console.log("Current dir: ", __dirname);
-        console.log(`Configuration file path: ${configPath}`)
-        let emptyConfFile = {
+    function getBaseConfigTemplate() {
+        return {
             web_server: {
                 bind_ip: "0.0.0.0",
                 http_server_disabled: (process.env.HTTP_SERVER_DISABLED == 'true' && process.env.HTTP_SERVER_DISABLED == '1') || false,
@@ -4616,8 +4628,6 @@ async function init() {
                     host: process.env.MONGODB_CONNECTION_STRING || "127.0.0.1",
                     port: 27017,
                     database: "Whitelister",
-                    // username: "",
-                    // password: "",
                 }
             },
             app_personalization: {
@@ -4662,7 +4672,14 @@ async function init() {
                 logs_max_file_size_mb: 250,
                 logs_max_buffer_size_mb: 0.5
             }
-        }
+        };
+    }
+
+    function initConfigFile(callback) {
+
+        console.log("Current dir: ", __dirname);
+        console.log(`Configuration file path: ${configPath}`)
+        let emptyConfFile = getBaseConfigTemplate();
 
         if (!fs.existsSync(configPath)) {
             console.log(`Creating config file at path: ${configPath}`)
@@ -4867,6 +4884,135 @@ async function init() {
                 }
             }
         })
+    }
+    function validateConfigChange(category, configData) {
+        const errors = [];
+        const warnings = [];
+
+        if (typeof category !== 'string' || !category.trim()) {
+            errors.push('Category must be a non-empty string');
+            return { valid: false, errors, warnings };
+        }
+
+        const validCategories = ['web_server', 'database', 'app_personalization', 'discord_bot', 'squadjs', 'custom_permissions', 'other'];
+        if (!validCategories.includes(category)) {
+            errors.push(`Invalid category: ${category}. Must be one of: ${validCategories.join(', ')}`);
+            return { valid: false, errors, warnings };
+        }
+
+        if (typeof configData !== 'object' || configData === null) {
+            errors.push('Config data must be an object');
+            return { valid: false, errors, warnings };
+        }
+
+        if (category === 'squadjs' && !Array.isArray(configData)) {
+            errors.push('squadjs config must be an array');
+            return { valid: false, errors, warnings };
+        }
+
+        const maxDepth = 10;
+        const maxKeys = 500;
+        const checkDepth = (obj, depth = 0, keyCount = { count: 0 }) => {
+            if (depth > maxDepth) {
+                errors.push(`Config exceeds maximum nesting depth of ${maxDepth}`);
+                return false;
+            }
+            if (typeof obj === 'object' && obj !== null) {
+                const keys = Object.keys(obj);
+                keyCount.count += keys.length;
+                if (keyCount.count > maxKeys) {
+                    errors.push(`Config exceeds maximum key count of ${maxKeys}`);
+                    return false;
+                }
+                for (let k of keys) {
+                    if (!checkDepth(obj[k], depth + 1, keyCount)) return false;
+                }
+            }
+            return true;
+        };
+
+        if (!checkDepth(configData)) {
+            return { valid: false, errors, warnings };
+        }
+
+        return { valid: errors.length === 0, errors, warnings };
+    }
+
+    function repairConfigFile() {
+        try {
+            const baseConfig = getBaseConfigTemplate();
+
+            if (!fs.existsSync(configPath)) {
+                return { success: false, error: 'Config file does not exist' };
+            }
+
+            let currentConfig;
+            try {
+                currentConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+            } catch (e) {
+                currentConfig = {};
+            }
+
+            const repairedConfig = JSON.parse(JSON.stringify(baseConfig));
+
+            const safeTypeMatch = (current, base) => {
+                if (typeof base === 'boolean') return typeof current === 'boolean';
+                if (typeof base === 'number') return typeof current === 'number' || !isNaN(+current);
+                if (typeof base === 'string') return typeof current === 'string';
+                if (Array.isArray(base)) return Array.isArray(current);
+                if (typeof base === 'object' && base !== null) return typeof current === 'object' && current !== null;
+                return false;
+            };
+
+            const mergeConfigs = (repaired, current, base) => {
+                for (let key in base) {
+                    if (current[key] === undefined) continue;
+
+                    if (Array.isArray(base[key])) {
+                        if (Array.isArray(current[key])) {
+                            repaired[key] = current[key].map((item, idx) => {
+                                if (typeof base[key][0] === 'object' && typeof item === 'object') {
+                                    const merged = JSON.parse(JSON.stringify(base[key][0]));
+                                    mergeConfigs(merged, item, base[key][0]);
+                                    return merged;
+                                }
+                                return safeTypeMatch(item, base[key][0]) ? item : base[key][0];
+                            });
+                        }
+                    } else if (typeof base[key] === 'object' && base[key] !== null) {
+                        if (typeof current[key] === 'object' && current[key] !== null) {
+                            mergeConfigs(repaired[key], current[key], base[key]);
+                        }
+                    } else if (safeTypeMatch(current[key], base[key])) {
+                        if (typeof base[key] === 'number' && typeof current[key] === 'string') {
+                            repaired[key] = +current[key];
+                        } else {
+                            repaired[key] = current[key];
+                        }
+                    }
+                }
+            };
+
+            mergeConfigs(repairedConfig, currentConfig, baseConfig);
+
+            if (process.env.MONGODB_CONNECTION_STRING) {
+                repairedConfig.database.mongo.host = process.env.MONGODB_CONNECTION_STRING;
+            }
+
+            const configChanged = JSON.stringify(repairedConfig) !== JSON.stringify(currentConfig);
+            if (!configChanged) {
+                return { success: true, repaired: false };
+            }
+
+            const backupPath = `${configPath}.backup.${Date.now()}`;
+            fs.copyFileSync(configPath, backupPath);
+            fs.writeFileSync(configPath, JSON.stringify(repairedConfig, null, '\t'));
+
+            return { success: true, backupPath, repaired: true };
+        } catch (error) {
+            console.error(' > Config repair error:', error.message);
+            return { success: false, error: error.message };
+        }
     }
     function upgradeConfig(currentConfig, baseConfig) {
         console.log('upgrading conf');
