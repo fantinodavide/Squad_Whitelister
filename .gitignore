@@ -43,3 +43,4 @@ docker-image.tar
 backups/
 
 **.local.**
+*.json.backup*
