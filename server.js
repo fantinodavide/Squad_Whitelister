@@ -844,44 +844,32 @@ async function init() {
                             ip: getClientIP(req),
                         }
 
-                        let error;
-                        do {
-                            error = false;
+                        const dbo = await mongoConn();
+                        let tokenExists = true;
+                        while (tokenExists) {
                             sessionsDt.token = randomString(128);
-                            mongoConn((dbo) => {
-                                dbo.collection("sessions").findOne({ token: sessionsDt.token }, (err, dbRes) => {
-                                    if (err) {
-                                        res.sendStatus(500);
-                                        console.error(err)
-                                    }
-                                    else if (dbRes == null) {
-                                        dbo.collection("sessions").insertOne(sessionsDt, async (err, dbRes) => {
-                                            if (err) {
-                                                res.sendStatus(500);
-                                                console.error(err)
-                                            }
-                                            else {
-                                                const clientIP = getClientIP(req);
-                                                const activeSessions = await dbo.collection('sessions').countDocuments({
-                                                    ip: clientIP,
-                                                    session_expiration: { $gt: new Date() }
-                                                });
-                                                if (activeSessions > 1) {
-                                                    await dbo.collection('sessions').deleteMany({ ip: clientIP });
-                                                    blacklistIP(clientIP, `Multiple concurrent sessions (${activeSessions})`);
-                                                    return res.status(403).send({ error: 'Forbidden' });
-                                                }
-                                                res.cookie("stok", sessionsDt.token, { expires: sessionsDt.session_expiration, httpOnly: true, secure: config.web_server.force_https, sameSite: 'strict' })
-                                                res.cookie("uid", sessionsDt.id_user, { expires: sessionsDt.session_expiration, secure: config.web_server.force_https, sameSite: 'strict' })
-                                                res.send({ status: "login_ok", userDt: sessionsDt });
-                                            }
-                                        })
-                                    } else {
-                                        error = true;
-                                    }
-                                })
-                            })
-                        } while (error);
+                            tokenExists = await dbo.collection("sessions").findOne({ token: sessionsDt.token });
+                        }
+
+                        try {
+                            await dbo.collection("sessions").insertOne(sessionsDt);
+                            const clientIP = getClientIP(req);
+                            const activeSessions = await dbo.collection('sessions').countDocuments({
+                                ip: clientIP,
+                                session_expiration: { $gt: new Date() }
+                            });
+                            if (activeSessions > 1) {
+                                await dbo.collection('sessions').deleteMany({ ip: clientIP });
+                                blacklistIP(clientIP, `Multiple concurrent sessions (${activeSessions})`);
+                                return res.status(403).send({ error: 'Forbidden' });
+                            }
+                            res.cookie("stok", sessionsDt.token, { expires: sessionsDt.session_expiration, httpOnly: true, secure: config.web_server.force_https, sameSite: 'strict' })
+                            res.cookie("uid", sessionsDt.id_user, { expires: sessionsDt.session_expiration, secure: config.web_server.force_https, sameSite: 'strict' })
+                            res.send({ status: "login_ok", userDt: sessionsDt });
+                        } catch (err) {
+                            res.sendStatus(500);
+                            console.error(err);
+                        }
                     }
                 })
             })
