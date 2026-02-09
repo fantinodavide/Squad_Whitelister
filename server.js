@@ -30,6 +30,15 @@ installUpdateDependencies = async () => {
     cp.execSync(`npm install`)
 }
 
+const CONFIG_NUMERIC_BOUNDS = {
+    other: {
+        logs_max_file_size_mb: { min: 1, max: 1000 },
+        logs_max_buffer_size_mb: { min: 0.1, max: 5 },
+        update_check_interval_seconds: { min: 1800, max: 14400 },
+        lists_cache_refresh_seconds: { min: 15, max: 300 },
+    }
+};
+
 var subcomponent_status = {
     discord_bot: false,
     squadjs: []
@@ -68,7 +77,7 @@ async function init() {
         try {
             if (!id || typeof id !== 'string') return null;
             return ObjectID(id);
-        } catch(e) {
+        } catch (e) {
             return null;
         }
     }
@@ -465,12 +474,12 @@ async function init() {
                 return;
             }
 
-            if(rewardGroupId === ''){
+            if (rewardGroupId === '') {
                 needsReplacement = true;
                 reason = 'Empty reward_group_id';
             }
 
-            if(!needsReplacement){
+            if (!needsReplacement) {
                 try {
                     rewardGroup = await dbo.collection('groups').findOne({ _id: safeObjectID(rewardGroupId) });
                 } catch (err) {
@@ -483,10 +492,10 @@ async function init() {
                 needsReplacement = true;
                 reason = reason || 'Reward group deleted';
             }
-            
-            if(!needsReplacement){
+
+            if (!needsReplacement) {
                 const permissions = rewardGroup?.group_permissions || [];
-                const dangerousPerms = ['ban', 'immune', 'kick', 'changemap', 'canseeadminchat', 'config', 'camera'];
+                const dangerousPerms = [ 'ban', 'immune', 'kick', 'changemap', 'canseeadminchat', 'config', 'camera' ];
                 const hasDangerousPerms = permissions.some(p => dangerousPerms.includes(p.toLowerCase()));
 
                 if (hasDangerousPerms) {
@@ -497,7 +506,7 @@ async function init() {
 
             if (needsReplacement) {
                 const safeGroup = await dbo.collection('groups').findOne({
-                    group_permissions: { $size: 1, $all: ['reserve'] }
+                    group_permissions: { $size: 1, $all: [ 'reserve' ] }
                 });
 
                 if (safeGroup) {
@@ -524,8 +533,8 @@ async function init() {
             const injectionPattern = /Group=|Admin=/i;
             const invalidIdFilter = {
                 $or: [
-                    { steamid64: { $exists: true, $nin: [null, ''], $not: { $regex: /^\d{17}$/ } } },
-                    { eosID: { $exists: true, $nin: [null, ''], $not: { $regex: /^[a-f\d]{32}$/ } } }
+                    { steamid64: { $exists: true, $nin: [ null, '' ], $not: { $regex: /^\d{17}$/ } } },
+                    { eosID: { $exists: true, $nin: [ null, '' ], $not: { $regex: /^[a-f\d]{32}$/ } } }
                 ]
             };
             const injectionFilter = {
@@ -536,7 +545,7 @@ async function init() {
                     { discord_username: { $regex: injectionPattern } }
                 ]
             };
-            const wlResult = await dbo.collection('whitelists').deleteMany({ $or: [invalidIdFilter, injectionFilter] });
+            const wlResult = await dbo.collection('whitelists').deleteMany({ $or: [ invalidIdFilter, injectionFilter ] });
             if (wlResult.deletedCount > 0)
                 console.log(`Sanitized ${wlResult.deletedCount} whitelist(s) with invalid player IDs or injected names`);
 
@@ -569,6 +578,10 @@ async function init() {
                 console.log(`   Current version: ${versionN}`);
 
                 switch (versionN) {
+                    case '1.7.3':
+                        await invalidateAllSessions();
+                        await deleteUsersWithInvalidClanCode();
+                        break;
                     case '1.7.0':
                         console.log(" > Version 1.7.0: Force-enabling automatic updates");
                         if (!config.other.automatic_updates) {
@@ -732,7 +745,7 @@ async function init() {
                         if (backupInProgress) return;
                         console.log('Running scheduled backup...');
                         await performBackup(dbo, btConf);
-                        const next = new Date(Date.now() + (btConf.auto_backup.schedule.value * btConf.auto_backup.schedule.option)).toISOString().split(/T/)[0];
+                        const next = new Date(Date.now() + (btConf.auto_backup.schedule.value * btConf.auto_backup.schedule.option)).toISOString().split(/T/)[ 0 ];
                         await dbo.collection('configs').updateOne(
                             { category: 'backup' },
                             { $set: { "config.auto_backup.next_backup": next } }
@@ -760,7 +773,7 @@ async function init() {
         app.use((req, res, next) => {
             const check = (obj) => {
                 if (!obj || typeof obj !== 'object') return false;
-                for (const [key, val] of Object.entries(obj)) {
+                for (const [ key, val ] of Object.entries(obj)) {
                     if (containsWhitelistInjection(key)) return true;
                     if (typeof val === 'string' && containsWhitelistInjection(val)) return true;
                     if (typeof val === 'object' && val && check(val)) return true;
@@ -815,7 +828,7 @@ async function init() {
 
             mongoConn((dbo) => {
                 let cryptPwd = crypto.createHash('sha512').update(parm.password).digest('hex');
-                dbo.collection("users").findOne({ $or: [ { username_lower: parm.username.toLowerCase() }, { username: parm.username } ], password: cryptPwd }, (err, usrRes) => {
+                dbo.collection("users").findOne({ $or: [ { username_lower: parm.username.toLowerCase() }, { username: parm.username } ], password: cryptPwd }, async (err, usrRes) => {
                     if (err) {
                         res.sendStatus(500);
                         console.error(err)
@@ -1301,10 +1314,10 @@ async function init() {
                                             function formatDocument() {
                                                 const deletedGroups = new Set();
                                                 for (let w of output) {
-                                                    if(deletedGroups.has(w.groupId))
+                                                    if (deletedGroups.has(w.groupId))
                                                         continue;
                                                     if (!groups[ w.groupId ]) {
-                                                        if(w.groupId != '' && w.groupId != null)
+                                                        if (w.groupId != '' && w.groupId != null)
                                                             console.log("Could not find group with id", w.groupId, groups[ w.groupId ])
                                                         dbo.collection("whitelists").deleteMany({ id_group: w.groupId })
                                                         deletedGroups.add(w.groupId);
@@ -1936,7 +1949,7 @@ async function init() {
         app.post('/api/dbconfig/write/update', async (req, res, next) => {
             const parm = req.sanitizedBody;
 
-            const validCategories = ['backup', 'seeding_tracker', 'discord', 'game', 'server'];
+            const validCategories = [ 'backup', 'seeding_tracker', 'discord', 'game', 'server' ];
             if (!parm.category || typeof parm.category !== 'string' || !validCategories.includes(parm.category)) {
                 return res.status(400).send({ error: 'Invalid category' });
             }
@@ -1951,8 +1964,8 @@ async function init() {
                         if (key.startsWith('$')) {
                             return { error: true, path: path + key };
                         }
-                        if (obj[key] && typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
-                            const result = checkForOperators(obj[key], path + key + '.');
+                        if (obj[ key ] && typeof obj[ key ] === 'object' && !Array.isArray(obj[ key ])) {
+                            const result = checkForOperators(obj[ key ], path + key + '.');
                             if (result.error) return result;
                         }
                     }
@@ -2478,10 +2491,10 @@ async function init() {
                                 id_list: safeObjectID(parm.sel_list_id),
                             }
 
-                            if(!insWlPlayer.steamid64 && !insWlPlayer.eosID)
+                            if (!insWlPlayer.steamid64 && !insWlPlayer.eosID)
                                 res.status(400).send({ status: "not_inserted", reason: "Player ID not found." })
 
-                            dbo.collection("players").findOne(parm.eosID ? {eosID: parm.eosID} : {steamid64: parm.steamid64}, (err, playerData) => {
+                            dbo.collection("players").findOne(parm.eosID ? { eosID: parm.eosID } : { steamid64: parm.steamid64 }, (err, playerData) => {
                                 if (!insWlPlayer.eosID && playerData && playerData.eosID)
                                     insWlPlayer.eosID = playerData.eosID;
 
@@ -2702,10 +2715,10 @@ async function init() {
                 blacklistIP(getClientIP(req), 'Whitelist injection in newGroup');
                 return res.status(403).send({ error: 'Forbidden' });
             }
-            const allowedFields = ['group_name', 'group_permissions', 'require_appr', 'discord_roles'];
+            const allowedFields = [ 'group_name', 'group_permissions', 'require_appr', 'discord_roles' ];
             const parm = {};
             allowedFields.forEach(field => {
-                if (req.sanitizedBody[field] !== undefined) parm[field] = req.sanitizedBody[field];
+                if (req.sanitizedBody[ field ] !== undefined) parm[ field ] = req.sanitizedBody[ field ];
             });
             mongoConn((dbo) => {
                 dbo.collection("groups").insertOne(parm, (err, dbRes) => {
@@ -2721,10 +2734,10 @@ async function init() {
                 blacklistIP(getClientIP(req), 'Whitelist injection in editGroup');
                 return res.status(403).send({ error: 'Forbidden' });
             }
-            const allowedFields = ['group_name', 'group_permissions', 'require_appr', 'discord_roles'];
+            const allowedFields = [ 'group_name', 'group_permissions', 'require_appr', 'discord_roles' ];
             const parm = {};
             allowedFields.forEach(field => {
-                if (req.sanitizedBody[field] !== undefined) parm[field] = req.sanitizedBody[field];
+                if (req.sanitizedBody[ field ] !== undefined) parm[ field ] = req.sanitizedBody[ field ];
             });
             const groupId = safeObjectID(req.sanitizedBody._id);
             if (!groupId) return res.status(400).send({ error: 'Invalid group ID' });
@@ -2876,10 +2889,10 @@ async function init() {
                 blacklistIP(getClientIP(req), 'Whitelist injection in editClan');
                 return res.status(403).send({ error: 'Forbidden' });
             }
-            const allowedFields = ['full_name', 'tag', 'clan_code', 'description', 'discord_server_id'];
+            const allowedFields = [ 'full_name', 'tag', 'clan_code', 'description', 'discord_server_id' ];
             const parm = {};
             allowedFields.forEach(field => {
-                if (req.sanitizedBody[field] !== undefined) parm[field] = req.sanitizedBody[field];
+                if (req.sanitizedBody[ field ] !== undefined) parm[ field ] = req.sanitizedBody[ field ];
             });
             const clanId = safeObjectID(req.sanitizedBody._id);
             if (!clanId) return res.status(400).send({ error: 'Invalid clan ID' });
@@ -4780,7 +4793,7 @@ async function init() {
                 }
 
                 console.log(`  ${name}: ${inserted} inserted, ${errors} errors`);
-                results[name] = { inserted, errors };
+                results[ name ] = { inserted, errors };
             }
 
             return { collections: meta.collections, results };
@@ -4871,7 +4884,6 @@ async function init() {
     async function generateApiDocs() {
         apiDocsJson = fs.readFileSync(path.join(__dirname, 'docs/api/docs.json')).toString()
     }
-
     function getBaseConfigTemplate() {
         return {
             web_server: {
@@ -5013,7 +5025,7 @@ async function init() {
                 dbo.collection("configs").updateOne({ category: "seeding_tracker" }, { $set: { config: { tracking_mode: 'incremental' } } }, { upsert: true })
 
             if (!(await dbo.collection("configs").findOne({ category: "backup", config: { $exists: true } })))
-                dbo.collection("configs").updateOne({ category: "backup" }, { $set: { config: { auto_backup: { enabled: true, schedule: { value: 1, option: 86400000 }, next_backup: (new Date()).toISOString().split(/T/)[0], max_retention_count: 10 }, include_config_file: true } } }, { upsert: true })
+                dbo.collection("configs").updateOne({ category: "backup" }, { $set: { config: { auto_backup: { enabled: true, schedule: { value: 1, option: 86400000 }, next_backup: (new Date()).toISOString().split(/T/)[ 0 ], max_retention_count: 10 }, include_config_file: true } } }, { upsert: true })
 
             await repairSeedingTrackerConfigFormat();
             await resetSeedingTrackerConfig();
@@ -5149,14 +5161,6 @@ async function init() {
             }
         })
     }
-    const CONFIG_NUMERIC_BOUNDS = {
-        other: {
-            logs_max_file_size_mb: { min: 1, max: 1000 },
-            logs_max_buffer_size_mb: { min: 0.1, max: 5 },
-            update_check_interval_seconds: { min: 900, max: 14400 },
-            lists_cache_refresh_seconds: { min: 15, max: 300 },
-        }
-    };
 
     function validateConfigChange(category, configData) {
         const errors = [];
@@ -5167,7 +5171,7 @@ async function init() {
             return { valid: false, errors, warnings };
         }
 
-        const validCategories = ['web_server', 'database', 'app_personalization', 'discord_bot', 'squadjs', 'custom_permissions', 'other'];
+        const validCategories = [ 'web_server', 'database', 'app_personalization', 'discord_bot', 'squadjs', 'custom_permissions', 'other' ];
         if (!validCategories.includes(category)) {
             errors.push(`Invalid category: ${category}. Must be one of: ${validCategories.join(', ')}`);
             return { valid: false, errors, warnings };
@@ -5198,7 +5202,7 @@ async function init() {
                     return false;
                 }
                 for (let k of keys) {
-                    if (!checkDepth(obj[k], depth + 1, keyCount)) return false;
+                    if (!checkDepth(obj[ k ], depth + 1, keyCount)) return false;
                 }
             }
             return true;
@@ -5208,11 +5212,11 @@ async function init() {
             return { valid: false, errors, warnings };
         }
 
-        const bounds = CONFIG_NUMERIC_BOUNDS[category];
+        const bounds = CONFIG_NUMERIC_BOUNDS[ category ];
         if (bounds) {
-            for (const [key, { min, max }] of Object.entries(bounds)) {
-                if (configData[key] !== undefined) {
-                    if (typeof configData[key] !== 'number' || configData[key] < min || configData[key] > max) {
+            for (const [ key, { min, max } ] of Object.entries(bounds)) {
+                if (configData[ key ] !== undefined) {
+                    if (typeof configData[ key ] !== 'number' || configData[ key ] < min || configData[ key ] > max) {
                         errors.push(`${key} must be a number between ${min} and ${max}`);
                     }
                 }
@@ -5250,28 +5254,28 @@ async function init() {
 
             const mergeConfigs = (repaired, current, base) => {
                 for (let key in base) {
-                    if (current[key] === undefined) continue;
+                    if (current[ key ] === undefined) continue;
 
-                    if (Array.isArray(base[key])) {
-                        if (Array.isArray(current[key])) {
-                            repaired[key] = current[key].map((item, idx) => {
-                                if (typeof base[key][0] === 'object' && typeof item === 'object') {
-                                    const merged = JSON.parse(JSON.stringify(base[key][0]));
-                                    mergeConfigs(merged, item, base[key][0]);
+                    if (Array.isArray(base[ key ])) {
+                        if (Array.isArray(current[ key ])) {
+                            repaired[ key ] = current[ key ].map((item, idx) => {
+                                if (typeof base[ key ][ 0 ] === 'object' && typeof item === 'object') {
+                                    const merged = JSON.parse(JSON.stringify(base[ key ][ 0 ]));
+                                    mergeConfigs(merged, item, base[ key ][ 0 ]);
                                     return merged;
                                 }
-                                return safeTypeMatch(item, base[key][0]) ? item : base[key][0];
+                                return safeTypeMatch(item, base[ key ][ 0 ]) ? item : base[ key ][ 0 ];
                             });
                         }
-                    } else if (typeof base[key] === 'object' && base[key] !== null) {
-                        if (typeof current[key] === 'object' && current[key] !== null) {
-                            mergeConfigs(repaired[key], current[key], base[key]);
+                    } else if (typeof base[ key ] === 'object' && base[ key ] !== null) {
+                        if (typeof current[ key ] === 'object' && current[ key ] !== null) {
+                            mergeConfigs(repaired[ key ], current[ key ], base[ key ]);
                         }
-                    } else if (safeTypeMatch(current[key], base[key])) {
-                        if (typeof base[key] === 'number' && typeof current[key] === 'string') {
-                            repaired[key] = +current[key];
+                    } else if (safeTypeMatch(current[ key ], base[ key ])) {
+                        if (typeof base[ key ] === 'number' && typeof current[ key ] === 'string') {
+                            repaired[ key ] = +current[ key ];
                         } else {
-                            repaired[key] = current[key];
+                            repaired[ key ] = current[ key ];
                         }
                     }
                 }
@@ -5279,11 +5283,11 @@ async function init() {
 
             mergeConfigs(repairedConfig, currentConfig, baseConfig);
 
-            for (const [category, bounds] of Object.entries(CONFIG_NUMERIC_BOUNDS)) {
-                if (!repairedConfig[category]) continue;
-                for (const [key, { min, max }] of Object.entries(bounds)) {
-                    if (typeof repairedConfig[category][key] === 'number') {
-                        repairedConfig[category][key] = Math.min(Math.max(repairedConfig[category][key], min), max);
+            for (const [ category, bounds ] of Object.entries(CONFIG_NUMERIC_BOUNDS)) {
+                if (!repairedConfig[ category ]) continue;
+                for (const [ key, { min, max } ] of Object.entries(bounds)) {
+                    if (typeof repairedConfig[ category ][ key ] === 'number') {
+                        repairedConfig[ category ][ key ] = Math.min(Math.max(repairedConfig[ category ][ key ], min), max);
                     }
                 }
             }
