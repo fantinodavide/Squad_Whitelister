@@ -67,7 +67,7 @@ async function init() {
     function safeObjectID(id) {
         try {
             if (!id || typeof id !== 'string') return null;
-            return ObjectID(id);
+            return safeObjectID(id);
         } catch(e) {
             return null;
         }
@@ -531,7 +531,8 @@ async function init() {
                 $or: [
                     { username: { $regex: injectionPattern } },
                     { steamid64: { $regex: injectionPattern } },
-                    { eosID: { $regex: injectionPattern } }
+                    { eosID: { $regex: injectionPattern } },
+                    { discord_username: { $regex: injectionPattern } }
                 ]
             };
             const wlResult = await dbo.collection('whitelists').deleteMany({ $or: [invalidIdFilter, injectionFilter] });
@@ -809,6 +810,7 @@ async function init() {
                             login_date: new Date(),
                             session_expiration: new Date(Date.now() + sessDurationMS),
                             id_user: usrRes._id,
+                            ip: getClientIP(req),
                         }
 
                         let error;
@@ -822,12 +824,22 @@ async function init() {
                                         console.error(err)
                                     }
                                     else if (dbRes == null) {
-                                        dbo.collection("sessions").insertOne(sessionsDt, (err, dbRes) => {
+                                        dbo.collection("sessions").insertOne(sessionsDt, async (err, dbRes) => {
                                             if (err) {
                                                 res.sendStatus(500);
                                                 console.error(err)
                                             }
                                             else {
+                                                const clientIP = getClientIP(req);
+                                                const activeSessions = await dbo.collection('sessions').countDocuments({
+                                                    ip: clientIP,
+                                                    session_expiration: { $gt: new Date() }
+                                                });
+                                                if (activeSessions > 1) {
+                                                    await dbo.collection('sessions').deleteMany({ ip: clientIP });
+                                                    blacklistIP(clientIP, `Multiple concurrent sessions (${activeSessions})`);
+                                                    return res.status(403).send({ error: 'Forbidden' });
+                                                }
                                                 res.cookie("stok", sessionsDt.token, { expires: sessionsDt.session_expiration, httpOnly: true, secure: config.web_server.force_https, sameSite: 'strict' })
                                                 res.cookie("uid", sessionsDt.id_user, { expires: sessionsDt.session_expiration, secure: config.web_server.force_https, sameSite: 'strict' })
                                                 res.send({ status: "login_ok", userDt: sessionsDt });
@@ -2146,11 +2158,11 @@ async function init() {
         app.post('/api/lists/write/deleteList', (req, res, next) => {
             const parm = req.body;
             mongoConn((dbo) => {
-                dbo.collection("whitelists").deleteMany({ id_list: ObjectID(parm.sel_list_id) }, (err, dbRes) => {
+                dbo.collection("whitelists").deleteMany({ id_list: safeObjectID(parm.sel_list_id) }, (err, dbRes) => {
                     if (err) serverError(res, err);
                     else {
                         // res.send({ status: "removed_whitelist", ...dbRes })
-                        dbo.collection("lists").deleteMany({ _id: ObjectID(parm.sel_list_id) }, (err, dbRes) => {
+                        dbo.collection("lists").deleteMany({ _id: safeObjectID(parm.sel_list_id) }, (err, dbRes) => {
                             if (err) serverError(res, err);
                             else {
                                 res.send({ status: "removed_list", ...dbRes })
@@ -2170,7 +2182,7 @@ async function init() {
                     require_appr: parm.require_appr,
                     discord_roles: parm.discord_roles
                 }
-                dbo.collection("lists").updateOne({ _id: ObjectID(parm.sel_list_id) }, { $set: insData }, (err, dbRes) => {
+                dbo.collection("lists").updateOne({ _id: safeObjectID(parm.sel_list_id) }, { $set: insData }, (err, dbRes) => {
                     if (err) serverError(res, err);
                     else {
                         res.send({ status: "edited_list", ...dbRes })
@@ -2225,8 +2237,8 @@ async function init() {
         app.get('/api/whitelist/read/getAll', (req, res, next) => {
             const parm = req.query;
             mongoConn((dbo) => {
-                let _findFilter = parm.sel_clan_id ? { id_clan: ObjectID(parm.sel_clan_id) } : {};
-                let findFilter = { id_list: ObjectID(parm.sel_list_id), ..._findFilter }
+                let _findFilter = parm.sel_clan_id ? { id_clan: safeObjectID(parm.sel_clan_id) } : {};
+                let findFilter = { id_list: safeObjectID(parm.sel_list_id), ..._findFilter }
                 const pipeline = [
                     { $match: findFilter },
                     {
@@ -2307,7 +2319,7 @@ async function init() {
         app.get('/api/whitelist/read/getPendingApproval', (req, res, next) => {
             const parm = req.query;
             mongoConn((dbo) => {
-                // let findFilter = parm.sel_clan_id ? { id_clan: ObjectID(parm.sel_clan_id), approved: false } : { approved: false };
+                // let findFilter = parm.sel_clan_id ? { id_clan: safeObjectID(parm.sel_clan_id), approved: false } : { approved: false };
                 const pipeline = [
                     {
                         $lookup: {
@@ -2318,7 +2330,7 @@ async function init() {
                                     $match: {
                                         $expr: { $eq: [ "$id_list", "$$id_list" ] },
                                         approved: false,
-                                        id_clan: ObjectID(parm.sel_clan_id)
+                                        id_clan: safeObjectID(parm.sel_clan_id)
                                     }
                                 },
                                 {
@@ -2403,7 +2415,7 @@ async function init() {
                 parm.discordUsername = ""
 
             mongoConn((dbo) => {
-                let findFilter = (req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code, admins: req.userSession.id_user.toString() } : { _id: ObjectID(parm.sel_clan_id) });
+                let findFilter = (req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code, admins: req.userSession.id_user.toString() } : { _id: safeObjectID(parm.sel_clan_id) });
                 const pipeline = [
                     { $match: findFilter },
                     {
@@ -2438,14 +2450,14 @@ async function init() {
                                 username_l: parm.username.toLowerCase(),
                                 steamid64: parm.steamid64,
                                 eosID: parm.eosID,
-                                id_group: ObjectID(parm.group),
+                                id_group: safeObjectID(parm.group),
                                 discord_username: !parm.discordUsername.startsWith('@') && parm.discordUsername != "" ? "@" + parm.discordUsername : "" + parm.discordUsername,
-                                inserted_by: ObjectID(req.userSession.id_user || req.userSession.id),
+                                inserted_by: safeObjectID(req.userSession.id_user || req.userSession.id),
                                 insertedViaApiKey: !req.userSession.id_user && !!req.userSession.id,
                                 expiration: (parm.durationHours && parm.durationHours != "") ? new Date(Date.now() + (parseFloat(parm.durationHours) * 60 * 60 * 1000)) : false,
                                 insert_date: new Date(),
                                 approved: false,
-                                id_list: ObjectID(parm.sel_list_id),
+                                id_list: safeObjectID(parm.sel_list_id),
                             }
 
                             if(!insWlPlayer.steamid64 && !insWlPlayer.eosID)
@@ -2551,7 +2563,7 @@ async function init() {
         app.post('/api/whitelist/write/clearList', (req, res, next) => {
             const parm = req.body;
             mongoConn((dbo) => {
-                dbo.collection("whitelists").deleteMany({ id_clan: ObjectID(parm.sel_clan_id), id_list: ObjectID(parm.sel_list_id) }, (err, dbRes) => {
+                dbo.collection("whitelists").deleteMany({ id_clan: safeObjectID(parm.sel_clan_id), id_list: safeObjectID(parm.sel_list_id) }, (err, dbRes) => {
                     if (err) serverError(res, err);
                     else {
                         res.send({ status: "clearing_ok", ...dbRes })
@@ -2668,11 +2680,15 @@ async function init() {
             return res.send({ status: "permission_granted" })
         })
         app.post('/api/gameGroups/write/newGroup', (req, res, next) => {
-            const parm = req.body;
             if (containsWhitelistInjection(parm.group_name)) {
                 blacklistIP(getClientIP(req), 'Whitelist injection in newGroup');
                 return res.status(403).send({ error: 'Forbidden' });
             }
+            const allowedFields = ['group_name', 'group_permissions', 'require_appr', 'discord_roles'];
+            const parm = {};
+            allowedFields.forEach(field => {
+                if (req.body[field] !== undefined) parm[field] = req.body[field];
+            });
             mongoConn((dbo) => {
                 dbo.collection("groups").insertOne(parm, (err, dbRes) => {
                     if (err) serverError(res, err);
@@ -3029,7 +3045,7 @@ async function init() {
                     res.sendStatus(500);
                     console.error(err)
                 } else {
-                    const output = await dbo.collection("keys").findOne({ _id: ObjectID(dbRes.insertedId) });
+                    const output = await dbo.collection("keys").findOne({ _id: safeObjectID(dbRes.insertedId) });
                     res.send({ status: "created", data: output });
                 }
             })
@@ -4404,7 +4420,7 @@ async function init() {
                                         sendDiscordMessage(discordClient.channels.cache.get(stConf.discord_seeding_score_channel), messageContent, 'seeding score channel')
 
                                     } else if (percentageCompleted == 100) {
-                                        const reward_group = await dbo.collection('groups').findOne({ _id: ObjectID(st.config.reward_group_id) })
+                                        const reward_group = await dbo.collection('groups').findOne({ _id: safeObjectID(st.config.reward_group_id) })
                                         let message =
                                             `Seeding Reward Completed!\n\nYou have received: ${reward_group.group_name}\n`
                                         if (st.config.tracking_mode == 'fixed_reset') message += `Active until: ${(new Date(st.config.next_reset)).toLocaleDateString()}`
@@ -4454,9 +4470,9 @@ async function init() {
         const stConf = st.config;
         const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
         // console.log('CREATING objIdRewardGroup from value:', st.config.reward_group_id)
-        let objIdRewardGroup;// = ObjectID(st.config.reward_group_id)
+        let objIdRewardGroup;// = safeObjectID(st.config.reward_group_id)
         try {
-            objIdRewardGroup = ObjectID(st.config.reward_group_id)
+            objIdRewardGroup = safeObjectID(st.config.reward_group_id)
         } catch (error) {
             objIdRewardGroup = null;
             console.log('FAILED TO CREATE objIdRewardGroup from value:', st.config.reward_group_id, "\n", stConf)
