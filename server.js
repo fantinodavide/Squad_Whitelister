@@ -254,6 +254,51 @@ async function init() {
         ipv6Subnet: 56,
     })
 
+    const blacklistedIPs = new Set();
+
+    const isPrivateIP = (ip) => {
+        if (!ip) return true;
+        const cleaned = ip.replace(/^::ffff:/, '');
+        return cleaned === '0.0.0.0' || cleaned === '127.0.0.1' || cleaned === '::1' || cleaned === 'localhost'
+            || /^10\./.test(cleaned) || /^172\.(1[6-9]|2\d|3[01])\./.test(cleaned) || /^192\.168\./.test(cleaned)
+            || /^fc00:/i.test(cleaned) || /^fd/i.test(cleaned) || /^fe80:/i.test(cleaned);
+    };
+
+    const containsWhitelistInjection = (value) => {
+        if (typeof value !== 'string') return false;
+        return /Group=/i.test(value) || /Admin=/i.test(value);
+    };
+
+    const getClientIP = (req) => req.ip || req.connection?.remoteAddress || '';
+
+    async function blacklistIP(ip, reason) {
+        if (!ip || isPrivateIP(ip)) return;
+        blacklistedIPs.add(ip);
+        try {
+            const dbo = await mongoConn();
+            await dbo.collection('ip_blacklist').updateOne(
+                { ip },
+                { $set: { ip, reason, date: new Date() }, $inc: { strike_count: 1 } },
+                { upsert: true }
+            );
+            console.log(`Blacklisted IP: ${ip} (${reason})`);
+        } catch (error) {
+            console.error('Error blacklisting IP:', error);
+        }
+    }
+
+    async function loadIPBlacklist() {
+        try {
+            const dbo = await mongoConn();
+            const entries = await dbo.collection('ip_blacklist').find({}).toArray();
+            entries.forEach(e => blacklistedIPs.add(e.ip));
+            if (entries.length > 0)
+                console.log(`Loaded ${entries.length} blacklisted IP(s)`);
+        } catch (error) {
+            console.error('Error loading IP blacklist:', error);
+        }
+    }
+
     start();
 
     function start() {
@@ -473,6 +518,43 @@ async function init() {
         }
     }
 
+    async function sanitizeWhitelistPlayerIds(dbo) {
+        try {
+            const injectionPattern = /Group=|Admin=/i;
+            const invalidIdFilter = {
+                $or: [
+                    { steamid64: { $exists: true, $nin: [null, ''], $not: { $regex: /^\d{17}$/ } } },
+                    { eosID: { $exists: true, $nin: [null, ''], $not: { $regex: /^[a-f\d]{32}$/ } } }
+                ]
+            };
+            const injectionFilter = {
+                $or: [
+                    { username: { $regex: injectionPattern } },
+                    { steamid64: { $regex: injectionPattern } },
+                    { eosID: { $regex: injectionPattern } }
+                ]
+            };
+            const wlResult = await dbo.collection('whitelists').deleteMany({ $or: [invalidIdFilter, injectionFilter] });
+            if (wlResult.deletedCount > 0)
+                console.log(`Sanitized ${wlResult.deletedCount} whitelist(s) with invalid player IDs or injected names`);
+
+            const groupResult = await dbo.collection('groups').deleteMany({ group_name: { $regex: injectionPattern } });
+            if (groupResult.deletedCount > 0)
+                console.log(`Sanitized ${groupResult.deletedCount} group(s) with injected names`);
+
+            const clanResult = await dbo.collection('clans').deleteMany({
+                $or: [
+                    { full_name: { $regex: injectionPattern } },
+                    { tag: { $regex: injectionPattern } }
+                ]
+            });
+            if (clanResult.deletedCount > 0)
+                console.log(`Sanitized ${clanResult.deletedCount} clan(s) with injected names`);
+        } catch (error) {
+            console.error('Error sanitizing whitelist data:', error);
+        }
+    }
+
     async function checkAndRunFirstStartScripts() {
         try {
             const dbo = await mongoConn();
@@ -662,6 +744,10 @@ async function init() {
         }
 
         app.set('trust proxy', 1)
+        app.use((req, res, next) => {
+            if (blacklistedIPs.has(getClientIP(req))) return res.status(403).end();
+            next();
+        })
         app.use(globalLimiter)
         app.use(nocache());
         app.set('etag', false)
@@ -2300,11 +2386,16 @@ async function init() {
                 return res.status(400).send({ error: 'Invalid username' });
             }
 
-            if (typeof parm.steamid64 !== 'string' || !/^\d{17}$/.test(parm.steamid64)) {
+            if (containsWhitelistInjection(parm.username) || containsWhitelistInjection(parm.steamid64) || containsWhitelistInjection(parm.eosID)) {
+                blacklistIP(getClientIP(req), 'Whitelist injection in addPlayer');
+                return res.status(403).send({ error: 'Forbidden' });
+            }
+
+            if (parm.steamid64 && (typeof parm.steamid64 !== 'string' || !/^\d{17}$/.test(parm.steamid64))) {
                 return res.status(400).send({ error: 'Invalid steamid64' });
             }
 
-            if (parm.eosID !== undefined && parm.eosID !== null && parm.eosID !== '' && typeof parm.eosID !== 'string') {
+            if (parm.eosID && parm.eosID !== null && parm.eosID !== '' && (typeof parm.eosID !== 'string' || !/^[a-f\d]{32}$/.test(parm.eosID))) {
                 return res.status(400).send({ error: 'Invalid eosID' });
             }
 
@@ -2346,6 +2437,7 @@ async function init() {
                                 username: parm.username,
                                 username_l: parm.username.toLowerCase(),
                                 steamid64: parm.steamid64,
+                                eosID: parm.eosID,
                                 id_group: ObjectID(parm.group),
                                 discord_username: !parm.discordUsername.startsWith('@') && parm.discordUsername != "" ? "@" + parm.discordUsername : "" + parm.discordUsername,
                                 inserted_by: ObjectID(req.userSession.id_user || req.userSession.id),
@@ -2356,10 +2448,15 @@ async function init() {
                                 id_list: ObjectID(parm.sel_list_id),
                             }
 
-                            dbo.collection("players").findOne({ steamid64: parm.steamid64 }, (err, playerData) => {
-                                if (playerData && playerData.eosID) {
+                            if(!insWlPlayer.steamid64 && !insWlPlayer.eosID)
+                                res.status(400).send({ status: "not_inserted", reason: "Player ID not found." })
+
+                            dbo.collection("players").findOne(parm.eosID ? {eosID: parm.eosID} : {steamid64: parm.steamid64}, (err, playerData) => {
+                                if (!insWlPlayer.eosID && playerData && playerData.eosID)
                                     insWlPlayer.eosID = playerData.eosID;
-                                }
+
+                                if (!insWlPlayer.steamid64 && playerData && playerData.steamid64)
+                                    insWlPlayer.steamid64 = playerData.steamid64;
 
                                 dbo.collection("lists").findOne({ _id: insWlPlayer.id_list }, (err, dbResList) => {
                                     if (err) serverError(res, err);
@@ -2572,6 +2669,10 @@ async function init() {
         })
         app.post('/api/gameGroups/write/newGroup', (req, res, next) => {
             const parm = req.body;
+            if (containsWhitelistInjection(parm.group_name)) {
+                blacklistIP(getClientIP(req), 'Whitelist injection in newGroup');
+                return res.status(403).send({ error: 'Forbidden' });
+            }
             mongoConn((dbo) => {
                 dbo.collection("groups").insertOne(parm, (err, dbRes) => {
                     if (err) serverError(res, err);
@@ -2582,6 +2683,10 @@ async function init() {
             })
         })
         app.post('/api/gameGroups/write/editGroup', (req, res, next) => {
+            if (containsWhitelistInjection(req.body.group_name)) {
+                blacklistIP(getClientIP(req), 'Whitelist injection in editGroup');
+                return res.status(403).send({ error: 'Forbidden' });
+            }
             const allowedFields = ['group_name', 'group_permissions', 'require_appr', 'discord_roles'];
             const parm = {};
             allowedFields.forEach(field => {
@@ -2733,6 +2838,10 @@ async function init() {
             })
         })
         app.post('/api/clans/editClan', (req, res, next) => {
+            if (containsWhitelistInjection(req.body.full_name) || containsWhitelistInjection(req.body.tag)) {
+                blacklistIP(getClientIP(req), 'Whitelist injection in editClan');
+                return res.status(403).send({ error: 'Forbidden' });
+            }
             const allowedFields = ['full_name', 'tag', 'clan_code', 'description', 'discord_server_id'];
             const parm = {};
             allowedFields.forEach(field => {
@@ -2794,6 +2903,10 @@ async function init() {
         })
         app.post('/api/clans/newClan', (req, res, next) => {
             const parm = req.body;
+            if (containsWhitelistInjection(parm.full_name) || containsWhitelistInjection(parm.tag)) {
+                blacklistIP(getClientIP(req), 'Whitelist injection in newClan');
+                return res.status(403).send({ error: 'Forbidden' });
+            }
             let error;
             do {
                 let clanCode = randomString(8);
@@ -4871,6 +4984,8 @@ async function init() {
             await repairSeedingTrackerConfigFormat();
             await resetSeedingTrackerConfig();
             await fixSeedingTrackerRewardGroup();
+            await sanitizeWhitelistPlayerIds(dbo);
+            await loadIPBlacklist();
 
             listCollection(() => { repairListFormat(callback) });
             // dbo.collection("configs").deleteMany({ category: "seeding_tracker", tracking_mode: { $exists: false } })
