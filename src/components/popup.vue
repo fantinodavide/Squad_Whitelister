@@ -40,6 +40,7 @@
 				required: false,
 			},
 		},
+		expose: ['checkInputs', 'blinkBgColor', 'blinkAll', 'getInputs', 'blinkName', 'title'],
 		methods: {
 			checkInputs(evt: any) {
 				let inputs = Array.from(this.getInputs()) as Array<any>;

@@ -70,7 +70,8 @@
 <template>
 	<popup ref="popupLogin" title="Add Player" @cancelBtnClick="$emit('cancelBtnClick', $event)" @confirmBtnClick="confBtnClick" :hide-cancel="false" :extRetProp="extRet">
 		<input name="username" type="text" placeholder="Username" />
-		<input name="steamid64" type="text" regex="^\d{17}$" placeholder="SteamID64" />
+		<input name="steamid64" type="text" regex="^\d{17}$" placeholder="SteamID64" optional/>
+		<input name="eosID" type="text" regex="^[a-z\d]{32}$" placeholder="EOS ID" optional/>
 		<select name="group">
 			<option hidden selected value>Select a group</option>
 			<option v-for="g of game_groups" :value="g._id" :key="g">{{ g.group_name }}</option>

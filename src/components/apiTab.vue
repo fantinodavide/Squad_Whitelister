@@ -117,7 +117,7 @@
 	<tab v-else-if="sideMenu.curMenu.menu == 'docs'" class="docsMenu">
 		<input type="search" placeholder="Search Path" name="searchKey" v-model="models.search" />
 		<div
-			v-for="path of Object.keys(swagger_output.paths).sort()"
+			v-for="path of Object.keys(swagger_output?.paths || {}).sort()"
 			:key="path"
 			v-show="path.toLowerCase().includes(models.search.toLowerCase()) || levenshtein(path.replace(/api|\//g, ''), models.search.toLowerCase()) <= 5 || models.search == ''"
 		>

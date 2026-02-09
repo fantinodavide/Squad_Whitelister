@@ -17,12 +17,13 @@ export default {
 			callback: () => { }
 		}
 	},
+	expose: [ 'setProps', 'setCallback' ],
 	methods: {
 		setProps: function (title: string, text: string) {
 			this.title = title;
 			this.text = text;
 		},
-		setCallback: function (cb = ()=>{}) {
+		setCallback: function (cb = () => { }) {
 			this.callback = cb
 		}
 	},
@@ -36,5 +37,4 @@ export default {
 	</popup>
 </template>
 
-<style scoped>
-</style>
+<style scoped></style>

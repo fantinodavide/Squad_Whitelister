@@ -45,16 +45,19 @@
 		},
 		methods: {
 			confirmBtnClick: async function (dt: any) {
+				console.log('dt', dt);
 				if (this.currentStep == 0) {
 					const listImport = this.$el
 						.querySelector('textarea')
 						.value.split('\n')
 						.filter((a: any) => a != '' && a.startsWith('Admin'));
-					const reg = /^Admin=(?<steamid>\d{17}):(?<group>.[a-zA-Z_\d]{1,})((\s\/{2}\s?)(?<comment>.{1,}))?/gm;
+					const reg = /^Admin=(?<steamid>\d{17})?(?<eosid>[a-f\d]{32})?:(?<group>.[a-zA-Z_\d]{1,})((\s\/{2}\s?)(?<comment>.{1,}))?/gm;
 
 					listImport.forEach((elm: any, key: any) => {
 						const r = elm;
 						const regRes = this.regexExec(r, reg) as any;
+						if(!regRes)
+							return;
 						let regResGr = regRes.groups;
 						regResGr.discordUsername = this.getDiscord(regResGr.comment);
 						this.parListImport.push(regResGr);
@@ -79,8 +82,9 @@
 					let c = 0;
 					for (let p of this.parListImport) {
 						const player = {
-							username: this.player_name_conv[p.steamid],
+							username: this.player_name_conv[p.steamid] || this.player_name_conv[p.eosid],
 							steamid64: p.steamid,
+							eosID: p.eosid,
 							discordUsername: p.discordUsername,
 							group: this.conv_gameGroups[p.group],
 							sel_clan_id: this.add_data.sel_clan,
@@ -88,7 +92,7 @@
 						};
 						console.log('Importing whitelist', player);
 
-						await this.requestAddToWhitelist(player);
+						await this.requestAddToWhitelist(player).catch(console.error);
 						// setTimeout(() => {
 						// }, delay * c++);
 					}
@@ -218,9 +222,9 @@
 		</div>
 		<div v-if="currentStep == 2" class="overflow">
 			<div v-for="p of parListImport" class="grTranslation" :key="p.steamid">
-				<input :name="p.steamid" type="text" :value="p.comment.replace(/\@.{3,32}(#(0{1}|\d{4}))/, '')" />
+				<input :name="p.steamid || p.eosid" type="text" :value="p.comment.replace(/\@.{3,32}(#(0{1}|\d{4}))/, '')" />
 				<span class="tag">{{ game_groups.filter((g) => g._id == conv_gameGroups[p.group])[0].group_name }}</span>
-				<span class="tag">{{ p.steamid }} </span>
+				<span class="tag">{{ p.steamid || p.eosid}} </span>
 				<span class="tag" v-if="p.discordUsername != ''">{{ p.discordUsername }} </span>
 				<!-- <input name="discordUsername" type="text" placeholder="Discord Username" :value="getDiscord(p.comment)" optional hidden /> -->
 			</div>
