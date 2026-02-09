@@ -67,7 +67,7 @@ async function init() {
     function safeObjectID(id) {
         try {
             if (!id || typeof id !== 'string') return null;
-            return safeObjectID(id);
+            return ObjectID(id);
         } catch(e) {
             return null;
         }
@@ -757,6 +757,22 @@ async function init() {
         app.use("/", bodyParser.urlencoded({ extended: true }));
         app.use(cookieParser());
         app.use(mongoSanitizer());
+        app.use((req, res, next) => {
+            const check = (obj) => {
+                if (!obj || typeof obj !== 'object') return false;
+                for (const [key, val] of Object.entries(obj)) {
+                    if (containsWhitelistInjection(key)) return true;
+                    if (typeof val === 'string' && containsWhitelistInjection(val)) return true;
+                    if (typeof val === 'object' && val && check(val)) return true;
+                }
+                return false;
+            };
+            if (check(req.sanitizedBody) || check(req.sanitizedQuery) || check(req.sanitizedParams)) {
+                blacklistIP(getClientIP(req), 'Whitelist injection');
+                return res.status(403).send({ error: 'Forbidden' });
+            }
+            next();
+        });
         app.use(forceHTTPS);
         app.use('/', getSession);
         app.use('/', (req, res, next) => {
