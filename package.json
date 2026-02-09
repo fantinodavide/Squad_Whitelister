@@ -42,6 +42,7 @@
     "log4js": "^6.4.4",
     "minimist": "^1.2.6",
     "mobile-detect": "^1.4.5",
+    "mongo-sanitizer": "^1.0.4",
     "mongodb": "^4.5.0",
     "nocache": "^3.0.3",
     "node-run-cmd": "^1.0.1",

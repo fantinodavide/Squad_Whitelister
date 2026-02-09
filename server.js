@@ -76,6 +76,7 @@ async function init() {
     const crypto = await irequire("crypto");
     const bodyParser = await irequire('body-parser');
     const cookieParser = await irequire('cookie-parser');
+    const { default: mongoSanitizer, sanitize: mongoSanitize } = await irequire('mongo-sanitizer');
     const nocache = await irequire('nocache');
     const axios = await irequire('axios');
     const args = (await irequire('minimist'))(process.argv.slice(2));
@@ -755,6 +756,7 @@ async function init() {
         app.use("/", bodyParser.json());
         app.use("/", bodyParser.urlencoded({ extended: true }));
         app.use(cookieParser());
+        app.use(mongoSanitizer());
         app.use(forceHTTPS);
         app.use('/', getSession);
         app.use('/', (req, res, next) => {
@@ -768,7 +770,7 @@ async function init() {
 
         app.use('/api/changepassword', loginLimiter);
         app.post('/api/changepassword', (req, res, next) => {
-            const parm = req.body;
+            const parm = req.sanitizedBody;
 
             mongoConn((dbo) => {
                 const newCryptPwd = crypto.createHash('sha512').update(parm.new_password).digest('hex');
@@ -785,7 +787,7 @@ async function init() {
 
         app.use('/api/login', loginLimiter);
         app.post('/api/login', (req, res, next) => {
-            const parm = req.body;
+            const parm = req.sanitizedBody;
 
             if (typeof parm.username !== 'string' || typeof parm.password !== 'string') {
                 return res.status(400).send({ error: 'Invalid credentials format' });
@@ -857,7 +859,7 @@ async function init() {
         })
         app.use('/api/signup', signupLimiter);
         app.post('/api/signup', async (req, res, next) => {
-            const parm = req.body;
+            const parm = req.sanitizedBody;
 
             if (typeof parm.username !== 'string' || typeof parm.password !== 'string') {
                 return res.status(400).send({ error: 'Invalid credentials format' });
@@ -1032,7 +1034,7 @@ async function init() {
         })
         // app.use('/wl*', removeExpiredPlayers);
         app.get('/:basePath/:clan_code?', async (req, res, next) => {
-            const output = await generateOutput(req.params.basePath, req.params.clan_code, req.query?.usernamesOnly || false);
+            const output = await generateOutput(req.sanitizedParams.basePath, req.sanitizedParams.clan_code, req.sanitizedQuery?.usernamesOnly || false);
 
             if (!output)
                 return next();
@@ -1447,7 +1449,7 @@ async function init() {
 
         app.use('/api/users*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
         app.get('/api/users/read/getAll', (req, res, next) => {
-            const parm = req.query;
+            const parm = req.sanitizedQuery;
 
             mongoConn((dbo) => {
                 let findFilter = req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code/*, admins: req.userSession._id*/ } : {};
@@ -1484,7 +1486,7 @@ async function init() {
             })
         })
         app.post('/api/users/write/remove', (req, res, next) => {
-            const parm = req.body;
+            const parm = req.sanitizedBody;
             const userId = safeObjectID(parm._id);
             if (!userId) return res.status(400).send({ error: 'Invalid user ID' });
             const demoFilter = args.demo ? { username: { $ne: "demoadmin" } } : {};
@@ -1500,7 +1502,7 @@ async function init() {
             })
         })
         app.post('/api/users/write/updateAccessLevel', (req, res, next) => {
-            const parm = req.body;
+            const parm = req.sanitizedBody;
             const userId = safeObjectID(parm._id);
             if (!userId) return res.status(400).send({ error: 'Invalid user ID' });
             const demoFilter = args.demo ? { username: { $ne: "demoadmin" } } : {};
@@ -1552,7 +1554,7 @@ async function init() {
 
         // app.use('/api/subcomponent*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
         app.get('/api/subcomponent/read/:subComp/status', async (req, res, next) => {
-            res.send(subcomponent_status[ req.params.subComp ])
+            res.send(subcomponent_status[ req.sanitizedParams.subComp ])
         })
         app.use('/api/config*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
         const CONFIG_RULES = {
@@ -1693,7 +1695,7 @@ async function init() {
 
         app.use('/api/config/write', (...p) => { accessLevelAuthorization(5, ...p) })
         app.post('/api/config/write/update', async (req, res, next) => {
-            const parm = req.body;
+            const parm = req.sanitizedBody;
             let resData = {};
 
             const validation = validateConfigChange(parm.category, parm.config);
@@ -1881,7 +1883,7 @@ async function init() {
 
         app.use('/api/dbconfig/read/getFull*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
         app.get('/api/dbconfig/read/getFull', async (req, res, next) => {
-            const parm = req.body;
+            const parm = req.sanitizedBody;
             mongoConn(dbo => {
                 dbo.collection('configs').find({ config: { $exists: true, $ne: null }, category: { $exists: true, $ne: null } }).toArray((err, dbRes) => {
                     if (err) serverError(res, err);
@@ -1894,18 +1896,18 @@ async function init() {
         })
         app.use('/api/dbconfig/read/:category', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 30) next() })
         app.get('/api/dbconfig/read/:category', async (req, res, next) => {
-            const parm = req.body;
+            const parm = req.sanitizedBody;
 
-            if (typeof req.params.category !== 'string') {
+            if (typeof req.sanitizedParams.category !== 'string') {
                 return res.status(400).send({ error: 'Invalid parameter' });
             }
 
-            if (req.params.category.includes('$') || req.params.category.includes('{')) {
+            if (req.sanitizedParams.category.includes('$') || req.sanitizedParams.category.includes('{')) {
                 return res.status(400).send({ error: 'Invalid parameter' });
             }
 
             mongoConn(dbo => {
-                dbo.collection('configs').findOne({ category: req.params.category }, (err, dbRes) => {
+                dbo.collection('configs').findOne({ category: req.sanitizedParams.category }, (err, dbRes) => {
                     if (err) serverError(res, err);
                     else if (dbRes) {
                         // console.log(dbRes.config);
@@ -1916,7 +1918,7 @@ async function init() {
         })
         app.use('/api/dbconfig/write*', (...p) => { accessLevelAuthorization(5, ...p) })
         app.post('/api/dbconfig/write/update', async (req, res, next) => {
-            const parm = req.body;
+            const parm = req.sanitizedBody;
 
             const validCategories = ['backup', 'seeding_tracker', 'discord', 'game', 'server'];
             if (!parm.category || typeof parm.category !== 'string' || !validCategories.includes(parm.category)) {
@@ -2025,7 +2027,7 @@ async function init() {
         app.post('/api/backup/write/restore', async (req, res, next) => {
             try {
                 if (backupInProgress) return res.status(409).send({ error: 'Backup or restore already in progress' });
-                const parm = req.body;
+                const parm = req.sanitizedBody;
                 if (!parm.name) return res.status(400).send({ error: 'Missing backup name' });
 
                 if (parm.name.includes('/') || parm.name.includes('\\') || parm.name.includes('..')) {
@@ -2069,7 +2071,7 @@ async function init() {
 
         app.post('/api/backup/write/delete', async (req, res, next) => {
             try {
-                const parm = req.body;
+                const parm = req.sanitizedBody;
                 if (!parm.name) return res.status(400).send({ error: 'Missing backup name' });
 
                 if (parm.name.includes('/') || parm.name.includes('\\') || parm.name.includes('..')) {
@@ -2138,7 +2140,7 @@ async function init() {
             return res.send({ status: "permission_granted" });
         })
         app.post('/api/lists/write/addNewList', (req, res, next) => {
-            const parm = req.body;
+            const parm = req.sanitizedBody;
             mongoConn((dbo) => {
                 const insData = {
                     title: parm.title,
@@ -2156,7 +2158,7 @@ async function init() {
             })
         })
         app.post('/api/lists/write/deleteList', (req, res, next) => {
-            const parm = req.body;
+            const parm = req.sanitizedBody;
             mongoConn((dbo) => {
                 dbo.collection("whitelists").deleteMany({ id_list: safeObjectID(parm.sel_list_id) }, (err, dbRes) => {
                     if (err) serverError(res, err);
@@ -2173,7 +2175,7 @@ async function init() {
             })
         })
         app.post('/api/lists/write/editList', (req, res, next) => {
-            const parm = req.body;
+            const parm = req.sanitizedBody;
             mongoConn((dbo) => {
                 const insData = {
                     title: parm.title,
@@ -2193,7 +2195,7 @@ async function init() {
 
         app.use('/api/whitelist/read*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
         app.get('/api/whitelist/read/getAllClans', (req, res, next) => {
-            const parm = req.query;
+            const parm = req.sanitizedQuery;
 
             mongoConn((dbo) => {
                 let findFilter = req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code/*, admins: req.userSession._id*/ } : {};
@@ -2235,7 +2237,7 @@ async function init() {
             })
         })
         app.get('/api/whitelist/read/getAll', (req, res, next) => {
-            const parm = req.query;
+            const parm = req.sanitizedQuery;
             mongoConn((dbo) => {
                 let _findFilter = parm.sel_clan_id ? { id_clan: safeObjectID(parm.sel_clan_id) } : {};
                 let findFilter = { id_list: safeObjectID(parm.sel_list_id), ..._findFilter }
@@ -2280,7 +2282,7 @@ async function init() {
             })
         })
         app.get('/api/whitelist/read/getPendingApprovalClans', (req, res, next) => {
-            const parm = req.query;
+            const parm = req.sanitizedQuery;
             mongoConn((dbo) => {
                 let findFilter = req.userSession.access_level >= 100 ? { clan_code: req.userSession.clan_code } : {};
                 const pipeline = [
@@ -2317,7 +2319,7 @@ async function init() {
             })
         })
         app.get('/api/whitelist/read/getPendingApproval', (req, res, next) => {
-            const parm = req.query;
+            const parm = req.sanitizedQuery;
             mongoConn((dbo) => {
                 // let findFilter = parm.sel_clan_id ? { id_clan: safeObjectID(parm.sel_clan_id), approved: false } : { approved: false };
                 const pipeline = [
@@ -2392,7 +2394,7 @@ async function init() {
             return res.send({ status: "permission_granted" });
         })
         app.post('/api/whitelist/write/addPlayer', (req, res, next) => {
-            const parm = req.body;
+            const parm = req.sanitizedBody;
 
             if (typeof parm.username !== 'string' || parm.username.length === 0 || parm.username.length > 100) {
                 return res.status(400).send({ error: 'Invalid username' });
@@ -2548,7 +2550,7 @@ async function init() {
         })
 
         app.post('/api/whitelist/write/removePlayer', (req, res, next) => {
-            const parm = req.body;
+            const parm = req.sanitizedBody;
             const whitelistId = safeObjectID(parm._id);
             if (!whitelistId) return res.status(400).send({ error: 'Invalid whitelist ID' });
             mongoConn((dbo) => {
@@ -2561,7 +2563,7 @@ async function init() {
             })
         })
         app.post('/api/whitelist/write/clearList', (req, res, next) => {
-            const parm = req.body;
+            const parm = req.sanitizedBody;
             mongoConn((dbo) => {
                 dbo.collection("whitelists").deleteMany({ id_clan: safeObjectID(parm.sel_clan_id), id_list: safeObjectID(parm.sel_list_id) }, (err, dbRes) => {
                     if (err) serverError(res, err);
@@ -2591,12 +2593,12 @@ async function init() {
             else res.sendStatus(401)
         })
         app.get('/api/players/read/from/steamId/:id', (req, res, next) => {
-            if (typeof req.params.id !== 'string' || !/^\d{17}$/.test(req.params.id)) {
+            if (typeof req.sanitizedParams.id !== 'string' || !/^\d{17}$/.test(req.sanitizedParams.id)) {
                 return res.status(400).send({ error: 'Invalid Steam ID format' });
             }
 
             mongoConn((dbo) => {
-                dbo.collection("players").findOne({ steamid64: req.params.id }, (err, dbRes) => {
+                dbo.collection("players").findOne({ steamid64: req.sanitizedParams.id }, (err, dbRes) => {
                     if (err) serverError(res, err);
                     else {
                         res.send(dbRes);
@@ -2605,12 +2607,12 @@ async function init() {
             })
         })
         app.get('/api/players/read/from/eosId/:id', (req, res, next) => {
-            if (typeof req.params.id !== 'string' || !/^[a-f0-9]{32}$/i.test(req.params.id)) {
+            if (typeof req.sanitizedParams.id !== 'string' || !/^[a-f0-9]{32}$/i.test(req.sanitizedParams.id)) {
                 return res.status(400).send({ error: 'Invalid EOS ID format' });
             }
 
             mongoConn((dbo) => {
-                dbo.collection("players").findOne({ eosID: req.params.id }, (err, dbRes) => {
+                dbo.collection("players").findOne({ eosID: req.sanitizedParams.id }, (err, dbRes) => {
                     if (err) serverError(res, err);
                     else {
                         res.send(dbRes);
@@ -2619,12 +2621,12 @@ async function init() {
             })
         })
         app.get('/api/players/read/from/discordUserId/:id', (req, res, next) => {
-            if (typeof req.params.id !== 'string' || !/^\d{17,20}$/.test(req.params.id)) {
+            if (typeof req.sanitizedParams.id !== 'string' || !/^\d{17,20}$/.test(req.sanitizedParams.id)) {
                 return res.status(400).send({ error: 'Invalid Discord User ID format' });
             }
 
             mongoConn((dbo) => {
-                dbo.collection("players").findOne({ discord_user_id: req.params.id }, (err, dbRes) => {
+                dbo.collection("players").findOne({ discord_user_id: req.sanitizedParams.id }, (err, dbRes) => {
                     if (err) serverError(res, err);
                     else {
                         res.send(dbRes);
@@ -2649,15 +2651,15 @@ async function init() {
                 }
             */
             mongoConn(async (dbo) => {
-                if (!Array.isArray(req.body.steamIDs) || typeof req.body.incremental !== 'boolean') {
+                if (!Array.isArray(req.sanitizedBody.steamIDs) || typeof req.sanitizedBody.incremental !== 'boolean') {
                     return res.status(400).send('Invalid input');
                 }
-                if (typeof req.body.points !== 'number' || req.body.points < 0 || req.body.points > 1000) {
+                if (typeof req.sanitizedBody.points !== 'number' || req.sanitizedBody.points < 0 || req.sanitizedBody.points > 1000) {
                     return res.status(400).send({ error: 'Invalid points' });
                 }
-                const steamIDs = req.body.steamIDs
-                const mode = req.body.incremental ? '$inc' : '$set'
-                const points = req.body.points
+                const steamIDs = req.sanitizedBody.steamIDs
+                const mode = req.sanitizedBody.incremental ? '$inc' : '$set'
+                const points = req.sanitizedBody.points
                 const updData = await dbo.collection("players").updateMany({ steamid64: { $in: steamIDs } }, { [ mode ]: { seeding_points: points } })
                     .catch(err => {
                         res.sendStatus(500);
@@ -2671,7 +2673,7 @@ async function init() {
             else res.sendStatus(401)
         })
         app.use('/api/approval/write/setApprovedStatus', (req, res, next) => {
-            const parm = req.body;
+            const parm = req.sanitizedBody;
             setApprovedStatus(parm, res)
         })
 
@@ -2687,7 +2689,7 @@ async function init() {
             const allowedFields = ['group_name', 'group_permissions', 'require_appr', 'discord_roles'];
             const parm = {};
             allowedFields.forEach(field => {
-                if (req.body[field] !== undefined) parm[field] = req.body[field];
+                if (req.sanitizedBody[field] !== undefined) parm[field] = req.sanitizedBody[field];
             });
             mongoConn((dbo) => {
                 dbo.collection("groups").insertOne(parm, (err, dbRes) => {
@@ -2699,16 +2701,16 @@ async function init() {
             })
         })
         app.post('/api/gameGroups/write/editGroup', (req, res, next) => {
-            if (containsWhitelistInjection(req.body.group_name)) {
+            if (containsWhitelistInjection(req.sanitizedBody.group_name)) {
                 blacklistIP(getClientIP(req), 'Whitelist injection in editGroup');
                 return res.status(403).send({ error: 'Forbidden' });
             }
             const allowedFields = ['group_name', 'group_permissions', 'require_appr', 'discord_roles'];
             const parm = {};
             allowedFields.forEach(field => {
-                if (req.body[field] !== undefined) parm[field] = req.body[field];
+                if (req.sanitizedBody[field] !== undefined) parm[field] = req.sanitizedBody[field];
             });
-            const groupId = safeObjectID(req.body._id);
+            const groupId = safeObjectID(req.sanitizedBody._id);
             if (!groupId) return res.status(400).send({ error: 'Invalid group ID' });
             mongoConn((dbo) => {
                 dbo.collection("groups").updateOne({ _id: groupId }, { $set: parm }, (err, dbRes) => {
@@ -2723,7 +2725,7 @@ async function init() {
         })
 
         app.post('/api/gameGroups/write/remove', (req, res, next) => {
-            const groupId = safeObjectID(req.body._id);
+            const groupId = safeObjectID(req.sanitizedBody._id);
             if (!groupId) return res.status(400).send({ error: 'Invalid group ID' });
             mongoConn((dbo) => {
                 dbo.collection("groups").deleteOne({ _id: groupId }, (err, groupDbRes) => {
@@ -2778,7 +2780,7 @@ async function init() {
             res.send(subcomponent_status.discord_bot)
         })
         app.get('/api/discord/read/getRoles', (req, res, next) => {
-            const parm = req.query;
+            const parm = req.sanitizedQuery;
             if (subcomponent_status.discord_bot) {
                 const clientServer = discordClient.guilds.cache.find((s) => s.id == config.discord_bot.server_id);
                 let roles = [];
@@ -2789,7 +2791,7 @@ async function init() {
             }
         })
         app.get('/api/discord/read/getServers', (req, res, next) => {
-            const parm = req.query;
+            const parm = req.sanitizedQuery;
             if (subcomponent_status.discord_bot) {
                 let ret = [];
                 for (let g of discordClient.guilds.cache) ret.push({ id: g[ 1 ].id, name: g[ 1 ].name })
@@ -2800,7 +2802,7 @@ async function init() {
             }
         })
         app.get('/api/discord/read/getChannels', async (req, res, next) => {
-            const parm = req.query;
+            const parm = req.sanitizedQuery;
             if (subcomponent_status.discord_bot) {
                 let ret = [];
                 res.send(
@@ -2842,7 +2844,7 @@ async function init() {
             })
         })
         app.post('/api/clans/removeClan', (req, res, next) => {
-            const clanId = safeObjectID(req.body._id);
+            const clanId = safeObjectID(req.sanitizedBody._id);
             if (!clanId) return res.status(400).send({ error: 'Invalid clan ID' });
             mongoConn((dbo) => {
                 dbo.collection("clans").deleteOne({ _id: clanId }, (err, dbRes) => {
@@ -2854,16 +2856,16 @@ async function init() {
             })
         })
         app.post('/api/clans/editClan', (req, res, next) => {
-            if (containsWhitelistInjection(req.body.full_name) || containsWhitelistInjection(req.body.tag)) {
+            if (containsWhitelistInjection(req.sanitizedBody.full_name) || containsWhitelistInjection(req.sanitizedBody.tag)) {
                 blacklistIP(getClientIP(req), 'Whitelist injection in editClan');
                 return res.status(403).send({ error: 'Forbidden' });
             }
             const allowedFields = ['full_name', 'tag', 'clan_code', 'description', 'discord_server_id'];
             const parm = {};
             allowedFields.forEach(field => {
-                if (req.body[field] !== undefined) parm[field] = req.body[field];
+                if (req.sanitizedBody[field] !== undefined) parm[field] = req.sanitizedBody[field];
             });
-            const clanId = safeObjectID(req.body._id);
+            const clanId = safeObjectID(req.sanitizedBody._id);
             if (!clanId) return res.status(400).send({ error: 'Invalid clan ID' });
             mongoConn((dbo) => {
                 dbo.collection("clans").updateOne({ _id: clanId }, { $set: parm }, (err, dbRes) => {
@@ -2877,7 +2879,7 @@ async function init() {
             })
         })
         app.get('/api/clans/getClanUsers', (req, res, next) => {
-            const parm = req.query;
+            const parm = req.sanitizedQuery;
 
             if (!parm.clan_code || typeof parm.clan_code !== 'string') {
                 return res.status(400).send({ error: 'Invalid clan_code parameter' });
@@ -2894,7 +2896,7 @@ async function init() {
             })
         })
         app.get('/api/clans/getClanAdmins', (req, res, next) => {
-            const parm = req.query;
+            const parm = req.sanitizedQuery;
             const clanId = safeObjectID(parm._id);
             if (!clanId) return res.status(400).send({ error: 'Invalid clan ID' });
             mongoConn((dbo) => {
@@ -2908,8 +2910,8 @@ async function init() {
             })
         })
         app.post('/api/clans/editClanAdmins', (req, res, next) => {
-            const parm = req.body;
-            const clanId = safeObjectID(req.body._id);
+            const parm = req.sanitizedBody;
+            const clanId = safeObjectID(req.sanitizedBody._id);
             if (!clanId) return res.status(400).send({ error: 'Invalid clan ID' });
             mongoConn((dbo) => {
                 dbo.collection("clans").updateOne({ _id: clanId }, { $set: { admins: parm.clan_admins } }, (err, dbRes) => {
@@ -2918,7 +2920,7 @@ async function init() {
             })
         })
         app.post('/api/clans/newClan', (req, res, next) => {
-            const parm = req.body;
+            const parm = req.sanitizedBody;
             if (containsWhitelistInjection(parm.full_name) || containsWhitelistInjection(parm.tag)) {
                 blacklistIP(getClientIP(req), 'Whitelist injection in newClan');
                 return res.status(403).send({ error: 'Forbidden' });
@@ -2993,8 +2995,8 @@ async function init() {
             ]
 
             const dbo = await mongoConn();
-            if (req.params.id) {
-                const keyId = safeObjectID(req.params.id);
+            if (req.sanitizedParams.id) {
+                const keyId = safeObjectID(req.sanitizedParams.id);
                 if (!keyId) return res.status(400).send({ error: 'Invalid key ID' });
                 pipeline.unshift({ $match: { _id: keyId } })
                 const key = (await dbo.collection("keys").aggregate(pipeline).toArray())[ 0 ];
@@ -3008,20 +3010,20 @@ async function init() {
         app.post('/api/keys/', async (req, res, next) => {
             const dbo = await mongoConn();
 
-            if (!req.body.name || typeof req.body.name !== 'string' || req.body.name.trim().length === 0) {
+            if (!req.sanitizedBody.name || typeof req.sanitizedBody.name !== 'string' || req.sanitizedBody.name.trim().length === 0) {
                 return res.status(400).send({ message: "API key name is required and must be a non-empty string", field: "name" });
             }
-            if (req.body.name.length > 100) {
+            if (req.sanitizedBody.name.length > 100) {
                 return res.status(400).send({ message: "API key name must not exceed 100 characters", field: "name" });
             }
-            if (req.body.name.includes('$') || req.body.name.includes('{')) {
+            if (req.sanitizedBody.name.includes('$') || req.sanitizedBody.name.includes('{')) {
                 return res.status(400).send({ message: "API key name contains invalid characters", field: "name" });
             }
 
             const data = {
-                name: req.body.name.trim(),
+                name: req.sanitizedBody.name.trim(),
                 token: randomString(128),
-                access_level: +req.body.access_level,
+                access_level: +req.sanitizedBody.access_level,
                 inserted_by: req.userSession.id_user
             }
 
@@ -3052,7 +3054,7 @@ async function init() {
         })
         app.delete('/api/keys/:id', async (req, res, next) => {
             const dbo = await mongoConn();
-            const keyId = safeObjectID(req.params.id);
+            const keyId = safeObjectID(req.sanitizedParams.id);
             if (!keyId) return res.status(400).send({ error: 'Invalid key ID' });
             const r = await dbo.collection("keys").deleteOne({ _id: keyId });
             res.send(r);
@@ -3084,7 +3086,7 @@ async function init() {
         })
         app.get("/api/admin/restartApplication", (req, res, next) => {
             res.send({ status: "Ok" });
-            return restartProcess(req.query.delay ? req.query.delay : 0, 0, args);
+            return restartProcess(req.sanitizedQuery.delay ? req.sanitizedQuery.delay : 0, 0, args);
         })
 
         app.get('*', (req, res) => {
@@ -3134,9 +3136,9 @@ async function init() {
         }
 
         async function getSession(req, res, callback) {
-            const apiKey = req.query.apiKey || req.body.apiKey;
+            const apiKey = req.sanitizedQuery.apiKey || req.sanitizedBody.apiKey;
             const isApiKey = !!apiKey;
-            const token = isApiKey ? apiKey : req.cookies.stok;
+            const token = isApiKey ? mongoSanitize(apiKey) : mongoSanitize(req.cookies.stok);
             const collection = isApiKey ? "keys" : "sessions";
 
             if (!token || token === "" || typeof token !== 'string')
@@ -3178,7 +3180,7 @@ async function init() {
             return callback();
         }
         function requireLogin(req, res, callback = null) {
-            const parm = Object.keys(req.query).length > 0 ? req.query : req.body;
+            const parm = Object.keys(req.sanitizedQuery).length > 0 ? req.sanitizedQuery : req.sanitizedBody;
             const reqPath = getReqPath(req);
             //console.log("path", path);
             /*switch (path) {
