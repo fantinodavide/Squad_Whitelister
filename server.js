@@ -5149,6 +5149,15 @@ async function init() {
             }
         })
     }
+    const CONFIG_NUMERIC_BOUNDS = {
+        other: {
+            logs_max_file_size_mb: { min: 1, max: 1000 },
+            logs_max_buffer_size_mb: { min: 0.1, max: 5 },
+            update_check_interval_seconds: { min: 900, max: 14400 },
+            lists_cache_refresh_seconds: { min: 15, max: 300 },
+        }
+    };
+
     function validateConfigChange(category, configData) {
         const errors = [];
         const warnings = [];
@@ -5197,6 +5206,17 @@ async function init() {
 
         if (!checkDepth(configData)) {
             return { valid: false, errors, warnings };
+        }
+
+        const bounds = CONFIG_NUMERIC_BOUNDS[category];
+        if (bounds) {
+            for (const [key, { min, max }] of Object.entries(bounds)) {
+                if (configData[key] !== undefined) {
+                    if (typeof configData[key] !== 'number' || configData[key] < min || configData[key] > max) {
+                        errors.push(`${key} must be a number between ${min} and ${max}`);
+                    }
+                }
+            }
         }
 
         return { valid: errors.length === 0, errors, warnings };
@@ -5258,6 +5278,15 @@ async function init() {
             };
 
             mergeConfigs(repairedConfig, currentConfig, baseConfig);
+
+            for (const [category, bounds] of Object.entries(CONFIG_NUMERIC_BOUNDS)) {
+                if (!repairedConfig[category]) continue;
+                for (const [key, { min, max }] of Object.entries(bounds)) {
+                    if (typeof repairedConfig[category][key] === 'number') {
+                        repairedConfig[category][key] = Math.min(Math.max(repairedConfig[category][key], min), max);
+                    }
+                }
+            }
 
             if (process.env.MONGODB_CONNECTION_STRING) {
                 repairedConfig.database.mongo.host = process.env.MONGODB_CONNECTION_STRING;
