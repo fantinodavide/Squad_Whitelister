@@ -806,7 +806,19 @@ async function init() {
 
         app.use('/api/changepassword', loginLimiter);
         app.post('/api/changepassword', (req, res, next) => {
-            const parm = req.sanitizedBody;
+            const parm = req.body;
+
+            if (typeof parm.old_password !== 'string' || typeof parm.new_password !== 'string') {
+                return res.status(400).send({ error: 'Invalid credentials format' });
+            }
+
+            if (!isStringInjectionSafe(parm.old_password) || !isStringInjectionSafe(parm.new_password)) {
+                return res.status(400).send({ error: 'Invalid credentials format' });
+            }
+
+            if (parm.old_password.length > 1000 || parm.new_password.length < 8 || parm.new_password.length > 1000) {
+                return res.status(400).send({ error: 'Password must be between 8 and 1000 characters', field: 'new_password' });
+            }
 
             mongoConn((dbo) => {
                 const newCryptPwd = crypto.createHash('sha512').update(parm.new_password).digest('hex');
@@ -886,24 +898,33 @@ async function init() {
         })
         app.use('/api/signup', signupLimiter);
         app.post('/api/signup', async (req, res, next) => {
-            const parm = req.sanitizedBody;
+            const parm = req.body;
 
             if (typeof parm.username !== 'string' || typeof parm.password !== 'string') {
                 return res.status(400).send({ error: 'Invalid credentials format' });
             }
 
-            if (parm.username.length > 100 || parm.password.length > 1000) {
-                return res.status(400).send({ error: 'Input too long' });
+            if (!isStringInjectionSafe(parm.username) || !isStringInjectionSafe(parm.password)) {
+                return res.status(400).send({ error: 'Invalid credentials format' });
+            }
+
+            if (parm.username.length < 3 || parm.username.length > 100) {
+                return res.status(400).send({ error: 'Username must be between 3 and 100 characters', field: 'username' });
+            }
+
+            if (parm.password.length < 8 || parm.password.length > 1000) {
+                return res.status(400).send({ error: 'Password must be between 8 and 1000 characters', field: 'password' });
             }
 
             const isRootUser = !subcomponent_data.database.root_user_registered;
 
             const dbo = await mongoConn();
 
+            if (parm.clan_code !== undefined && parm.clan_code !== null && (typeof parm.clan_code !== 'string' || !/^[a-zA-Z0-9]{8}$/.test(parm.clan_code))) {
+                return res.status(400).send({ message: "Invalid clan code format", field: "clan_code" });
+            }
+
             if (!isRootUser) {
-                if (!parm.clan_code) {
-                    return res.status(400).send({ message: "Clan code is required", field: "clan_code" });
-                }
                 const clanExists = await dbo.collection("clans").findOne({ clan_code: parm.clan_code });
                 if (!clanExists) {
                     return res.status(400).send({ message: "Invalid clan code", field: "clan_code" });
