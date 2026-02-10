@@ -74,7 +74,7 @@ async function init() {
     const ObjectID = mongo.ObjectID;
 
     const crypto = await irequire("crypto");
-    const bodyParser = await irequire('body-parser');
+    // body-parser removed: Express 5 has built-in express.json() / express.urlencoded()
     const cookieParser = await irequire('cookie-parser');
     const { default: mongoSanitizer, sanitize: mongoSanitize } = await irequire('mongo-sanitizer');
     const nocache = await irequire('nocache');
@@ -773,8 +773,8 @@ async function init() {
         app.use(globalLimiter)
         app.use(nocache());
         app.set('etag', false)
-        app.use("/", bodyParser.json());
-        app.use("/", bodyParser.urlencoded({ extended: true }));
+        app.use("/", express.json());
+        app.use("/", express.urlencoded({ extended: true }));
         app.use(cookieParser());
         app.use(mongoSanitizer());
         app.use((req, res, next) => {
@@ -1060,7 +1060,7 @@ async function init() {
             res.send(ret);
         })
         // app.use('/wl*', removeExpiredPlayers);
-        app.get('/:basePath/:clan_code?', mongoSanitizer(), async (req, res, next) => {
+        app.get('/:basePath/{:clan_code}', mongoSanitizer(), async (req, res, next) => {
             const output = await generateOutput(req.sanitizedParams.basePath, req.sanitizedParams.clan_code, req.sanitizedQuery?.usernamesOnly || false);
 
             if (!output)
@@ -1475,7 +1475,7 @@ async function init() {
             });
         })
 
-        app.use('/api/users*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
+        app.use('/api/users', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
         app.get('/api/users/read/getAll', (req, res, next) => {
             const parm = req.sanitizedQuery;
 
@@ -1549,7 +1549,7 @@ async function init() {
                 })
             }
         })
-        app.use('/api/roles*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
+        app.use('/api/roles', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
         app.get('/api/roles/read/getAll', (req, res, next) => {
             const roles = {
                 0: {
@@ -1571,20 +1571,20 @@ async function init() {
             }
             res.send(roles)
         })
-        app.use('/api/api_keys*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
+        app.use('/api/api_keys', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
         app.get('/api/api_keys/read/getAll', (req, res, next) => {
             res.send([])
         })
         app.post('/api/api_keys/write/create', (req, res, next) => {
             return null;
         })
-        // app.use('/api/whitelist*', removeExpiredPlayers);
+        // app.use('/api/whitelist', removeExpiredPlayers);
 
-        // app.use('/api/subcomponent*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
+        // app.use('/api/subcomponent', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
         app.get('/api/subcomponent/read/:subComp/status', mongoSanitizer(), async (req, res, next) => {
             res.send(subcomponent_status[ req.sanitizedParams.subComp ])
         })
-        app.use('/api/config*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
+        app.use('/api/config', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
         const CONFIG_RULES = {
             // Fields that cannot be modified via API
             ignoreFields: [
@@ -1921,7 +1921,7 @@ async function init() {
             return result;
         }
 
-        app.use('/api/dbconfig/read/getFull*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
+        app.use('/api/dbconfig/read/getFull', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
         app.get('/api/dbconfig/read/getFull', async (req, res, next) => {
             const parm = req.sanitizedBody;
             mongoConn(dbo => {
@@ -1956,7 +1956,7 @@ async function init() {
                 })
             })
         })
-        app.use('/api/dbconfig/write*', (...p) => { accessLevelAuthorization(5, ...p) })
+        app.use('/api/dbconfig/write', (...p) => { accessLevelAuthorization(5, ...p) })
         app.post('/api/dbconfig/write/update', async (req, res, next) => {
             const parm = req.sanitizedBody;
 
@@ -2015,7 +2015,7 @@ async function init() {
             })
         })
 
-        app.use('/api/backup*', (...p) => { accessLevelAuthorization(5, ...p) })
+        app.use('/api/backup', (...p) => { accessLevelAuthorization(5, ...p) })
 
         app.get('/api/backup/read/list', async (req, res, next) => {
             try {
@@ -2158,12 +2158,12 @@ async function init() {
             }
         })
 
-        app.use('/api/custom_permissions/read*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 30) next(); else res.sendStatus(403) })
+        app.use('/api/custom_permissions/read', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 30) next(); else res.sendStatus(403) })
         app.get('/api/custom_permissions/read/getAll', (req, res, next) => {
             res.send(config.custom_permissions)
         })
 
-        app.use('/api/lists/read*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
+        app.use('/api/lists/read', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
         app.get('/api/lists/read/getAll', (req, res, next) => {
             mongoConn((dbo) => {
                 let findFilter = req.userSession.access_level < 100 ? {} : { hidden_managers: false };
@@ -2175,7 +2175,7 @@ async function init() {
                 })
             })
         })
-        app.use('/api/lists/write*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 10) next(); else res.sendStatus(401); })
+        app.use('/api/lists/write', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 10) next(); else res.sendStatus(401); })
         app.use('/api/lists/write/checkPerm', async (req, res, next) => {
             return res.send({ status: "permission_granted" });
         })
@@ -2233,7 +2233,7 @@ async function init() {
             })
         })
 
-        app.use('/api/whitelist/read*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
+        app.use('/api/whitelist/read', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
         app.get('/api/whitelist/read/getAllClans', (req, res, next) => {
             const parm = req.sanitizedQuery;
 
@@ -2411,7 +2411,7 @@ async function init() {
                 })
             })
         })
-        app.use('/api/whitelist/write*', (req, res, next) => {
+        app.use('/api/whitelist/write', (req, res, next) => {
             if (req.userSession && req.userSession.access_level <= 30) next()
             else {
                 mongoConn((dbo, client) => {
@@ -2613,7 +2613,7 @@ async function init() {
                 })
             })
         })
-        app.use('/api/seeding/read*', (req, res, next) => {
+        app.use('/api/seeding/read', (req, res, next) => {
             if (req.userSession && req.userSession.access_level <= 30) next()
             else res.sendStatus(401)
         })
@@ -2628,7 +2628,7 @@ async function init() {
                 })
             })
         })
-        app.use('/api/players/read*', (req, res, next) => {
+        app.use('/api/players/read', (req, res, next) => {
             if (req.userSession && req.userSession.access_level <= 30) next()
             else res.sendStatus(401)
         })
@@ -2674,7 +2674,7 @@ async function init() {
                 })
             })
         })
-        app.use('/api/players/write*', (req, res, next) => {
+        app.use('/api/players/write', (req, res, next) => {
             if (req.userSession && req.userSession.access_level <= 10) next()
             else res.sendStatus(401)
         })
@@ -2708,7 +2708,7 @@ async function init() {
                 res.send(updData)
             })
         })
-        app.use('/api/approval/write*', (req, res, next) => {
+        app.use('/api/approval/write', (req, res, next) => {
             if (req.userSession && req.userSession.access_level <= 30) next()
             else res.sendStatus(401)
         })
@@ -2717,7 +2717,7 @@ async function init() {
             setApprovedStatus(parm, res)
         })
 
-        app.use('/api/gameGroups/write*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next(); else res.sendStatus(401); })
+        app.use('/api/gameGroups/write', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next(); else res.sendStatus(401); })
         app.use('/api/gameGroups/write/checkPerm', async (req, res, next) => {
             return res.send({ status: "permission_granted" })
         })
@@ -2784,7 +2784,7 @@ async function init() {
             });
         });
 
-        //app.use('/api/gameGroups/read*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next() })
+        //app.use('/api/gameGroups/read', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next() })
         app.get('/api/gameGroups/read/getAllGroups', (req, res, next) => {
             mongoConn((dbo) => {
                 let findFilter = {};
@@ -2814,7 +2814,7 @@ async function init() {
             })
         })
 
-        app.use('/api/discord*', (...p) => { accessLevelAuthorization(30, ...p) })
+        app.use('/api/discord', (...p) => { accessLevelAuthorization(30, ...p) })
         app.use('/api/discord/write', (...p) => { accessLevelAuthorization(10, ...p) })
         app.get('/api/discord/read/getStatus', (req, res, next) => {
             res.send(subcomponent_status.discord_bot)
@@ -2875,7 +2875,7 @@ async function init() {
             res.send({ url: subcomponent_data.discord_bot.invite_link });
         })
 
-        app.use('/api/clans*', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next() })
+        app.use('/api/clans', (req, res, next) => { if (req.userSession && req.userSession.access_level < 10) next() })
         app.get('/api/clans/getAllClans', (req, res, next) => {
             mongoConn((dbo) => {
                 dbo.collection("clans").find().sort({ full_name: 1, tag: 1 }).toArray((err, dbRes) => {
@@ -3009,9 +3009,9 @@ async function init() {
             } while (error);
         })
 
-        app.use('/api/keys*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next(); else res.sendStatus(403) })
+        app.use('/api/keys', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next(); else res.sendStatus(403) })
         app.use('/api/keys/checkPerm', (req, res, next) => { return res.send(true) })
-        app.get('/api/keys/:id?', mongoSanitizer(), async (req, res, next) => {
+        app.get('/api/keys/{:id}', mongoSanitizer(), async (req, res, next) => {
             const pipeline = [
                 {
                     $lookup: {
@@ -3101,17 +3101,17 @@ async function init() {
             return;
         })
 
-        app.use('/api/keys*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
+        app.use('/api/keys', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 100) next() })
         app.get('/api/docs', async (req, res, next) => {
             res.send(apiDocsJson)
         })
 
-        app.use('/admin*', authorizeAdmin)
+        app.use('/admin', authorizeAdmin)
 
         app.use('/admin', function (req, res, next) {
             express.static('admin')(req, res, next);
         });
-        app.use('/api/admin*', authorizeAdmin)
+        app.use('/api/admin', authorizeAdmin)
 
         app.get("/api/admin", (req, res, next) => {
             res.send({ status: "Ok" });
@@ -3129,7 +3129,7 @@ async function init() {
             return restartProcess(req.sanitizedQuery.delay ? req.sanitizedQuery.delay : 0, 0, args);
         })
 
-        app.get('*', (req, res) => {
+        app.get('/{*splat}', (req, res) => {
             res.sendFile(__dirname + '/dist/index.html');
         });
         app.use((req, res, next) => {

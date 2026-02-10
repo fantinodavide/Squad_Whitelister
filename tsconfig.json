@@ -1,17 +1,12 @@
 {
-  "extends": "@vue/tsconfig/tsconfig.web.json",
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
   "include": ["env.d.ts", "src/**/*", "src/**/*.vue"],
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     },
-    "types": ["jquery","node"]
-  },
-  "allowJs": true,
-  "references": [
-    {
-      "path": "./tsconfig.vite-config.json"
-    }
-  ]
+    "types": ["jquery","node"],
+    "allowJs": true
+  }
 }
