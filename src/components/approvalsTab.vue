@@ -1,7 +1,6 @@
 <script setup lang="ts"></script>
 
 <script lang="ts">
-	import { anyTypeAnnotation } from '@babel/types';
 	import { stringifyStyle } from '@vue/shared';
 	import $ from 'jquery';
 	import approveUserCard from './approveUserCard.vue';

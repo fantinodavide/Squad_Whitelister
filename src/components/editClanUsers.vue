@@ -1,5 +1,4 @@
 <script setup lang="ts">
-	import { anyTypeAnnotation, assertExpressionStatement } from '@babel/types';
 	import $ from 'jquery';
 	import { render } from 'vue';
 	import popup from './popup.vue';

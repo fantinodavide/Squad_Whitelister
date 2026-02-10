@@ -6,7 +6,6 @@
 </template>
 
 <script setup lang="ts">
-	import { assertExpressionStatement } from '@babel/types';
 	import $ from 'jquery';
 	import popup from './popup.vue';
 </script>
