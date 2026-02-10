@@ -763,6 +763,7 @@ async function init() {
             if (blacklistedIPs.has(getClientIP(req))) return res.status(403).end();
             next();
         })
+
         app.use(globalLimiter)
         app.use(nocache());
         app.set('etag', false)
@@ -1050,7 +1051,7 @@ async function init() {
             res.send(ret);
         })
         // app.use('/wl*', removeExpiredPlayers);
-        app.get('/:basePath/:clan_code?', async (req, res, next) => {
+        app.get('/:basePath/:clan_code?', mongoSanitizer(), async (req, res, next) => {
             const output = await generateOutput(req.sanitizedParams.basePath, req.sanitizedParams.clan_code, req.sanitizedQuery?.usernamesOnly || false);
 
             if (!output)
@@ -1570,7 +1571,7 @@ async function init() {
         // app.use('/api/whitelist*', removeExpiredPlayers);
 
         // app.use('/api/subcomponent*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
-        app.get('/api/subcomponent/read/:subComp/status', async (req, res, next) => {
+        app.get('/api/subcomponent/read/:subComp/status', mongoSanitizer(), async (req, res, next) => {
             res.send(subcomponent_status[ req.sanitizedParams.subComp ])
         })
         app.use('/api/config*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
@@ -1912,7 +1913,7 @@ async function init() {
             })
         })
         app.use('/api/dbconfig/read/:category', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 30) next() })
-        app.get('/api/dbconfig/read/:category', async (req, res, next) => {
+        app.get('/api/dbconfig/read/:category', mongoSanitizer(), async (req, res, next) => {
             const parm = req.sanitizedBody;
 
             if (typeof req.sanitizedParams.category !== 'string') {
@@ -2609,7 +2610,7 @@ async function init() {
             if (req.userSession && req.userSession.access_level <= 30) next()
             else res.sendStatus(401)
         })
-        app.get('/api/players/read/from/steamId/:id', (req, res, next) => {
+        app.get('/api/players/read/from/steamId/:id', mongoSanitizer(), (req, res, next) => {
             if (typeof req.sanitizedParams.id !== 'string' || !/^\d{17}$/.test(req.sanitizedParams.id)) {
                 return res.status(400).send({ error: 'Invalid Steam ID format' });
             }
@@ -2623,7 +2624,7 @@ async function init() {
                 })
             })
         })
-        app.get('/api/players/read/from/eosId/:id', (req, res, next) => {
+        app.get('/api/players/read/from/eosId/:id', mongoSanitizer(), (req, res, next) => {
             if (typeof req.sanitizedParams.id !== 'string' || !/^[a-f0-9]{32}$/i.test(req.sanitizedParams.id)) {
                 return res.status(400).send({ error: 'Invalid EOS ID format' });
             }
@@ -2637,7 +2638,7 @@ async function init() {
                 })
             })
         })
-        app.get('/api/players/read/from/discordUserId/:id', (req, res, next) => {
+        app.get('/api/players/read/from/discordUserId/:id', mongoSanitizer(), (req, res, next) => {
             if (typeof req.sanitizedParams.id !== 'string' || !/^\d{17,20}$/.test(req.sanitizedParams.id)) {
                 return res.status(400).send({ error: 'Invalid Discord User ID format' });
             }
@@ -2988,7 +2989,7 @@ async function init() {
 
         app.use('/api/keys*', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next(); else res.sendStatus(403) })
         app.use('/api/keys/checkPerm', (req, res, next) => { return res.send(true) })
-        app.get('/api/keys/:id?', async (req, res, next) => {
+        app.get('/api/keys/:id?', mongoSanitizer(), async (req, res, next) => {
             const pipeline = [
                 {
                     $lookup: {
