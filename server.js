@@ -3032,7 +3032,7 @@ async function init() {
 
         app.use('/api/keys', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next(); else res.sendStatus(403) })
         app.use('/api/keys/checkPerm', (req, res, next) => { return res.send(true) })
-        app.get('/api/keys/{:id}', mongoSanitizer(), async (req, res, next) => {
+        app.get('/api/keys{/:id}', mongoSanitizer(), async (req, res, next) => {
             const pipeline = [
                 {
                     $lookup: {
@@ -3055,17 +3055,20 @@ async function init() {
                 }
             ]
 
+            const placeholder = '******';
             const dbo = await mongoConn();
             if (req.sanitizedParams.id) {
                 const keyId = safeObjectID(req.sanitizedParams.id);
                 if (!keyId) return res.status(400).send({ error: 'Invalid key ID' });
                 pipeline.unshift({ $match: { _id: keyId } })
                 const key = (await dbo.collection("keys").aggregate(pipeline).toArray())[ 0 ];
+                if (key) key.token = placeholder;
                 res.send(key);
                 return;
             }
 
             const keys = await dbo.collection("keys").aggregate(pipeline).toArray();
+            keys.forEach(k => k.token = placeholder);
             res.send(keys)
         })
         app.post('/api/keys/', async (req, res, next) => {
@@ -3108,7 +3111,7 @@ async function init() {
                     res.sendStatus(500);
                     console.error(err)
                 } else {
-                    const output = await dbo.collection("keys").findOne({ _id: safeObjectID(dbRes.insertedId) });
+                    const output = await dbo.collection("keys").findOne({ _id: dbRes.insertedId });
                     res.send({ status: "created", data: output });
                 }
             })
