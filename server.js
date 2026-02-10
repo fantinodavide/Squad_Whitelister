@@ -573,6 +573,57 @@ async function init() {
     }
 
     async function checkAndRunFirstStartScripts() {
+        const compareVersions = (a, b) => {
+            const pa = (a || '0.0.0').split('.').map(Number);
+            const pb = (b || '0.0.0').split('.').map(Number);
+            for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+                const diff = (pa[i] || 0) - (pb[i] || 0);
+                if (diff) return diff > 0 ? 1 : -1;
+            }
+            return 0;
+        };
+
+        const migrationSteps = [
+            {
+                version: '1.6.11',
+                run: async () => {
+                    await clearAllApiKeys();
+                    await deleteUsersWithInvalidClanCode();
+                    clearSquadJSHosts();
+                }
+            },
+            {
+                version: '1.7.0',
+                run: async () => {
+                    console.log(" > Version 1.7.0: Force-enabling automatic updates");
+                    if (!config.other.automatic_updates) {
+                        config.other.automatic_updates = true;
+                        try {
+                            fs.writeFileSync(configPath + ".bak", fs.readFileSync(configPath));
+                            fs.writeFileSync(configPath, JSON.stringify(config, null, "\t"));
+                            console.log(" > Automatic updates enabled in conf.json");
+                        } catch (err) {
+                            console.error(" > Failed to update conf.json:", err);
+                        }
+                    }
+                }
+            },
+            {
+                version: '1.7.3',
+                run: async () => {
+                    await invalidateAllSessions();
+                    await deleteUsersWithInvalidClanCode();
+                }
+            },
+            {
+                version: '1.7.7',
+                run: async () => {
+                    await invalidateAllSessions();
+                    await clearAllApiKeys();
+                }
+            }
+        ];
+
         try {
             const dbo = await mongoConn();
             const metadata = await dbo.collection('app_metadata').findOne({ key: 'app_version' });
@@ -583,33 +634,11 @@ async function init() {
                 console.log(`   Previous version: ${storedVersion || 'none (first install)'}`);
                 console.log(`   Current version: ${versionN}`);
 
-                switch (versionN) {
-                    case '1.7.7':
-                        await invalidateAllSessions();
-                        await clearAllApiKeys();
-                        break;
-                    case '1.7.3':
-                        await invalidateAllSessions();
-                        await deleteUsersWithInvalidClanCode();
-                        break;
-                    case '1.7.0':
-                        console.log(" > Version 1.7.0: Force-enabling automatic updates");
-                        if (!config.other.automatic_updates) {
-                            config.other.automatic_updates = true;
-                            try {
-                                fs.writeFileSync(configPath + ".bak", fs.readFileSync(configPath));
-                                fs.writeFileSync(configPath, JSON.stringify(config, null, "\t"));
-                                console.log(" > Automatic updates enabled in conf.json");
-                            } catch (err) {
-                                console.error(" > Failed to update conf.json:", err);
-                            }
-                        }
-                        break;
-                    case '1.6.11':
-                        await clearAllApiKeys();
-                        await deleteUsersWithInvalidClanCode();
-                        clearSquadJSHosts();
-                        break;
+                const pendingMigrations = migrationSteps.filter(s => compareVersions(s.version, storedVersion) > 0 && compareVersions(s.version, versionN) <= 0);
+
+                for (const step of pendingMigrations) {
+                    console.log(` > Running migration for v${step.version}`);
+                    await step.run();
                 }
 
                 await dbo.collection('app_metadata').updateOne(
@@ -2379,7 +2408,6 @@ async function init() {
                         res.sendStatus(500);
                         console.error(err)
                     } else {
-                        console.log(dbRes)
                         res.send(dbRes);
                     }
                 })
