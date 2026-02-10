@@ -1081,7 +1081,7 @@ async function init() {
             res.send(ret);
         })
         // app.use('/wl*', removeExpiredPlayers);
-        app.get('/:basePath/{:clan_code}', mongoSanitizer(), async (req, res, next) => {
+        app.get('/:basePath{/:clan_code}', mongoSanitizer(), async (req, res, next) => {
             const output = await generateOutput(req.sanitizedParams.basePath, req.sanitizedParams.clan_code, req.sanitizedQuery?.usernamesOnly || false);
 
             if (!output)
@@ -3153,7 +3153,7 @@ async function init() {
             return restartProcess(req.sanitizedQuery.delay ? req.sanitizedQuery.delay : 0, 0, args);
         })
 
-        app.get('/{*splat}', (req, res) => {
+        app.get('{/*splat}', (req, res) => {
             res.sendFile(__dirname + '/dist/index.html');
         });
         app.use((req, res, next) => {
