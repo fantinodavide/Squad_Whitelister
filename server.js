@@ -72,16 +72,7 @@ async function init() {
     const mongo = await irequire('mongodb');
     const MongoClient = mongo.MongoClient;
     const ObjectID = mongo.ObjectID;
-
-    function safeObjectID(id) {
-        try {
-            if (!id || typeof id !== 'string') return null;
-            return ObjectID(id);
-        } catch (e) {
-            return null;
-        }
-    }
-
+    
     const crypto = await irequire("crypto");
     const bodyParser = await irequire('body-parser');
     const cookieParser = await irequire('cookie-parser');
@@ -105,6 +96,21 @@ async function init() {
     const readline = require('readline');
     const util = require('util');
     const lookup = util.promisify(dns.lookup);
+
+    function safeObjectID(id) {
+        try {
+            if (!id || typeof id !== 'string') return null;
+            return ObjectID(id);
+        } catch (e) {
+            return null;
+        }
+    }
+    function isStringInjectionSafe(input) {
+        return (
+            typeof input === 'string' &&
+            !/^\$|\x00/.test(input)
+        )
+    }
 
     try {
         (await irequire('dotenv')).config();
@@ -817,19 +823,22 @@ async function init() {
 
         app.use('/api/login', loginLimiter);
         app.post('/api/login', (req, res, next) => {
-            const parm = req.sanitizedBody;
+            const parm = req.body;
 
-            if (typeof parm.username !== 'string' || typeof parm.password !== 'string') {
+            const username = parm.username;
+            const password = parm.password;
+
+            if (!isStringInjectionSafe(username) || !isStringInjectionSafe(password)) {
                 return res.status(400).send({ error: 'Invalid credentials format' });
             }
 
-            if (parm.username.length > 100 || parm.password.length > 1000) {
+            if (username.length > 100 || password.length > 1000) {
                 return res.status(400).send({ error: 'Input too long' });
             }
 
             mongoConn((dbo) => {
-                let cryptPwd = crypto.createHash('sha512').update(parm.password).digest('hex');
-                dbo.collection("users").findOne({ $or: [ { username_lower: parm.username.toLowerCase() }, { username: parm.username } ], password: cryptPwd }, async (err, usrRes) => {
+                let cryptPwd = crypto.createHash('sha512').update(password).digest('hex');
+                dbo.collection("users").findOne({ $or: [ { username_lower: username.toLowerCase() }, { username: username } ], password: cryptPwd }, async (err, usrRes) => {
                     if (err) {
                         res.sendStatus(500);
                         console.error(err)
@@ -1781,6 +1790,18 @@ async function init() {
 
             try {
                 if (parm.category === 'squadjs' && Array.isArray(sanitizedConfig)) {
+                    const originalBody = req.body;
+                    if (originalBody && Array.isArray(originalBody.config)) {
+                        sanitizedConfig.forEach((entry, index) => {
+                            const originalHost = originalBody.config[ index ]?.websocket?.host;
+                            const originalToken = originalBody.config[ index ]?.websocket?.token;
+                            if (!isStringInjectionSafe(originalHost) || !isStringInjectionSafe(originalToken))
+                                return res.status(400).send({error: 'Invalid credentials'})
+                            entry.websocket.host = originalHost;
+                            entry.websocket.token = originalToken;
+                        });
+                    }
+                    
                     sanitizedConfig.forEach((entry, index) => {
                         const currentEntry = config.squadjs?.[ index ]?.websocket;
                         const newEntry = entry?.websocket;
