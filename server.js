@@ -1,6 +1,7 @@
 const { match } = require('assert');
 const cp = require('child_process');
-var installingDependencies = false;
+var installingDependencies = false
+
 const irequire = async module => {
     console.log(`Requiring "${module}"`)
     try {
@@ -20,8 +21,7 @@ const irequire = async module => {
         return require(module)
     } catch (e) {
         console.log(`Could not include "${module}". Restart the script`)
-        restartProcess(0, 1)
-        //process.exit(1)
+        await restartProcess(3, 1)
     }
 }
 
@@ -5515,7 +5515,9 @@ async function init() {
 init();
 
 
-function restartProcess(delay = 0, code = 0, args = null, forceRestart = false) {
+async function restartProcess(delay = 0, code = 0, args = null, forceRestart = false) {
+    if (delay > 0) await new Promise(r => setTimeout(r, delay));
+
     if ((args && args[ "self-pm" ] && args[ "self-pm" ] == true) || forceRestart/*args["using-pm"] && args["using-pm"] == true*/) {
         process.on("exit", function () {
             console.log("Process terminated\nStarting new process");
@@ -5525,20 +5527,11 @@ function restartProcess(delay = 0, code = 0, args = null, forceRestart = false) 
                 stdio: "inherit"
             });
         });
-        setTimeout(() => {
-            closeSubcomponents(() => {
-                process.exit(code);
-            });
-        }, delay)
     } else {
-
-        setTimeout(() => {
-            console.log("Terminating execution. Process manager will restart me.")
-            closeSubcomponents(() => {
-                process.exit(code);
-            });
-        }, delay)
+        console.log("Terminating execution. Process manager will restart me.")
     }
+
+    closeSubcomponents(() => { process.exit(code); });
 
     function closeSubcomponents(cb) {
         if (cb) cb();
