@@ -6,6 +6,7 @@
 
 <script lang="ts">
 	import managerIcon from '../assets/manage_accounts.svg';
+import { getHoursLeft } from '@/utils/getHoursLeft';
 	export default {
 		data() {
 			return {
@@ -48,38 +49,11 @@
 			updateHoverMenuLeft: function (e: any) {
 				this.hoverMenuLeft = e.target.scrollLeft;
 			},
-			getHoursLeft: function (precision: number = 5) {
-				let oHours = '00',
-					oMin = '00',
-					oSec = '00';
-				const y: any = new Date(this.wl_data.expiration);
-				const x: any = new Date();
-				if (y - x > 0) {
-					const hours = Math.floor((y - x) / 1000 / 60 / 60);
-					const days = Math.round(hours / 24);
-					const months = Math.round(days / 30);
-					if (hours < 24) {
-						const minutes = Math.floor((y - x) / 1000 / 60 - hours * 60);
-						const secs = Math.floor((y - x) / 1000 - hours * 60 * 60 - minutes * 60);
-
-						oHours = (hours < 10 ? '0' : '') + hours;
-						oMin = (minutes < 10 ? '0' : '') + minutes;
-						oSec = (secs < 10 ? '0' : '') + secs;
-						if (hours < 0) oHours = '00';
-						if (minutes < 0) oMin = '00';
-						if (secs < 0) oSec = '00';
-						console.log('Expiration', this.wl_data.username, this.wl_data.expiration, hours, minutes, secs, oHours, oMin, oSec);
-						return oHours + ':' + oMin + ':' + oSec;
-					} else if (months <= 0) {
-						return days + ' days';
-					} else return months + ' months';
-				}
-				return '';
-			},
+			getHoursLeft: getHoursLeft,
 			startIntervalExpirTimeouts: function (precision: number = 5) {
-				this.expirationTime = this.getHoursLeft(precision);
+				this.expirationTime = this.getHoursLeft(precision, this.wl_data.expiration);
 				this.upd_int = setInterval(() => {
-					this.expirationTime = this.getHoursLeft(precision);
+					this.expirationTime = this.getHoursLeft(precision, this.wl_data.expiration);
 				}, precision * 1000);
 			},
 		},

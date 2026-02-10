@@ -2,9 +2,13 @@
 	import { assertExpressionStatement } from '@babel/types';
 	import $ from 'jquery';
 	import popup from './popup.vue';
+import { getHoursLeft } from '@/utils/getHoursLeft';
 </script>
 
 <script lang="ts">
+	const reg = /^Admin=(?<steamid>\d{17})?(?<eosid>[a-f\d]{32})?:(?<group>.[a-zA-Z_\d]{1,})((\s\/{2}\s?)(?<comment>.{1,}))?/gm;
+	const expirationReg = /Expiration: (?<isoDate>((\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+)|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d)|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d))Z)/;
+	const discordUsernameReg = /\@[^\s]{3,32}(#(0{1}|\d{4}))?/;
 	export default {
 		data() {
 			return {
@@ -51,15 +55,27 @@
 						.querySelector('textarea')
 						.value.split('\n')
 						.filter((a: any) => a != '' && a.startsWith('Admin'));
-					const reg = /^Admin=(?<steamid>\d{17})?(?<eosid>[a-f\d]{32})?:(?<group>.[a-zA-Z_\d]{1,})((\s\/{2}\s?)(?<comment>.{1,}))?/gm;
 
 					listImport.forEach((elm: any, key: any) => {
 						const r = elm;
+						
 						const regRes = this.regexExec(r, reg) as any;
 						if(!regRes)
 							return;
 						let regResGr = regRes.groups;
+						
 						regResGr.discordUsername = this.getDiscord(regResGr.comment);
+						
+						const expirationString = regResGr.comment.match(expirationReg)?.groups?.isoDate;
+						if(expirationString){
+							const expirationDate = new Date(expirationString);
+							const remainingDurationHours = (+expirationDate - Date.now()) / 3600_000;
+							if(remainingDurationHours <= 0)
+								return;
+							regResGr.expirationDate = expirationDate;
+							regResGr.durationHours = remainingDurationHours;
+						}
+						
 						this.parListImport.push(regResGr);
 						if (!this.importFoundGroups.includes(regResGr.group)) this.importFoundGroups.push(regResGr.group);
 					});
@@ -89,6 +105,7 @@
 							group: this.conv_gameGroups[p.group],
 							sel_clan_id: this.add_data.sel_clan,
 							sel_list_id: this.add_data.sel_list_id,
+							...( p.durationHours && { durationHours: p.durationHours } )
 						};
 						console.log('Importing whitelist', player);
 
@@ -176,7 +193,7 @@
 				// console.log(regRes, tags, repReg);
 			},
 			getDiscord: function (comment: string) {
-				const m = comment.match(/\@.{3,32}(#(0{1}|\d{4}))/);
+				const m = comment.match(discordUsernameReg);
 				return m ? m[0] : '';
 			},
 			preventDefault(event: Event) {
@@ -222,10 +239,11 @@
 		</div>
 		<div v-if="currentStep == 2" class="overflow">
 			<div v-for="p of parListImport" class="grTranslation" :key="p.steamid">
-				<input :name="p.steamid || p.eosid" type="text" :value="p.comment.replace(/\@.{3,32}(#(0{1}|\d{4}))/, '')" />
+				<input :name="p.steamid || p.eosid" type="text" :value="p.comment.replace(/\@.{3,32}(#(0{1}|\d{4}))/, '').replace(expirationReg, '').replace(discordUsernameReg, '').trim()" />
 				<span class="tag">{{ game_groups.filter((g) => g._id == conv_gameGroups[p.group])[0].group_name }}</span>
 				<span class="tag">{{ p.steamid || p.eosid}} </span>
 				<span class="tag" v-if="p.discordUsername != ''">{{ p.discordUsername }} </span>
+				<span class="tag" v-if="p.expirationDate">{{ getHoursLeft(5, p.expirationDate) }} left</span>
 				<!-- <input name="discordUsername" type="text" placeholder="Discord Username" :value="getDiscord(p.comment)" optional hidden /> -->
 			</div>
 		</div>

@@ -72,7 +72,7 @@ async function init() {
     const mongo = await irequire('mongodb');
     const MongoClient = mongo.MongoClient;
     const ObjectID = mongo.ObjectID;
-    
+
     const crypto = await irequire("crypto");
     const bodyParser = await irequire('body-parser');
     const cookieParser = await irequire('cookie-parser');
@@ -1185,6 +1185,7 @@ async function init() {
                                                     steamid64: w.steamid64,
                                                     eosID: w.eosID,
                                                     groupId: w.id_group,
+                                                    expiration: w.expiration,
                                                     clanTag: clansById[ w.id_clan ].tag,
                                                     discordUsername: discordUsername
                                                 })
@@ -1329,7 +1330,7 @@ async function init() {
                                                         playerId = w.eosID || w.steamid64
                                                     else
                                                         playerId = w.steamid64 || w.eosID
-                                                    wlRes += `Admin=${playerId}:${groups[ w.groupId ].group_name} // [${w.clanTag}] ${w.username} ${w.discordUsername}\n`
+                                                    wlRes += `Admin=${playerId}:${groups[ w.groupId ].group_name} // [${w.clanTag}] ${w.username} ${w.discordUsername} ${w.expiration ? ('Expiration: ' + w.expiration.toISOString()) : ''}\n`
 
                                                     if (!requiredGroupIds.includes(w.groupId)) requiredGroupIds.push(w.groupId)
                                                 }
@@ -1796,12 +1797,12 @@ async function init() {
                             const originalHost = originalBody.config[ index ]?.websocket?.host;
                             const originalToken = originalBody.config[ index ]?.websocket?.token;
                             if (!isStringInjectionSafe(originalHost) || !isStringInjectionSafe(originalToken))
-                                return res.status(400).send({error: 'Invalid credentials'})
+                                return res.status(400).send({ error: 'Invalid credentials' })
                             entry.websocket.host = originalHost;
                             entry.websocket.token = originalToken;
                         });
                     }
-                    
+
                     sanitizedConfig.forEach((entry, index) => {
                         const currentEntry = config.squadjs?.[ index ]?.websocket;
                         const newEntry = entry?.websocket;
