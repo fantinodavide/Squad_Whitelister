@@ -3137,7 +3137,7 @@ async function init() {
                 res.status(401).send({ message: "An API key with the same name already exists!", field: "name" })
                 return;
             }
-            const tokenCheck = await dbo.collection("keys").findOne({ name: data.name });
+            const tokenCheck = await dbo.collection("keys").findOne({ token: data.token });
             if (tokenCheck) {
                 res.status(401).send({ message: "An API key with the same name token already exists, please try again!" })
                 return;
@@ -3238,7 +3238,7 @@ async function init() {
         async function getSession(req, res, callback) {
             const apiKey = req.sanitizedQuery.apiKey || req.sanitizedBody.apiKey;
             const isApiKey = !!apiKey;
-            const token = isApiKey ? apiKey : req.cookies.stok;
+            const token = isApiKey ? apiKey : mongoSanitize(req.cookies.stok);
             const collection = isApiKey ? "keys" : "sessions";
             
             if (!token || token === "" || typeof token !== 'string')
