@@ -584,6 +584,10 @@ async function init() {
                 console.log(`   Current version: ${versionN}`);
 
                 switch (versionN) {
+                    case '1.7.7':
+                        await invalidateAllSessions();
+                        await clearAllApiKeys();
+                        break;
                     case '1.7.3':
                         await invalidateAllSessions();
                         await deleteUsersWithInvalidClanCode();
@@ -859,6 +863,7 @@ async function init() {
                     else {
                         const sessDurationMS = config.web_server.session_duration_hours * 60 * 60 * 1000;
 
+                        let rawToken = '';
                         let sessionsDt = {
                             login_date: new Date(),
                             session_expiration: new Date(Date.now() + sessDurationMS),
@@ -869,7 +874,8 @@ async function init() {
                         const dbo = await mongoConn();
                         let tokenExists = true;
                         while (tokenExists) {
-                            sessionsDt.token = randomString(128);
+                            rawToken = randomString(128);
+                            sessionsDt.token = crypto.createHash('sha512').update(rawToken).digest('hex')
                             tokenExists = await dbo.collection("sessions").findOne({ token: sessionsDt.token });
                         }
 
@@ -885,7 +891,7 @@ async function init() {
                                 blacklistIP(clientIP, `Multiple concurrent sessions (${activeSessions})`);
                                 return res.status(403).send({ error: 'Forbidden' });
                             }
-                            res.cookie("stok", sessionsDt.token, { expires: sessionsDt.session_expiration, httpOnly: true, secure: config.web_server.force_https, sameSite: 'strict' })
+                            res.cookie("stok", rawToken, { expires: sessionsDt.session_expiration, httpOnly: true, secure: config.web_server.force_https, sameSite: 'strict' })
                             res.cookie("uid", sessionsDt.id_user, { expires: sessionsDt.session_expiration, secure: config.web_server.force_https, sameSite: 'strict' })
                             res.send({ status: "login_ok", userDt: sessionsDt });
                         } catch (err) {
@@ -3084,9 +3090,11 @@ async function init() {
                 return res.status(400).send({ message: "API key name contains invalid characters", field: "name" });
             }
 
+            const token = randomString(128);
+
             const data = {
                 name: req.sanitizedBody.name.trim(),
-                token: randomString(128),
+                token: crypto.createHash('sha512').update(token).digest('hex'),
                 access_level: +req.sanitizedBody.access_level,
                 inserted_by: req.userSession.id_user
             }
@@ -3112,11 +3120,11 @@ async function init() {
                     console.error(err)
                 } else {
                     const output = await dbo.collection("keys").findOne({ _id: dbRes.insertedId });
-                    res.send({ status: "created", data: output });
+                    res.send({ status: "created", data: { ...output, token } });
                 }
             })
         })
-        app.delete('/api/keys/:id', async (req, res, next) => {
+        app.delete('/api/keys/{:id}', mongoSanitizer(), async (req, res, next) => {
             const dbo = await mongoConn();
             const keyId = safeObjectID(req.sanitizedParams.id);
             if (!keyId) return res.status(400).send({ error: 'Invalid key ID' });
@@ -3202,14 +3210,16 @@ async function init() {
         async function getSession(req, res, callback) {
             const apiKey = req.sanitizedQuery.apiKey || req.sanitizedBody.apiKey;
             const isApiKey = !!apiKey;
-            const token = isApiKey ? mongoSanitize(apiKey) : mongoSanitize(req.cookies.stok);
+            const token = isApiKey ? apiKey : req.cookies.stok;
             const collection = isApiKey ? "keys" : "sessions";
-
+            
             if (!token || token === "" || typeof token !== 'string')
                 return callback();
-
+            
             if (isApiKey && typeof apiKey !== 'string')
                 return callback();
+
+            const hashedToken = crypto.createHash('sha512').update(token).digest('hex');
 
             const dbo = await mongoConn();
 
@@ -3218,7 +3228,7 @@ async function init() {
                 login_date: new Date()
             };
 
-            const sessionDbData = await dbo.collection(collection).findOne({ token: token }, { projection: { _id: 0 } });
+            const sessionDbData = await dbo.collection(collection).findOne({ token: hashedToken }, { projection: { _id: 0 } });
             if (!sessionDbData)
                 return callback()
 
