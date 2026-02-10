@@ -880,7 +880,7 @@ async function init() {
                                 ip: clientIP,
                                 session_expiration: { $gt: new Date() }
                             });
-                            if (activeSessions > 1) {
+                            if (activeSessions > 1 && config.security.concurrent_sessions_triggers_IP_blacklisting) {
                                 await dbo.collection('sessions').deleteMany({ ip: clientIP });
                                 blacklistIP(clientIP, `Multiple concurrent sessions (${activeSessions})`);
                                 return res.status(403).send({ error: 'Forbidden' });
@@ -2515,7 +2515,7 @@ async function init() {
                                 eosID: parm.eosID,
                                 id_group: safeObjectID(parm.group),
                                 discord_username: !parm.discordUsername.startsWith('@') && parm.discordUsername != "" ? "@" + parm.discordUsername : "" + parm.discordUsername,
-                                inserted_by: safeObjectID(req.userSession.id_user || req.userSession.id),
+                                inserted_by: req.userSession.id_user,
                                 insertedViaApiKey: !req.userSession.id_user && !!req.userSession.id,
                                 expiration: (parm.durationHours && parm.durationHours != "") ? new Date(Date.now() + (parseFloat(parm.durationHours) * 60 * 60 * 1000)) : false,
                                 insert_date: new Date(),
@@ -2921,7 +2921,7 @@ async function init() {
                 blacklistIP(getClientIP(req), 'Whitelist injection in editClan');
                 return res.status(403).send({ error: 'Forbidden' });
             }
-            const allowedFields = [ 'full_name', 'tag', 'clan_code', 'description', 'discord_server_id' ];
+            const allowedFields = [ 'full_name', 'tag', 'clan_code', 'description', 'discord_server_id', 'confirmation_ovrd' ];
             const parm = {};
             allowedFields.forEach(field => {
                 if (req.sanitizedBody[ field ] !== undefined) parm[ field ] = req.sanitizedBody[ field ];
@@ -4978,6 +4978,9 @@ async function init() {
                 force_lists_output_caching: false,
                 logs_max_file_size_mb: 250,
                 logs_max_buffer_size_mb: 0.5
+            },
+            security: {
+                concurrent_sessions_triggers_IP_blacklisting: true
             }
         };
     }
@@ -5206,7 +5209,7 @@ async function init() {
             return { valid: false, errors, warnings };
         }
 
-        const validCategories = [ 'web_server', 'database', 'app_personalization', 'discord_bot', 'squadjs', 'custom_permissions', 'other' ];
+        const validCategories = Object.keys(getBaseConfigTemplate());
         if (!validCategories.includes(category)) {
             errors.push(`Invalid category: ${category}. Must be one of: ${validCategories.join(', ')}`);
             return { valid: false, errors, warnings };
