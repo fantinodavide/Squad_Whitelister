@@ -15,7 +15,7 @@
 		props: {
 			wl_data: {
 				required: true,
-				type: Object,
+				type: Object
 			},
 			hoverMenuVisible: {
 				required: false,
@@ -56,15 +56,16 @@
 
 <template>
 	<div class="gameGroupCard shadow">
-		<span class="dot" :class="{ fill: wl_data.approved }"></span>
-		<div class="groupName tag">{{ wl_data.username }}</div>
+		<span class="dot" :class="{ fill: wl_data?.approved }"></span>
+		<div class="groupName tag">{{ wl_data?.username }}</div>
 		<!--<div class="clanTag"></div>-->
 		<div class="mainGroupContainer" @scroll="updateHoverMenuLeft">
 			<!-- <marquee-text :duration="10" :paused="false"></marquee-text> -->
 			<span class="tag">{{ wl_data.group_full_data[0].group_name }}</span>
 			<span class="tag noBg redTrans">{{ wl_data.steamid64 }}</span>
-			<span class="tag noBg redTrans" v-if="wl_data.discord_username != ''">{{ wl_data.discord_username }}</span>
-			<span class="tag"><img :src="managerIcon" />{{ wl_data.inserted_by[0].username }}</span>
+			<span class="tag noBg redTrans">{{ wl_data.eosID }}</span>
+			<span class="tag noBg redTrans" v-if="wl_data.discord_username && wl_data.discord_username != ''">{{ wl_data.discord_username }}</span>
+			<span class="tag"><img :src="managerIcon" />{{ wl_data.inserted_by?.[0]?.username }}</span>
 
 			<div class="align-self: flex-end;">
 				<button @click="rejectApproval">Reject</button>
