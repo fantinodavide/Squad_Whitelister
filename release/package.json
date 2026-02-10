@@ -1,6 +1,6 @@
 {
 	"name": "squad-whitelister",
-	"version": "1.7.5",
+	"version": "1.7.6",
 	"dependencies": {
 		"axios": "^1.7.9",
 		"bson": "^4.7.0",
