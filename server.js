@@ -1878,7 +1878,10 @@ async function init() {
                     const originalToken = originalBody?.config?.token;
                     if (!isStringInjectionSafe(originalToken))
                         return res.status(400).send({ error: 'Invalid token' })
-                    sanitizedConfig.token = originalToken;
+                    if (originalToken && originalToken != '******')
+                        sanitizedConfig.token = originalToken;
+                    else
+                        delete sanitizedConfig.token;
                 }
 
                 // Prevent disabling automatic_updates via API (allow enabling only)
@@ -2907,8 +2910,12 @@ async function init() {
             const parm = req.sanitizedQuery;
             if (subcomponent_status.discord_bot) {
                 let ret = [];
+
+                const guild = await discordClient.guilds.fetch(config.discord_bot.server_id, { cache: true }).catch(e => console.error(`Unable to fetch Discord guild ${config?.discord_bot?.server_id}`))
+                if (!guild)
+                    return res.send([]);
                 res.send(
-                    (await discordClient.guilds.fetch(config.discord_bot.server_id))
+                    guild
                         .channels.cache
                         .filter((e) => e.type != 4) // Filter out category channels
                         .sort((a, b) => {
@@ -3368,7 +3375,10 @@ async function init() {
             axios
                 .get(releasesUrl, { timeout: 10000 })
                 .then(res => {
-                    const gitResData = res.data[ 0 ];
+                    const releases = Array.isArray(res.data) ? res.data.filter(r => !r.draft && r.published_at && r.tag_name) : [];
+                    releases.sort((a, b) => new Date(b.published_at) - new Date(a.published_at));
+                    const gitResData = releases[ 0 ];
+                    if (!gitResData) { if (callback) callback(); return; }
                     const checkV = gitResData.tag_name.toUpperCase().replace("V", "").split(".");
                     const versionSplit = versionN.toString().split(".");
 
@@ -3526,7 +3536,7 @@ async function init() {
                 // },
             ];
 
-            client.on('ready', async () => {
+            client.on('clientReady', async () => {
                 clearTimeout(tm);
                 discordClient = new Proxy(client, {});
                 // const permissionsString = "1099780151360";
@@ -3553,7 +3563,9 @@ async function init() {
                 setInterval(temporizedRoleUpdate, 5 * 60 * 1000)
 
                 async function temporizedRoleUpdate() {
-                    const guild = await client.guilds.cache.get(config.discord_bot.server_id)
+                    const guild = await client.guilds.fetch(config.discord_bot.server_id, { cache: true }).catch(e => console.error(`Unable to fetch Discord guild ${config?.discord_bot?.server_id}`))
+                    if (!guild)
+                        return;
                     const allMembers = await guild.members.fetch();
                     mongoConn((dbo) => {
                         dbo.collection("players").find({ discord_user_id: { $exists: true } }).toArray((err, dbRes) => {
