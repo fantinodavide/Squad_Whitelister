@@ -1873,6 +1873,14 @@ async function init() {
                     });
                 }
 
+                if (parm.category === 'discord_bot') {
+                    const originalBody = req.body;
+                    const originalToken = originalBody?.config?.token;
+                    if (!isStringInjectionSafe(originalToken))
+                        return res.status(400).send({ error: 'Invalid token' })
+                    sanitizedConfig.token = originalToken;
+                }
+
                 // Prevent disabling automatic_updates via API (allow enabling only)
                 if (sanitizedConfig.automatic_updates === false) {
                     console.log(" > API attempt to disable automatic_updates blocked");
