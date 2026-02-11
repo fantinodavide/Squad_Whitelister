@@ -2985,7 +2985,7 @@ async function init() {
             }
 
             mongoConn((dbo) => {
-                dbo.collection("users").find({ clan_code: parm.clan_code }).toArray((err, dbRes) => {
+                dbo.collection("users").find({ clan_code: parm.clan_code }, { password: 0 }).toArray((err, dbRes) => {
                     res.send(dbRes)
                 })
             })
