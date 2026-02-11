@@ -2885,13 +2885,12 @@ async function init() {
                 res.sendStatus(404)
             }
         })
-        app.get('/api/discord/read/getServers', (req, res, next) => {
+        app.get('/api/discord/read/getServers', async (req, res, next) => {
             const parm = req.sanitizedQuery;
             if (subcomponent_status.discord_bot) {
                 let ret = [];
-                for (let g of discordClient.guilds.cache) ret.push({ id: g[ 1 ].id, name: g[ 1 ].name })
+                for (let g of await discordClient.guilds.fetch()) ret.push({ id: g[ 1 ].id, name: g[ 1 ].name })
                 res.send(ret)
-                // console.log(ret);
             } else {
                 res.sendStatus(404)
             }
