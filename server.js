@@ -2777,15 +2777,15 @@ async function init() {
             return res.send({ status: "permission_granted" })
         })
         app.post('/api/gameGroups/write/newGroup', (req, res, next) => {
-            if (containsWhitelistInjection(parm.group_name)) {
-                blacklistIP(getClientIP(req), 'Whitelist injection in newGroup');
-                return res.status(403).send({ error: 'Forbidden' });
-            }
             const allowedFields = [ 'group_name', 'group_permissions', 'require_appr', 'discord_roles' ];
             const parm = {};
             allowedFields.forEach(field => {
                 if (req.sanitizedBody[ field ] !== undefined) parm[ field ] = req.sanitizedBody[ field ];
             });
+            if (containsWhitelistInjection(parm.group_name)) {
+                blacklistIP(getClientIP(req), 'Whitelist injection in newGroup');
+                return res.status(403).send({ error: 'Forbidden' });
+            }
             mongoConn((dbo) => {
                 dbo.collection("groups").insertOne(parm, (err, dbRes) => {
                     if (err) serverError(res, err);
