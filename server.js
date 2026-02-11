@@ -577,7 +577,7 @@ async function init() {
             const pa = (a || '0.0.0').split('.').map(Number);
             const pb = (b || '0.0.0').split('.').map(Number);
             for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-                const diff = (pa[i] || 0) - (pb[i] || 0);
+                const diff = (pa[ i ] || 0) - (pb[ i ] || 0);
                 if (diff) return diff > 0 ? 1 : -1;
             }
             return 0;
@@ -827,15 +827,15 @@ async function init() {
             next();
         });
         app.use(forceHTTPS);
-        app.use('/', getSession);
-        app.use('/', (req, res, next) => {
+        app.use(getSession);
+        app.use((req, res, next) => {
             if (req.userSession)
                 return authenticatedLimiter(req, res, next);
             else
                 return anonymousLimiter(req, res, next);
         })
         app.use(detectRequestUrl);
-        app.use(express.static(__dirname + '/dist'));
+        app.use(express.static(path.join(__dirname, 'dist')));
 
         app.use('/api/changepassword', loginLimiter);
         app.post('/api/changepassword', (req, res, next) => {
@@ -1509,7 +1509,7 @@ async function init() {
             else res.status(401).send({ status: "login_required" });
         })
 
-        app.use('/', requireLogin);
+        app.use(requireLogin);
 
         app.use('/api/restart', (req, res, next) => {
             if (req.userSession && req.userSession.access_level > 5)
@@ -3240,10 +3240,10 @@ async function init() {
             const isApiKey = !!apiKey;
             const token = isApiKey ? apiKey : mongoSanitize(req.cookies.stok);
             const collection = isApiKey ? "keys" : "sessions";
-            
+
             if (!token || token === "" || typeof token !== 'string')
                 return callback();
-            
+
             if (isApiKey && typeof apiKey !== 'string')
                 return callback();
 
@@ -3282,6 +3282,7 @@ async function init() {
             return callback();
         }
         function requireLogin(req, res, callback = null) {
+            const method = req.method;
             const parm = Object.keys(req.sanitizedQuery).length > 0 ? req.sanitizedQuery : req.sanitizedBody;
             const reqPath = getReqPath(req);
             //console.log("path", path);
@@ -3294,8 +3295,12 @@ async function init() {
                     break;
                 }*/
             //if (!req.userSession) res.redirect(301, "/api/login");
-            if (!req.userSession) res.status(401).send({ status: "login_required" });
-            else callback();//authorizeDCSUsers(req, res, callback)
+            if (!req.userSession) {
+                if (/get/i.test(method) && /(^\/(?!api).*)?/i.test(req.path))
+                    return res.sendFile(__dirname + '/dist/index.html');
+                return res.status(401).send({ status: "login_required" });
+            }
+            else return callback();//authorizeDCSUsers(req, res, callback)
         }
         function logRequests(req, res, next) {
             if (!server.logging.requests) return next();
