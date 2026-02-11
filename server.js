@@ -1069,7 +1069,7 @@ async function init() {
                     max_access_level: 5
                 },
                 {
-                    name: "API",
+                    name: "REST API",
                     order: 35,
                     type: "tab",
                     max_access_level: 5
@@ -3086,10 +3086,13 @@ async function init() {
                 },
                 {
                     $sort: { access_level: -1 }
+                },
+                {
+                    $project: { token: 0 }
                 }
             ]
 
-            const placeholder = '******';
+            const placeholder = null;
             const dbo = await mongoConn();
             if (req.sanitizedParams.id) {
                 const keyId = safeObjectID(req.sanitizedParams.id);

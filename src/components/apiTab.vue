@@ -199,6 +199,8 @@
 		display: flex;
 		flex-direction: column;
 		flex-wrap: wrap;
+		min-width: 0;
+		overflow: hidden;
 	}
 
 	.tab.horizontal {

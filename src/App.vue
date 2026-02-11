@@ -528,7 +528,7 @@ export default {
 				:roles="tabData.UsersAndRoles.roles"
 				@delete-record="removeUser" />
 		</tab>
-		<tab v-else-if="currentTab == 'API'" :currentTab="currentTab" :roles="roles" complex>
+		<tab v-else-if="currentTab == 'REST API'" :currentTab="currentTab" :roles="roles" complex>
 			<ApiTab
 				:roles="roles"
 				@confirm="confirmEvt"

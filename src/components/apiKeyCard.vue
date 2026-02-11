@@ -1,10 +1,10 @@
 <script setup lang="ts">
 	import $ from 'jquery';
-	import MarqueeText from 'vue-marquee-text-component';
 </script>
 
 <script lang="ts">
 	import managerIcon from '../assets/manage_accounts.svg';
+	import { VCodeBlock } from '@wdns/vue-code-block';
 	export default {
 		data() {
 			return {
@@ -14,6 +14,7 @@
 				upd_int: -1 as any,
 			};
 		},
+		components: [ VCodeBlock ],
 		props: {
 			wl_data: {
 				required: true,
@@ -97,13 +98,13 @@
 		<span class="dot" :class="{ fill: true }"></span>
 		<div class="groupName tag">{{ wl_data.name }}</div>
 		<div class="mainGroupContainer" @scroll="updateHoverMenuLeft">
-			<span class="tag" v-if="wl_data.inserted_by"><img :src="managerIcon" />{{ wl_data.inserted_by[0].username }}</span>
-			<select :disabled="true" name="roleSel" style="width: auto">
+			<span class="tag" v-if="wl_data.inserted_by" style="margin-right: 10px"><img :src="managerIcon" />{{ wl_data.inserted_by[0].username }}</span>
+			<select :disabled="true" name="roleSel" style="width: auto; margin-right: 10px">
 				<option v-for="r of roles" :value="r.access_level" :key="r" :selected="wl_data.access_level == r.access_level" :hidden="r.access_level == 0">{{ r.name }}</option>
 			</select>
-			<span style="color: #ddd !important">
-				{{ wl_data.token }}
-			</span>
+			<div class="tokenContainer" v-if="wl_data?.token">
+				<VCodeBlock :code="wl_data.token" highlightjs lang="text" theme="none">test</VCodeBlock>
+			</div>
 			<div v-if="hoverMenuVisible" class="hoverMenu" :class="{ vis: onHover }">
 				<button @click="$emit('confirm', { wl_data: wl_data, callback: deleteRecord, title: 'Confirm deletion?', message: `Do you really want to delete the api key ${wl_data.name}?` })">
 					Delete
@@ -170,7 +171,7 @@
 		border: none;
 		background: #2f2f2f;
 		width: -webkit-fill-available;
-		overflow-x: auto;
+		overflow: hidden;
 		/* padding: 0px 10px; */
 	}
 
@@ -181,11 +182,17 @@
 		display: flex;
 		flex-direction: row;
 		align-items: center;
-		width: 0px;
+		width: 0;
 		overflow: hidden;
-		overflow-x: auto;
 		margin-right: 10px !important;
-		min-width: 100px;
+		min-width: 0;
+	}
+
+	.tokenContainer {
+		color: #ddd;
+		overflow-x: auto;
+		min-width: 0;
+		z-index: 0;
 	}
 
 	.groupName {
