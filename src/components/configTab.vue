@@ -25,6 +25,8 @@ export default {
 			backup_list: [] as Array<any>,
 			backup_creating: false,
 			backup_restoring: '' as string,
+			config_saving: false,
+			config_warnings: [] as string[],
 		};
 	},
 	methods: {
@@ -59,7 +61,24 @@ export default {
 				return '#' + hex[ 1 ] + hex[ 1 ] + hex[ 2 ] + hex[ 2 ] + hex[ 3 ] + hex[ 3 ];
 			} else return hex;
 		},
+		pollServerAndReload: function () {
+			this.config_saving = true;
+			const poll = () => {
+				fetch('/api/checkSession', { cache: 'no-store', signal: AbortSignal.timeout(1000) })
+					.then((res) => {
+						if (res.ok) location.reload();
+						else setTimeout(poll, 1000);
+					})
+					.catch(() => setTimeout(poll, 1000));
+			};
+			setTimeout(poll, 1500);
+		},
+		showConfigWarnings: function (warnings: string[]) {
+			this.config_warnings = warnings;
+			setTimeout(() => { this.config_warnings = []; }, 8000);
+		},
 		sendConfigToServer: function (popup: any) {
+			const noRestartCategories = ['custom_permissions', 'app_personalization'];
 			const dt = { category: this.selectedMenu, config: this.currentConfigMenu };
 			console.log('Saving_config:', this.selectedMenu, this.currentConfigType, this.currentConfigMenu);
 			let rp = {};
@@ -85,7 +104,16 @@ export default {
 				timeout: 60000,
 				success: (dt) => {
 					if (dt.status == 'config_updated') {
-						if (dt.action == 'reload') location.reload();
+						if (dt.warnings?.length) this.showConfigWarnings(dt.warnings);
+						if (dt.action == 'reload') {
+							if (noRestartCategories.includes(this.selectedMenu)) {
+								location.reload();
+							} else {
+								popup.closePopup();
+								this.pollServerAndReload();
+							}
+							return;
+						}
 					} else {
 						console.error(dt);
 					}
@@ -625,6 +653,14 @@ export default {
 				</div>
 			</div>
 		</div>
+		<div v-if="config_saving" class="config-saving-overlay">
+			<div class="config-saving-spinner"></div>
+			<span>Restarting server...</span>
+		</div>
+		<!-- <div v-if="config_warnings.length" class="config-warnings-toast">
+			<strong>Warnings</strong>
+			<div v-for="w of config_warnings" :key="w" class="config-warning-item">{{ w }}</div>
+		</div> -->
 	</tab>
 </template>
 
@@ -645,6 +681,64 @@ label {
 
 div.ct {
 	margin: 0 auto;
+}
+
+.config-saving-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 12000;
+	background: #000b;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 15px;
+	color: #fff;
+	font-size: 18px;
+}
+
+.config-saving-spinner {
+	width: 40px;
+	height: 40px;
+	border: 4px solid #fff3;
+	border-top-color: #fff;
+	border-radius: 50%;
+	animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+	to { transform: rotate(360deg); }
+}
+
+.config-warnings-toast {
+	position: fixed;
+	bottom: 20px;
+	right: 20px;
+	z-index: 12001;
+	background: #3a2a00;
+	border: 1px solid #f0ad4e;
+	border-radius: 10px;
+	padding: 12px 16px;
+	max-width: 420px;
+	color: #f0ad4e;
+	font-size: 13px;
+	animation: toast-in 0.3s ease-out;
+}
+
+.config-warnings-toast strong {
+	display: block;
+	margin-bottom: 6px;
+	font-size: 14px;
+}
+
+.config-warning-item {
+	padding: 2px 0;
+	border-top: 1px solid #fff1;
+}
+
+@keyframes toast-in {
+	from { opacity: 0; transform: translateY(10px); }
+	to { opacity: 1; transform: translateY(0); }
 }
 
 .backup-section-header {
