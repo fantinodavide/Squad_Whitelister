@@ -332,7 +332,7 @@ export default {
 			<!-- <label v-for="k of Object.keys(currentConfigMenu)">{{ getTranslation(k) }}<input :type="getInputType(currentConfigMenu[k])" v-model="currentConfigMenu[k]" /></label> -->
 			<confLabelInput
 				v-for="k of Object.keys(currentConfigMenu)"
-				:key="k"
+				:key="selectedMenu + '_' + k"
 				:confKey="k"
 				:modelValue="currentConfigMenu[ k ]"
 				@update:modelValue="(nv) => (currentConfigMenu[ k ] = nv)"
