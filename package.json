@@ -1,6 +1,6 @@
 {
   "name": "squad-whitelister",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -25,7 +25,7 @@
     "axios": "^1.7.9",
     "bson": "^4.7.0",
     "cookie-parser": "^1.4.6",
-    "discord.js": "^14.8.0",
+    "discord.js": "^14.25.1",
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
     "express-force-ssl": "^0.3.2",
