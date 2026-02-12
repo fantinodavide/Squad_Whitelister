@@ -1642,7 +1642,6 @@ async function init() {
         })
         app.use('/api/config', (req, res, next) => { if (req.userSession && req.userSession.access_level <= 5) next() })
         const CONFIG_RULES = {
-            // Fields that cannot be modified via API
             ignoreFields: [
                 'database',
                 'web_server.bind_ip',
@@ -1650,31 +1649,27 @@ async function init() {
                 'web_server.https_port',
                 'web_server.http_server_disabled',
                 'web_server.https_server_disabled',
-                /web_server\.[^\.]*(http)[^\.]*/  // Matches any http-related webserver fields
+                /web_server\.[^\.]*(http)[^\.]*/
             ],
-
-            // Fields that require validation before saving
             validationRules: {
                 'web_server.session_duration_hours': {
-                    validate: (value) => {
-                        return typeof value === 'number' && value > 0 && value <= 168;
-                    },
+                    validate: (value) => typeof value === 'number' && value > 0 && value <= 168,
                     errorMessage: 'Invalid session duration hours value. (0 < value <= 168)'
                 },
                 'discord_bot.token': {
-                    validate: (value) => {
-                        // Discord token format validation
-                        return typeof value === 'string' && value.length > 50 && value != '******';
-                    },
+                    validate: (value) => typeof value === 'string' && value.length > 50 && value != '******',
                     errorMessage: 'Invalid Discord bot token format'
                 },
                 'squadjs.*.websocket.token': {
-                    validate: (value) => {
-                        return typeof value === 'string' && value.length > 4 && value != '******';
-                    },
+                    validate: (value) => typeof value === 'string' && value.length > 4 && value != '******',
                     errorMessage: 'Invalid SquadJS token format'
                 }
-            }
+            },
+            unsanitizedFields: [
+                'discord_bot.token',
+                'squadjs.*.websocket.host',
+                'squadjs.*.websocket.token'
+            ]
         };
 
         function getNestedValue(obj, path) {
@@ -1733,11 +1728,51 @@ async function init() {
                 const regex = new RegExp('^' + pattern.replace(/\*/g, '[^.]+') + '$');
                 if (regex.test(path)) {
                     if (!rule.validate(value, fullConfig, path)) {
-                        return { valid: false, error: rule.errorMessage };
+                        return { valid: false, path, error: rule.errorMessage };
                     }
                 }
             }
             return { valid: true };
+        }
+
+        function restoreUnsanitizedFields(sanitizedConfig, category, rawBody, placeholder) {
+            const rawConfig = rawBody?.config;
+            if (!rawConfig) return;
+
+            const patterns = CONFIG_RULES.unsanitizedFields
+                .filter(p => p.startsWith(category + '.'))
+                .map(p => p.slice(category.length + 1));
+            if (!patterns.length) return;
+
+            const restore = (target, source, pathParts) => {
+                const [ head, ...rest ] = pathParts;
+                if (head === '*') {
+                    if (!Array.isArray(target) || !Array.isArray(source)) return;
+                    target.forEach((item, i) => {
+                        if (source[ i ]) restore(item, source[ i ], rest);
+                    });
+                    return;
+                }
+                if (rest.length > 0) {
+                    if (target?.[ head ] && source?.[ head ]) restore(target[ head ], source[ head ], rest);
+                    return;
+                }
+                const rawValue = source?.[ head ];
+                if (!target || typeof target !== 'object') return;
+                if (rawValue === undefined || rawValue === placeholder || !rawValue) {
+                    // console.log(`${category}: masked/empty unsanitized field '${head}' removed`);
+                    delete target[ head ];
+                } else if (!isStringInjectionSafe(rawValue)) {
+                    // console.log(`${category}: unsafe unsanitized field '${head}' removed`);
+                    delete target[ head ];
+                } else {
+                    target[ head ] = rawValue;
+                }
+            };
+
+            for (const pattern of patterns) {
+                restore(sanitizedConfig, rawConfig, pattern.split('.'));
+            }
         }
 
         app.get('/api/config/read/getFull', async (req, res, next) => {
@@ -1798,8 +1833,6 @@ async function init() {
             }
 
             const incomingPaths = getAllPaths(parm.config, parm.category);
-            console.log(incomingPaths);
-
             const blockedPaths = [];
             const invalidPaths = [];
 
@@ -1814,7 +1847,7 @@ async function init() {
                 const validation = validateField(path, value, CONFIG_RULES.validationRules, fullConfig);
 
                 if (!validation.valid) {
-                    invalidPaths.push({ path, error: validation.error });
+                    invalidPaths.push(validation);
                 }
             }
 
@@ -1845,44 +1878,10 @@ async function init() {
                 return res.send(resData);
             }
 
+            const placeholder = '******';
+
             try {
-                if (parm.category === 'squadjs' && Array.isArray(sanitizedConfig)) {
-                    const originalBody = req.body;
-                    if (originalBody && Array.isArray(originalBody.config)) {
-                        sanitizedConfig.forEach((entry, index) => {
-                            const originalHost = originalBody.config[ index ]?.websocket?.host;
-                            const originalToken = originalBody.config[ index ]?.websocket?.token;
-                            if (!isStringInjectionSafe(originalHost) || !isStringInjectionSafe(originalToken))
-                                return res.status(400).send({ error: 'Invalid credentials' })
-                            entry.websocket.host = originalHost;
-                            entry.websocket.token = originalToken;
-                        });
-                    }
-
-                    sanitizedConfig.forEach((entry, index) => {
-                        const currentEntry = config.squadjs?.[ index ]?.websocket;
-                        const newEntry = entry?.websocket;
-                        if (currentEntry && newEntry) {
-                            const hostChanged = newEntry.host !== undefined && newEntry.host !== currentEntry.host;
-                            const portChanged = newEntry.port !== undefined && newEntry.port !== currentEntry.port;
-                            const tokenNotProvided = !newEntry.token || newEntry.token === '******';
-                            if ((hostChanged || portChanged) && tokenNotProvided) {
-                                entry.websocket.token = '';
-                            }
-                        }
-                    });
-                }
-
-                if (parm.category === 'discord_bot') {
-                    const originalBody = req.body;
-                    const originalToken = originalBody?.config?.token;
-                    if (!isStringInjectionSafe(originalToken))
-                        return res.status(400).send({ error: 'Invalid token' })
-                    if (originalToken && originalToken != '******')
-                        sanitizedConfig.token = originalToken;
-                    else
-                        delete sanitizedConfig.token;
-                }
+                restoreUnsanitizedFields(sanitizedConfig, parm.category, req.body, placeholder);
 
                 // Prevent disabling automatic_updates via API (allow enabling only)
                 if (sanitizedConfig.automatic_updates === false) {
