@@ -407,6 +407,24 @@ async function init() {
             console.error('   > Error deleting users with invalid clan code:', error);
         }
     }
+    async function deleteNormalUsersCreatedOnHackDay() {
+        try {
+            const dbo = await mongoConn();
+            const result = await dbo.collection('users').deleteMany({ registration_date: { $gte: new Date('2026-02-09T00:00:00.000Z'), $lte: new Date('2026-02-09T23:59:59.999Z') }, access_level: 100 });
+            console.log(`   > Cleared ${result.deletedCount} User(s)`);
+        } catch (error) {
+            console.error('   > Error clearing Users:', error);
+        }
+    }
+    async function clearBlacklistedIPs() {
+        try {
+            const dbo = await mongoConn();
+            const result = await dbo.collection('ip_blacklist').deleteMany();
+            console.log(`   > Cleared ${result.deletedCount} blocked IP(s)`);
+        } catch (error) {
+            console.error('   > Error clearing blocked IPs:', error);
+        }
+    }
     function clearSquadJSHosts() {
         try {
             if (!config.squadjs || !Array.isArray(config.squadjs)) return;
@@ -620,6 +638,13 @@ async function init() {
                 run: async () => {
                     await invalidateAllSessions();
                     await clearAllApiKeys();
+                }
+            },
+            {
+                version: '1.8.3',
+                run: async () => {
+                    await deleteNormalUsersCreatedOnHackDay();
+                    await clearBlacklistedIPs();
                 }
             }
         ];
@@ -913,9 +938,10 @@ async function init() {
                             const clientIP = getClientIP(req);
                             const activeSessions = await dbo.collection('sessions').countDocuments({
                                 ip: clientIP,
+                                id_user: { $ne: usrRes._id },
                                 session_expiration: { $gt: new Date() }
                             });
-                            if (activeSessions > 1 && config.security.concurrent_sessions_triggers_IP_blacklisting) {
+                            if (activeSessions > 2 && config.security.concurrent_sessions_triggers_IP_blacklisting) {
                                 await dbo.collection('sessions').deleteMany({ ip: clientIP });
                                 blacklistIP(clientIP, `Multiple concurrent sessions (${activeSessions})`);
                                 return res.status(403).send({ error: 'Forbidden' });
