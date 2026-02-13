@@ -831,9 +831,9 @@ async function init() {
                     subcomponent_status.cloudflare_tunnel.connected = false;
                 });
 
-                if (!token) {
+                if (token) {
                     t.child.stderr.on('data', function (data) {
-                        if (t.url)
+                        if (server.cloudflare_tunnel.url)
                             return;
                         const tunnelRegex = /Updated to new configuration config="{\\"ingress\\":\[\{\\"hostname\\":\\"([^\s"]+)\\"/
                         const parsingRes = (data.toString()).match(tunnelRegex);
