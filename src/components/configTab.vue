@@ -21,6 +21,7 @@ export default {
 			game_groups: [] as Array<any>,
 			subcomponent_status: {
 				squadjs: [],
+				cloudflare_tunnel: { url: null, connected: false },
 			},
 			backup_list: [] as Array<any>,
 			backup_creating: false,
@@ -280,6 +281,13 @@ export default {
 					// return (this.game_groups = [{ _id: '', group_name: 'None', group_permissions: [], require_appr: false }, ...dt]);
 				});
 		},
+		getCloudflareTunnelStatus: async function () {
+			await fetch('/api/subcomponent/read/cloudflare_tunnel/status')
+				.then((res) => res.json())
+				.then((dt) => {
+					this.subcomponent_status.cloudflare_tunnel = dt;
+				});
+		},
 		openNewTab: function (url: string) {
 			window.open(url, '_blank');
 		},
@@ -320,6 +328,7 @@ export default {
 		this.getDiscordInviteLink();
 		this.getGameGroups();
 		this.getSquadJSStatus();
+		this.getCloudflareTunnelStatus();
 	},
 	components: { SideMenu, tab, confLabelInput },
 };
@@ -330,31 +339,58 @@ export default {
 	<tab>
 		<div v-if="![ 'discord_bot', 'seeding_tracker', 'backup' ].includes(selectedMenu)" class="ct">
 			<!-- <label v-for="k of Object.keys(currentConfigMenu)">{{ getTranslation(k) }}<input :type="getInputType(currentConfigMenu[k])" v-model="currentConfigMenu[k]" /></label> -->
-			<confLabelInput
-				v-for="k of Object.keys(currentConfigMenu)"
-				:key="selectedMenu + '_' + k"
-				:confKey="k"
-				:modelValue="currentConfigMenu[ k ]"
-				@update:modelValue="(nv) => (currentConfigMenu[ k ] = nv)"
-				:current-config-menu="currentConfigMenu"
-				@deleteArrayElement="(index) => currentConfigMenu = currentConfigMenu.filter((e: any, i: number) => i != index)">
-				<!-- <h4 v-if="selectedMenu == 'squadjs'">Websocket is {{ subcomponent_status.squadjs ? '' : 'Not ' }} Connected</h4> -->
-				<AdvancedInput v-if="selectedMenu == 'squadjs'" text="Status" name="" :value="subcomponent_status.squadjs[ (k as any) ] ? 'Connected' : 'Not Connected'" optional readonly />
-			</confLabelInput>
+			<div style="display: flex; flex-direction: column;">
+				<confLabelInput
+					v-for="k of Object.keys(currentConfigMenu)"
+					:key="selectedMenu + '_' + k"
+					:confKey="k"
+					:modelValue="currentConfigMenu[ k ]"
+					@update:modelValue="(nv) => (currentConfigMenu[ k ] = nv)"
+					:current-config-menu="currentConfigMenu"
+					@deleteArrayElement="(index) => currentConfigMenu = currentConfigMenu.filter((e: any, i: number) => i != index)">
+					<!-- <h4 v-if="selectedMenu == 'squadjs'">Websocket is {{ subcomponent_status.squadjs ? '' : 'Not ' }} Connected</h4> -->
+					<AdvancedInput v-if="selectedMenu == 'squadjs'" text="Status" name="" :value="subcomponent_status.squadjs[ (k as any) ] ? 'Connected' : 'Not Connected'" optional readonly />
+				</confLabelInput>
 
-			<button
-				style="float: right; width: 100px"
-				@click="
-					$emit('confirm', {
-						title: 'Save server configuration?',
-						text: 'Are you sure you want to change the server configuration? Bad configuration may result into multiple failures or temporary data loss.',
-						callback: sendConfigToServer,
-					})
-					">
-				Save
-			</button>
+				<div class="flex row right">
+					<button v-if="currentConfigMenu instanceof Array" style="width: 50px; display: block;" @click="addArrayElement">+</button>
+					<button
+						style="width: 100px"
+						@click="
+							$emit('confirm', {
+								title: 'Save server configuration?',
+								text: 'Are you sure you want to change the server configuration? Bad configuration may result into multiple failures or temporary data loss.',
+								callback: sendConfigToServer,
+							})
+							">
+						Save
+					</button>
+				</div>
+			</div>
 			<!-- <button v-if="currentConfigMenu instanceof Array" style="float: right; width: 50px" @click="currentConfigMenu.push({ ...currentConfigMenu[0] })">+</button> -->
-			<button v-if="currentConfigMenu instanceof Array" style="float: right; width: 50px" @click="addArrayElement">+</button>
+			<div v-if="selectedMenu == 'cloudflare_tunnel'" style="padding-top: 10px;">
+				<AdvancedInput text="Status" name=""
+					:value="subcomponent_status.cloudflare_tunnel?.connected ? 'Connected' : 'Not Connected'" optional readonly />
+				<label v-if="subcomponent_status.cloudflare_tunnel?.url" style="display: flex; align-items: center; gap: 8px;">
+					Tunnel URL
+					<a :href="subcomponent_status.cloudflare_tunnel.url" target="_blank"
+						style="color: var(--accent-color); text-decoration: none; font-weight: bold;">
+						{{ subcomponent_status.cloudflare_tunnel.url }}
+					</a>
+				</label>
+				<fieldset style="margin-top: 10px;">
+					<legend>Info</legend>
+					Leave the token empty to use a quick tunnel (random <b>trycloudflare.com</b> URL, no account needed).<br><br>
+					For a persistent custom domain:<br>
+					1. Open the <a href="https://one.dash.cloudflare.com" target="_blank" style="color: var(--accent-color);">Cloudflare Zero Trust dashboard</a><br>
+					2. Navigate to <b>Networks</b> &gt; <b>Tunnels</b><br>
+					3. Create a <b>Cloudflared</b> tunnel<br>
+					4. On the <b>Install and run a connector</b> page, find the install command (step 4)<br>
+					5. Copy only the token at the end of the command (the long string after <code style="color: var(--accent-color);">cloudflared service install</code>)<br>
+					6. Paste the token here<br>
+					7. In the <b>Public Hostname</b> tab on Cloudflare (one-time setup), set the service type to <b>HTTP</b> and the URL to <b>localhost:PORT</b> (matching your Whitelister HTTP port)<br><br>
+				</fieldset>
+			</div>
 		</div>
 		<div v-else-if="selectedMenu == 'discord_bot'" class="ct">
 			<confLabelInput confKey="token" :modelValue="currentConfigMenu.token" @update:modelValue="(nv) => (currentConfigMenu.token = nv)" />

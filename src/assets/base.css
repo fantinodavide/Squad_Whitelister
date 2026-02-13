@@ -347,6 +347,10 @@ button.round {
 	flex-direction: row;
 }
 
+.flex.row.right {
+	justify-content: right;
+}
+
 .flex.column {
 	flex-direction: column;
 }

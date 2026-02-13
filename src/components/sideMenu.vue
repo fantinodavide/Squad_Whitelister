@@ -10,6 +10,7 @@
 				__config_tr: {
 					web_server: 'Web Server',
 					app_personalization: 'Personalization',
+					cloudflare_tunnel: 'Cloudflare Tunnel',
 					squadjs: 'SquadJS',
 					backup: 'Backup & Restore',
 				} as any,

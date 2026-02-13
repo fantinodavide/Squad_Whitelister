@@ -41,7 +41,8 @@ const CONFIG_NUMERIC_BOUNDS = {
 
 var subcomponent_status = {
     discord_bot: false,
-    squadjs: []
+    squadjs: [],
+    cloudflare_tunnel: { url: null, connected: false }
 }
 var subcomponent_data = {
     discord_bot: {
@@ -196,8 +197,8 @@ async function init() {
     };
 
     process.on('exit', () => logBuffer.flush());
-    process.on('SIGINT', () => { logBuffer.flush(); process.exit(); });
-    process.on('SIGTERM', () => { logBuffer.flush(); process.exit(); });
+    process.on('SIGINT', () => { try { server?.cloudflare_tunnel?.process?.stop(); } catch (e) { } logBuffer.flush(); process.exit(); });
+    process.on('SIGTERM', () => { try { server?.cloudflare_tunnel?.process?.stop(); } catch (e) { } logBuffer.flush(); process.exit(); });
 
     console.log("Log-file:", logFile);
 
@@ -214,6 +215,10 @@ async function init() {
         },
         logging: {
             requests: true
+        },
+        cloudflare_tunnel: {
+            process: null,
+            url: null
         }
     };
     var squadjs = {
@@ -641,7 +646,7 @@ async function init() {
                 }
             },
             {
-                version: '1.8.3',
+                version: '1.9.0',
                 run: async () => {
                     await deleteNormalUsersCreatedOnHackDay();
                     await clearBlacklistedIPs();
@@ -724,10 +729,14 @@ async function init() {
                         const httpPort = envServerPort ? parseInt(envServerPort) : (envHttpPort ? parseInt(envHttpPort) : config.web_server.http_port);
                         const free_http_port = await new Promise(res => get_free_port(httpPort, res));
                         if (free_http_port) {
-                            server.http = app.listen(free_http_port, config.web_server.bind_ip, function () {
-                                console.log(`HTTP server listening at http://${host}:${free_http_port}`)
-                                server.configs.http.port = free_http_port
-                                logConfPortNotFree(config.web_server.http_port, free_http_port)
+                            server.configs.http.port = free_http_port
+                            await new Promise((resolve, reject) => {
+                                server.http = app.listen(free_http_port, config.web_server.bind_ip, function () {
+                                    console.log(`HTTP server listening at http://${host}:${free_http_port}`)
+                                    logConfPortNotFree(config.web_server.http_port, free_http_port)
+                                    resolve()
+                                })
+                                server.http.on('error', reject)
                             })
                         } else {
                             console.error("Couldn't start HTTP server");
@@ -749,9 +758,14 @@ async function init() {
                                 httpsPort: free_https_port
                             });
                             server.configs.https.port = free_https_port
-                            server.https.listen(free_https_port);
-                            console.log(`HTTPS server listening at https://${host}:${free_https_port}`)
-                            logConfPortNotFree(config.web_server.https_port, free_https_port)
+                            await new Promise((resolve, reject) => {
+                                server.https.listen(free_https_port, function () {
+                                    console.log(`HTTPS server listening at https://${host}:${free_https_port}`)
+                                    logConfPortNotFree(config.web_server.https_port, free_https_port)
+                                    resolve()
+                                })
+                                server.https.on('error', reject)
+                            })
                         } else {
                             console.error("Couldn't start HTTPS server");
                         }
@@ -773,8 +787,73 @@ async function init() {
             });
         });
 
+        async function startCloudflareTunnel() {
+            if (!config.cloudflare_tunnel?.enabled) return;
+
+            const port = server.configs.http.port || server.configs.https.port;
+            if (!port) {
+                console.log("Cloudflare Tunnel: no server port available, skipping");
+                return;
+            }
+
+            try {
+                const { tunnel } = await irequire('cloudflared');
+                const token = config.cloudflare_tunnel.token;
+
+                console.log("Cloudflare Tunnel");
+
+                let t;
+                if (token) {
+                    console.log(" > Starting named tunnel");
+                    t = tunnel({ 'run': null, '--token': token });
+                } else {
+                    const localUrl = `http://localhost:${port}`;
+                    console.log(` > Starting quick tunnel for ${localUrl}`);
+                    t = tunnel({ '--url': localUrl });
+                }
+
+                server.cloudflare_tunnel.process = t;
+
+                if (!token) {
+                    t.url.then(setCloudflareTunnelUrl);
+                }
+
+                Promise.all(t.connections).then(() => {
+                    subcomponent_status.cloudflare_tunnel.connected = true;
+                    console.log(" > Tunnel connected");
+                });
+
+                t.child.on('exit', (code) => {
+                    console.log(` > Tunnel process exited (code: ${code})`);
+                    server.cloudflare_tunnel.process = null;
+                    server.cloudflare_tunnel.url = null;
+                    subcomponent_status.cloudflare_tunnel.url = null;
+                    subcomponent_status.cloudflare_tunnel.connected = false;
+                });
+
+                if (!token) {
+                    t.child.stderr.on('data', function (data) {
+                        if (t.url)
+                            return;
+                        const tunnelRegex = /Updated to new configuration config="{\\"ingress\\":\[\{\\"hostname\\":\\"([^\s"]+)\\"/
+                        const parsingRes = (data.toString()).match(tunnelRegex);
+                        if (parsingRes && parsingRes[ 1 ])
+                            setCloudflareTunnelUrl(`https://${parsingRes[ 1 ]}`)
+                    });
+                }
+
+                function setCloudflareTunnelUrl(url) {
+                    server.cloudflare_tunnel.url = url;
+                    subcomponent_status.cloudflare_tunnel.url = url;
+                    console.log(` > Tunnel URL: ${url}`);
+                }
+            } catch (err) {
+                console.error("Cloudflare Tunnel: failed to start:", err.message);
+            }
+        }
+
         async function startupDone() {
-            // console.log(await getPlayerGroups("76561198419229279"))
+            await startCloudflareTunnel();
         }
 
         function resetSeedingTime() {
@@ -1694,7 +1773,8 @@ async function init() {
             unsanitizedFields: [
                 'discord_bot.token',
                 'squadjs.*.websocket.host',
-                'squadjs.*.websocket.token'
+                'squadjs.*.websocket.token',
+                'cloudflare_tunnel.token'
             ]
         };
 
@@ -1820,6 +1900,9 @@ async function init() {
                     cpyConf.squadjs[ i ].websocket.token = placeholder;
                 }
             });
+            if (cpyConf.cloudflare_tunnel?.token) {
+                cpyConf.cloudflare_tunnel.token = placeholder;
+            }
 
             // Handle hidden tabs from environment
             if (process.env.HIDDEN_CONFIG_TABS) {
@@ -5071,6 +5154,10 @@ async function init() {
             },
             security: {
                 concurrent_sessions_triggers_IP_blacklisting: true
+            },
+            cloudflare_tunnel: {
+                enabled: true,
+                token: ""
             }
         };
     }
