@@ -100,15 +100,17 @@ The configuration file is structured into several sections:
 | `server_id` | ID of your Discord server. | - |
 | `whitelist_updates_channel_id` | Channel ID for whitelist update notifications. | - |
 
-## SquadJS Integration
+## Game Server Integration (SquadJS + SquadPy)
 
 ```json
 "squadjs": [
     {
         "websocket": {
+            "mode": "squadjs",
             "host": "",
             "port": 3000,
-            "token": ""
+            "token": "",
+            "secure": false
         }
     }
 ]
@@ -116,11 +118,29 @@ The configuration file is structured into several sections:
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `host` | SquadJS WebSocket host address. | - |
-| `port` | SquadJS WebSocket port. | `3000` |
-| `token` | Authentication token for SquadJS WebSocket. | - |
+| `mode` | Connector backend: `squadjs` (Socket.IO) or `squadpy` (Control API) | `squadjs` |
+| `host` | SquadJS WebSocket host or SquadPy API host. | - |
+| `port` | SquadJS WebSocket port or SquadPy API port. | `3000` |
+| `token` | SquadJS WebSocket token or SquadPy API auth token. | - |
+| `secure` | Use HTTPS when mode is `squadpy`. | `false` |
 
-You can add multiple SquadJS configurations by adding more objects to the array.
+You can add multiple server connection configurations by adding more objects to the array.
+
+### SquadPy Example
+
+```json
+"squadjs": [
+    {
+        "websocket": {
+            "mode": "squadpy",
+            "host": "127.0.0.1",
+            "port": 8090,
+            "token": "replace_with_api_auth_token",
+            "secure": false
+        }
+    }
+]
+```
 
 ## Custom Permissions
 

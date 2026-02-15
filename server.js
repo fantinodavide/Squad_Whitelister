@@ -1768,6 +1768,10 @@ async function init() {
                 'squadjs.*.websocket.token': {
                     validate: (value) => typeof value === 'string' && value.length > 4 && value != '******',
                     errorMessage: 'Invalid SquadJS token format'
+                },
+                'squadjs.*.websocket.mode': {
+                    validate: (value) => typeof value === 'string' && [ 'squadjs', 'squadpy' ].includes(value.toLowerCase()),
+                    errorMessage: 'Invalid connector mode. Use "squadjs" or "squadpy".'
                 }
             },
             unsanitizedFields: [
@@ -4099,14 +4103,295 @@ async function init() {
         }
     }
 
+    function normalizeSquadConnectorMode(connection = {}) {
+        const mode = (
+            connection?.websocket?.mode
+            || connection?.websocket?.connector
+            || connection?.websocket?.provider
+            || connection?.websocket?.type
+            || "squadjs"
+        ).toString().trim().toLowerCase();
+        return mode === "squadpy" ? "squadpy" : "squadjs";
+    }
+
+    function parseSquadPyListPlayersResponse(response = "") {
+        const players = [];
+        const lines = (response || "").split(/\r?\n/);
+        const playerRegex = /^ID:\s*(\d+)\s\|\sOnline IDs:([^|]+)\|\sName:\s(.+?)\s\|\sTeam ID:\s(\d+|N\/A)\s\|\sSquad ID:\s(\d+|N\/A)\s\|\sIs Leader:\s(True|False)\s\|\sRole:\s(.+?)(?:,?)$/;
+
+        for (const line of lines) {
+            if (line.startsWith("----- Recently Disconnected")) {
+                break;
+            }
+            const match = line.match(playerRegex);
+            if (!match) {
+                continue;
+            }
+            const ids = match[ 2 ] || "";
+            const eosMatch = ids.match(/EOS:\s*([0-9a-f]{32})/i);
+            const steamMatch = ids.match(/steam:\s*(\d{17})/i);
+            const steamID = steamMatch ? steamMatch[ 1 ] : "";
+            const eosID = eosMatch ? eosMatch[ 1 ] : "";
+
+            players.push({
+                id: +match[ 1 ],
+                steamID: steamID,
+                eosID: eosID,
+                name: match[ 3 ],
+                teamID: match[ 4 ] === "N/A" ? 0 : +match[ 4 ],
+                squadID: match[ 5 ] === "N/A" ? 0 : +match[ 5 ],
+                isLeader: match[ 6 ] === "True",
+                role: match[ 7 ]
+            });
+        }
+
+        return players;
+    }
+
+    function quoteRconArg(value) {
+        const str = (value == null ? "" : `${value}`);
+        const escaped = str.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+        return `"${escaped}"`;
+    }
+
+    function createSquadPySocketAdapter(sqJsConn, sqJsK) {
+        const listeners = new Map();
+        let connected = false;
+        let connecting = false;
+        let stopped = false;
+        let pollInt = null;
+        let pollRunning = false;
+        let previousPlayers = new Map();
+
+        const wsConf = sqJsConn?.websocket || {};
+        const host = `${wsConf.host || ""}`.trim();
+        const port = +wsConf.port || 8090;
+        const token = `${wsConf.token || ""}`.trim();
+        const secure = wsConf.secure === true || `${wsConf.protocol || ""}`.toLowerCase() === "https";
+        const protocol = secure ? "https" : "http";
+        const baseUrl = `${protocol}://${host}:${port}`;
+
+        function emitLocal(eventName, ...args) {
+            const handlers = listeners.get(eventName);
+            if (!handlers || handlers.size === 0) {
+                return;
+            }
+            for (const handler of [ ...handlers ]) {
+                try {
+                    handler(...args);
+                } catch (err) {
+                    console.error(`SquadPy adapter (${+sqJsK + 1}) listener error for "${eventName}"`, err);
+                }
+            }
+        }
+
+        async function request(method, url, payload, timeoutMs = 5000) {
+            const headers = {
+                Authorization: `Bearer ${token}`
+            };
+            const response = await axios({
+                method: method,
+                url: `${baseUrl}${url}`,
+                data: payload,
+                timeout: timeoutMs,
+                headers: headers,
+                validateStatus: () => true
+            });
+            if (response.status < 200 || response.status >= 300) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return response.data;
+        }
+
+        async function apiCommand(command, timeoutMs = 5000) {
+            const requestId = `whitelister-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+            const body = { request_id: requestId, command: command };
+            const data = await request("post", "/api/command", body, timeoutMs);
+            if (!data?.ok) {
+                throw new Error(data?.error || data?.code || "unknown_error");
+            }
+            return `${data?.result?.response || ""}`;
+        }
+
+        async function fetchListPlayers(timeoutSeconds = 5) {
+            const response = await apiCommand("ListPlayers", Math.max(1000, timeoutSeconds * 1000));
+            return parseSquadPyListPlayersResponse(response);
+        }
+
+        async function sendWarn(playerID, message) {
+            const target = `${playerID || ""}`.trim();
+            if (!target) {
+                throw new Error("Missing player id");
+            }
+            const command = `AdminWarn ${quoteRconArg(target)} ${quoteRconArg(message || "")}`;
+            return await apiCommand(command, 5000);
+        }
+
+        async function healthCheck() {
+            const data = await request("get", "/api/health", null, 5000);
+            if (!data?.ok) {
+                throw new Error(data?.error || data?.code || "health_check_failed");
+            }
+            return true;
+        }
+
+        function toPlayerKey(player) {
+            return `${player?.steamID || player?.eosID || ""}`.trim();
+        }
+
+        async function syncPlayers(initial = false) {
+            const players = await fetchListPlayers(5);
+            const currentPlayers = new Map();
+
+            for (const player of players) {
+                const key = toPlayerKey(player);
+                if (!key) {
+                    continue;
+                }
+                currentPlayers.set(key, player);
+            }
+
+            if (!initial) {
+                for (const [ key, player ] of currentPlayers) {
+                    if (!previousPlayers.has(key)) {
+                        emitLocal("PLAYER_CONNECTED", {
+                            player: {
+                                steamID: player.steamID || "",
+                                eosID: player.eosID || "",
+                                name: player.name || "Unknown"
+                            }
+                        });
+                    }
+                }
+
+                for (const [ key, player ] of previousPlayers) {
+                    if (!currentPlayers.has(key)) {
+                        emitLocal("PLAYER_DISCONNECTED", {
+                            player: {
+                                steamID: player.steamID || "",
+                                eosID: player.eosID || "",
+                                name: player.name || "Unknown"
+                            }
+                        });
+                    }
+                }
+            }
+
+            previousPlayers = currentPlayers;
+            return players;
+        }
+
+        function stopPolling() {
+            if (pollInt) {
+                clearInterval(pollInt);
+                pollInt = null;
+            }
+        }
+
+        function startPolling() {
+            stopPolling();
+            pollInt = setInterval(async () => {
+                if (stopped || !connected || pollRunning) {
+                    return;
+                }
+                pollRunning = true;
+                try {
+                    await syncPlayers(false);
+                } catch (err) {
+                    connected = false;
+                    stopPolling();
+                    emitLocal("disconnect", "poll_error");
+                } finally {
+                    pollRunning = false;
+                }
+            }, 10000);
+        }
+
+        const adapter = {
+            on(eventName, handler) {
+                if (!listeners.has(eventName)) {
+                    listeners.set(eventName, new Set());
+                }
+                listeners.get(eventName).add(handler);
+                return adapter;
+            },
+            removeAllListeners() {
+                listeners.clear();
+                return adapter;
+            },
+            disconnect() {
+                if (stopped) {
+                    return;
+                }
+                stopped = true;
+                const wasConnected = connected || connecting;
+                connected = false;
+                connecting = false;
+                stopPolling();
+                if (wasConnected) {
+                    emitLocal("disconnect", "manual_disconnect");
+                }
+            },
+            connect() {
+                if (stopped || connecting || connected) {
+                    return;
+                }
+                connecting = true;
+                healthCheck()
+                    .then(async () => {
+                        await syncPlayers(true);
+                        connected = true;
+                        connecting = false;
+                        emitLocal("connect");
+                        startPolling();
+                    })
+                    .catch((err) => {
+                        connecting = false;
+                        emitLocal("connect_error", err);
+                    });
+            },
+            emit(eventName, ...args) {
+                const callback = typeof args[ args.length - 1 ] === "function" ? args.pop() : null;
+                if (eventName === "rcon.warn") {
+                    const [ playerID, message ] = args;
+                    sendWarn(playerID, message)
+                        .then((response) => {
+                            if (callback) callback(response);
+                        })
+                        .catch((err) => {
+                            if (callback) callback({ error: `${err?.message || err}` });
+                        });
+                    return;
+                }
+                emitLocal(eventName, ...args);
+            },
+            timeout(timeoutMs = 2000) {
+                return {
+                    emit(eventName, data, callback) {
+                        if (eventName === "rcon.getListPlayers") {
+                            fetchListPlayers(Math.ceil(timeoutMs / 1000))
+                                .then((players) => callback(null, players))
+                                .catch((err) => callback(err));
+                            return;
+                        }
+                        callback(new Error(`Unsupported event for SquadPy adapter: ${eventName}`));
+                    }
+                };
+            }
+        };
+
+        return adapter;
+    }
+
     async function SquadJSWebSocket(cb = null) {
         console.log("Starting SquadJS WebSockets");
         for (let sqJsK in config.squadjs) {
             subcomponent_status.squadjs[ sqJsK ] = false;
             const sqJsConn = config.squadjs[ sqJsK ];
+            const connectionMode = normalizeSquadConnectorMode(sqJsConn);
 
             await new Promise(async (res, rej) => {
-                console.error(` > Connection ${+sqJsK + 1}: ${sqJsConn.websocket.host}:${sqJsConn.websocket.port}`);
+                console.error(` > Connection ${+sqJsK + 1}: ${sqJsConn.websocket.host}:${sqJsConn.websocket.port} (${connectionMode})`);
 
                 if (sqJsConn.websocket && sqJsConn.websocket.token != "" && sqJsConn.websocket.host != "") {
                     if (!subcomponent_data.squadjs[ sqJsK ]) {
@@ -4121,7 +4406,10 @@ async function init() {
                     }
 
                     try {
-                        const res_ip = (await lookup(sqJsConn.websocket.host)).address;
+                        let resolvedHost = sqJsConn.websocket.host;
+                        if (connectionMode === "squadjs") {
+                            resolvedHost = (await lookup(sqJsConn.websocket.host)).address;
+                        }
 
                         const createConnection = () => {
                             if (subcomponent_data.squadjs[ sqJsK ].isConnecting) {
@@ -4152,17 +4440,21 @@ async function init() {
                                 } catch (e) { }
                             }
 
-                            subcomponent_data.squadjs[ sqJsK ].socket = io(`ws://${res_ip}:${sqJsConn.websocket.port}`, {
-                                auth: {
-                                    token: sqJsConn.websocket.token
-                                },
-                                autoUnref: true,
-                                reconnection: true,
-                                reconnectionAttempts: 3,
-                                reconnectionDelay: 5000,
-                                reconnectionDelayMax: 30000,
-                                timeout: 10000
-                            });
+                            if (connectionMode === "squadpy") {
+                                subcomponent_data.squadjs[ sqJsK ].socket = createSquadPySocketAdapter(sqJsConn, sqJsK);
+                            } else {
+                                subcomponent_data.squadjs[ sqJsK ].socket = io(`ws://${resolvedHost}:${sqJsConn.websocket.port}`, {
+                                    auth: {
+                                        token: sqJsConn.websocket.token
+                                    },
+                                    autoUnref: true,
+                                    reconnection: true,
+                                    reconnectionAttempts: 3,
+                                    reconnectionDelay: 5000,
+                                    reconnectionDelayMax: 30000,
+                                    timeout: 10000
+                                });
+                            }
 
                             subcomponent_data.squadjs[ sqJsK ].socket.on("connect", () => {
                                 clearTimeout(tm);
@@ -4224,6 +4516,10 @@ async function init() {
                             });
 
                             setupEventHandlers(sqJsK);
+
+                            if (connectionMode === "squadpy" && typeof subcomponent_data.squadjs[ sqJsK ].socket.connect === "function") {
+                                subcomponent_data.squadjs[ sqJsK ].socket.connect();
+                            }
                         };
 
                         function startReconnectionInterval(sqJsK, intervalSeconds = 30) {
@@ -5127,9 +5423,11 @@ async function init() {
             squadjs: [
                 {
                     websocket: {
+                        mode: "squadjs",
                         host: "",
                         port: 3000,
-                        token: ""
+                        token: "",
+                        secure: false
                     }
                 }
             ],
